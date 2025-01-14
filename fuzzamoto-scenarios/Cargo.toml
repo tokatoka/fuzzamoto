@@ -1,0 +1,26 @@
+[package]
+name = "fuzzamoto-scenarios"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fuzzamoto = { path = "../fuzzamoto" }
+bitcoin = "0.31.0"
+bitcoin_hashes = "0.16.0"
+env_logger = "0.11.6"
+log = "0.4.25"
+
+[[bin]]
+name = "scenario-simple-regtest"
+path = "bin/simple_regtest.rs"
+
+[[bin]]
+name = "scenario-http-server"
+path = "bin/http_server.rs"
+
+[[bin]]
+name = "scenario-compact-blocks"
+path = "bin/compact_blocks.rs"

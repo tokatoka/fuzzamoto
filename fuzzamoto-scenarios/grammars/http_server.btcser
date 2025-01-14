@@ -1,0 +1,14 @@
+# Connect action
+action { u8(0x00) }
+
+# Send message action
+action {
+  u8(0x01), # tag
+  u64,      # connection_id
+  vec<u8>   # message
+}
+
+# Disconnect action
+action { u8(0x02), u64 }
+
+testcase { vec<action> }

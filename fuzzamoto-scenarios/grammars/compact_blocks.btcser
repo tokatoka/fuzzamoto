@@ -1,0 +1,56 @@
+action { # Construct a new block for relay
+    u8(0x00),
+    u16, # from
+    u16, # prev
+    u16, # funding
+    u16, # num_txs
+}
+
+# inv
+action {
+    u8(0x01),
+    u16, # block
+}
+
+# headers
+action {
+    u8(0x02),
+    u16, # block
+}
+
+# cmpctblock
+action {
+    u8(0x03),
+    u16, # block
+    vec<u16>, # prefilled_txs
+}
+
+# block
+action {
+    u8(0x04),
+    u16, # block
+}
+
+# tx
+action {
+    u8(0x05),
+    u16, # block
+    u16, # tx
+}
+
+# blocktxn
+action {
+    u8(0x06),
+    u16, # block
+    vec<u16>, # txs
+}
+
+# advance_mocktime
+action {
+    u8(0x07),
+    u16, # seconds
+}
+
+testcase {
+    vec<action>, # actions
+}

@@ -1,0 +1,23 @@
+diff --git a/src/bitcoind.cpp b/src/bitcoind.cpp
+index d210e2c8ba..8f68bd9bf1 100644
+--- a/src/bitcoind.cpp
++++ b/src/bitcoind.cpp
+@@ -27,6 +27,7 @@
+ #include <util/threadnames.h>
+ #include <util/tokenpipe.h>
+ #include <util/translation.h>
++#include <uint256.h>
+ 
+ #include <any>
+ #include <functional>
+@@ -288,3 +289,9 @@ MAIN_FUNCTION
+ 
+     return node.exit_status;
+ }
++
++extern void MakeRandDeterministicDANGEROUS(const uint256& seed) noexcept;
++
++__attribute__((constructor)) void seed_rng() {
++    MakeRandDeterministicDANGEROUS(uint256::ZERO);
++}
+\ No newline at end of file

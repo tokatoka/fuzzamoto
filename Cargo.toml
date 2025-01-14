@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "fuzzamoto", "fuzzamoto-cli",
+    "fuzzamoto-nyx-sys", "fuzzamoto-scenarios",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Niklas Gögge <n.goeggi@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/dergoegge/fuzzamoto"
