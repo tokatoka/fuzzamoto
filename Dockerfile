@@ -46,7 +46,7 @@ RUN rustup install nightly && rustup default nightly
 # Clone AFLplusplus and build
 ENV LLVM_CONFIG=llvm-config-${LLVM_V}
 RUN git clone https://github.com/AFLplusplus/AFLplusplus
-RUN cd AFLplusplus && make -j$(nproc --ignore 1)
+RUN cd AFLplusplus && make PERFORMANCE=1 install -j$(nproc --ignore 1)
 
 # Build qemu-nyx and libnyx
 RUN cd AFLplusplus/nyx_mode/ && ./build_nyx_support.sh
