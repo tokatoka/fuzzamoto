@@ -192,6 +192,8 @@ impl<C: Connection, T: Target<C>> Scenario<TestCase, IgnoredCharacterization, C,
                         avaliable_outpoints.push((outpoint, tx.output[0].value));
                     }
 
+                    test_utils::mining::fixup_commitments(&mut block);
+
                     constructed.push((from as usize % self.connections.len(), block));
                 }
                 Action::SendInv { block } => {

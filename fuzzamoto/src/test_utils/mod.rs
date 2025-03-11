@@ -59,3 +59,24 @@ pub fn create_consolidation_tx(
     tx.output[0].value = total_input_value - fee;
     Ok(tx)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bitcoin::{hashes::Hash, BlockHash};
+
+    #[test]
+    fn test_commitment_fixup() {
+        let mut block = mining::mine_block(BlockHash::all_zeros(), 1, 2).unwrap();
+        block.txdata.push(
+            create_consolidation_tx(&[
+                (OutPoint::null(), Amount::from_int_btc(10)),
+                (OutPoint::null(), Amount::from_int_btc(20)),
+            ])
+            .unwrap(),
+        );
+        mining::fixup_commitments(&mut block);
+        assert!(block.check_merkle_root());
+        assert!(block.check_witness_commitment());
+    }
+}
