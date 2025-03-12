@@ -49,6 +49,21 @@ pub fn fixup_commitments(block: &mut Block) {
     block.header.merkle_root = block.compute_merkle_root().unwrap();
 }
 
+pub fn fixup_proof_of_work(block: &mut Block) {
+    if cfg!(feature = "reduced_pow") {
+        let mut block_hash = block.header.block_hash();
+        while block_hash.as_raw_hash()[31] & 0x80 != 0 {
+            block.header.nonce += 1;
+            block_hash = block.header.block_hash();
+        }
+    } else {
+        let target = block.header.target();
+        while block.header.validate_pow(target).is_err() {
+            block.header.nonce += 1;
+        }
+    }
+}
+
 pub fn mine_block(prev_hash: BlockHash, height: u32, time: u32) -> Result<Block, String> {
     let mut p2wsh_optrue_spk = vec![OP_0.to_u8(), 32];
     let op_true_hash = sha256::Hash::hash(&[OP_TRUE.to_u8()]);
@@ -95,19 +110,7 @@ pub fn mine_block(prev_hash: BlockHash, height: u32, time: u32) -> Result<Block,
         txdata: vec![coinbase],
     };
 
-    if cfg!(feature = "reduced_pow") {
-        let mut block_hash = block.header.block_hash();
-        while block_hash.as_raw_hash()[31] & 0x80 != 0 {
-            block.header.nonce += 1;
-            block_hash = block.header.block_hash();
-        }
-    } else {
-        // Ensure block meets proof of work requirement
-        let target = block.header.target();
-        while block.header.validate_pow(target).is_err() {
-            block.header.nonce += 1;
-        }
-    }
+    fixup_proof_of_work(&mut block);
 
     Ok(block)
 }
