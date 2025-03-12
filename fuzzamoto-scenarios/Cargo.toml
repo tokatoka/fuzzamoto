@@ -14,8 +14,8 @@ env_logger = "0.11.6"
 log = "0.4.25"
 
 [[bin]]
-name = "scenario-simple-regtest"
-path = "bin/simple_regtest.rs"
+name = "scenario-generic"
+path = "bin/generic.rs"
 
 [[bin]]
 name = "scenario-http-server"

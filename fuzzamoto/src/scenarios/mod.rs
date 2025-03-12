@@ -1,3 +1,5 @@
+pub mod generic;
+
 use crate::{connections::Transport, targets::Target};
 
 #[cfg(not(feature = "record"))]
