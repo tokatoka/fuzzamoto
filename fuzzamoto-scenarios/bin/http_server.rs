@@ -1,6 +1,6 @@
 use bitcoin::consensus::encode::{self, Decodable, Encodable, VarInt};
 use fuzzamoto::{
-    connections::{V1Transport, RecordingTransport},
+    connections::{RecordingTransport, V1Transport},
     fuzzamoto_main,
     runners::Runner,
     scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
@@ -54,7 +54,11 @@ impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
         })
     }
 
-    fn run(&mut self, target: &mut BitcoinCoreTarget, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(
+        &mut self,
+        target: &mut BitcoinCoreTarget,
+        input: TestCase,
+    ) -> ScenarioResult<IgnoredCharacterization> {
         let mut connections = HashMap::new();
         let mut next_connection_id = 1u64;
 
@@ -92,8 +96,13 @@ impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
 
 // `HttpServerScenario` is specific to the `BitcoinCoreTarget` and does not allow for recording.
 // This specialisation is a nop scenario for recording.
-impl Scenario<TestCase, IgnoredCharacterization, RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
-    for HttpServerScenario<RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
+impl
+    Scenario<
+        TestCase,
+        IgnoredCharacterization,
+        RecordingTransport,
+        RecorderTarget<BitcoinCoreTarget>,
+    > for HttpServerScenario<RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
 {
     fn new(_target: &mut RecorderTarget<BitcoinCoreTarget>) -> Result<Self, String> {
         Ok(Self {
@@ -101,7 +110,11 @@ impl Scenario<TestCase, IgnoredCharacterization, RecordingTransport, RecorderTar
         })
     }
 
-    fn run(&mut self, _target: &mut RecorderTarget<BitcoinCoreTarget>, _input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(
+        &mut self,
+        _target: &mut RecorderTarget<BitcoinCoreTarget>,
+        _input: TestCase,
+    ) -> ScenarioResult<IgnoredCharacterization> {
         ScenarioResult::Ok(IgnoredCharacterization)
     }
 }
