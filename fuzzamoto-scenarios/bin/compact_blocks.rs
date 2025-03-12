@@ -1,8 +1,10 @@
 use fuzzamoto::{
-    connections::{Connection, ConnectionType, Transport},
+    connections::Transport,
     fuzzamoto_main,
     runners::Runner,
-    scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
+    scenarios::{
+        generic::GenericScenario, IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult,
+    },
     targets::{BitcoinCoreTarget, Target},
     test_utils,
 };
@@ -13,9 +15,9 @@ use bitcoin::{
     p2p::message::NetworkMessage,
     p2p::{
         message_blockdata::Inventory,
-        message_compact_blocks::{BlockTxn, CmpctBlock, SendCmpct},
+        message_compact_blocks::{BlockTxn, CmpctBlock},
     },
-    Amount,
+    Amount, BlockHash,
 };
 
 use std::io::{self, Read, Write};
@@ -79,84 +81,37 @@ impl ScenarioInput for TestCase {
 /// 7. Send a `blocktxn` message to the target node for a previously constructed block
 /// 8. Advance the mocktime of the target node
 struct CompactBlocksScenario<TX: Transport, T: Target<TX>> {
-    time: u64,
-    connections: Vec<Connection<TX>>,
-    prevs: Vec<(u32, bitcoin::BlockHash, bitcoin::OutPoint)>,
-    _phantom: std::marker::PhantomData<T>,
+    inner: GenericScenario<TX, T>,
 }
 
 impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
     for CompactBlocksScenario<TX, T>
 {
     fn new(target: &mut T) -> Result<Self, String> {
-        let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
+        let inner = GenericScenario::new(target)?;
 
-        let mut time = genesis_block.header.time as u64;
-        target.set_mocktime(time)?;
-
-        let mut connections = vec![
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Outbound)?,
-        ];
-
-        let mut send_compact = false;
-        for connection in connections.iter_mut() {
-            connection.version_handshake(time as i64, true, 0)?;
-            let sendcmpct = NetworkMessage::SendCmpct(SendCmpct {
-                version: 2,
-                send_compact,
-            });
-            connection.send(&("sendcmpct".to_string(), encode::serialize(&sendcmpct)))?;
-            send_compact = !send_compact;
-        }
-
-        let mut prev_hash = genesis_block.block_hash();
-        const INTERVAL: u64 = 1;
-
-        let mut prevs = Vec::new();
-        for height in 1..=200 {
-            time += INTERVAL;
-
-            let block = test_utils::mining::mine_block(prev_hash, height as u32, time as u32)?;
-
-            // Send block to the first connection
-            connections[0].send(&("block".to_string(), encode::serialize(&block)))?;
-
-            target.set_mocktime(time as u64)?;
-
-            // Update for next iteration
-            prev_hash = block.block_hash();
-            prevs.push((
-                height,
-                prev_hash,
-                bitcoin::OutPoint::new(block.txdata[0].txid(), 0),
-            ));
-        }
-
-        connections[0].ping()?; // make sure all msgs are processed
-
-        // Announce the tip on all connections
-        for connection in connections.iter_mut() {
-            let inv = NetworkMessage::Inv(vec![Inventory::Block(prev_hash)]);
-            connection.send_and_ping(&("inv".to_string(), encode::serialize(&inv)))?;
-        }
-
-        Ok(CompactBlocksScenario {
-            time,
-            connections,
-            prevs,
-            _phantom: std::marker::PhantomData,
-        })
+        Ok(Self { inner })
     }
 
-    fn run(&mut self, target: &mut T, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(
+        &mut self,
+        target: &mut T,
+        testcase: TestCase,
+    ) -> ScenarioResult<IgnoredCharacterization> {
         let mut constructed = Vec::new();
+
+        let prevs: Vec<(u32, BlockHash, bitcoin::OutPoint)> = self
+            .inner
+            .block_tree
+            .iter()
+            .map(|(hash, (block, height))| {
+                (
+                    *height,
+                    *hash,
+                    bitcoin::OutPoint::new(block.txdata[0].txid(), 0),
+                )
+            })
+            .collect();
 
         for action in testcase.actions {
             match action {
@@ -166,15 +121,15 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     funding,
                     num_txs,
                 } => {
-                    let prev = self.prevs[180..][prev as usize % (self.prevs.len() - 180)];
+                    let prev = prevs[180..][prev as usize % (prevs.len() - 180)];
                     let Ok(mut block) =
-                        test_utils::mining::mine_block(prev.1, prev.0, self.time as u32 + 1)
+                        test_utils::mining::mine_block(prev.1, prev.0, self.inner.time as u32 + 1)
                     else {
                         continue;
                     };
 
                     // Create a chain of `num_txs` transactions, each spending the previous one (one in one out).
-                    let funding_outpoint = self.prevs[1..100][funding as usize % 100].2;
+                    let funding_outpoint = prevs[1..100][funding as usize % 100].2;
                     let mut avaliable_outpoints =
                         vec![(funding_outpoint, Amount::from_int_btc(25))];
                     for _ in 0..num_txs {
@@ -194,7 +149,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
 
                     test_utils::mining::fixup_commitments(&mut block);
 
-                    constructed.push((from as usize % self.connections.len(), block));
+                    constructed.push((from as usize % self.inner.connections.len(), block));
                 }
                 Action::SendInv { block } => {
                     if constructed.is_empty() {
@@ -203,7 +158,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     let idx = block as usize % constructed.len();
                     let block_hash = constructed[idx].1.block_hash();
                     let inv = NetworkMessage::Inv(vec![Inventory::Block(block_hash)]);
-                    let _ = self.connections[constructed[idx].0]
+                    let _ = self.inner.connections[constructed[idx].0]
                         .send(&("inv".to_string(), encode::serialize(&inv)));
                 }
                 Action::SendHeaders { block } => {
@@ -213,7 +168,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     let idx = block as usize % constructed.len();
                     let header = constructed[idx].1.header;
                     let headers = NetworkMessage::Headers(vec![header]);
-                    let _ = self.connections[constructed[idx].0]
+                    let _ = self.inner.connections[constructed[idx].0]
                         .send(&("headers".to_string(), encode::serialize(&headers)));
                 }
                 Action::SendCmpctBlock {
@@ -278,7 +233,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     let cmpctblock = NetworkMessage::CmpctBlock(CmpctBlock {
                         compact_block: header_and_short_ids,
                     });
-                    let _ = self.connections[constructed[idx].0]
+                    let _ = self.inner.connections[constructed[idx].0]
                         .send(&("cmpctblock".to_string(), encode::serialize(&cmpctblock)));
                 }
                 Action::SendBlock { block } => {
@@ -286,7 +241,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                         continue;
                     }
                     let idx = block as usize % constructed.len();
-                    let _ = self.connections[constructed[idx].0]
+                    let _ = self.inner.connections[constructed[idx].0]
                         .send(&("block".to_string(), encode::serialize(&constructed[idx].1)));
                 }
                 Action::SendTxFromBlock { block, tx } => {
@@ -296,7 +251,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     let idx = block as usize % constructed.len();
                     let block = &constructed[idx].1;
                     let tx = tx as usize % block.txdata.len();
-                    let _ = self.connections[constructed[idx].0]
+                    let _ = self.inner.connections[constructed[idx].0]
                         .send(&("tx".to_string(), encode::serialize(&block.txdata[tx])));
                 }
                 Action::SendBlockTxn { block, txs } => {
@@ -319,17 +274,17 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                                 .collect(),
                         },
                     });
-                    let _ = self.connections[constructed[idx].0]
+                    let _ = self.inner.connections[constructed[idx].0]
                         .send(&("blocktxn".to_string(), encode::serialize(&blocktxn)));
                 }
                 Action::AdvanceTime { seconds } => {
-                    self.time += seconds as u64;
-                    let _ = target.set_mocktime(self.time);
+                    self.inner.time += seconds as u64;
+                    let _ = target.set_mocktime(self.inner.time);
                 }
             }
         }
 
-        for connection in self.connections.iter_mut() {
+        for connection in self.inner.connections.iter_mut() {
             let _ = connection.ping();
         }
 

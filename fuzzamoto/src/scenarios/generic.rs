@@ -69,9 +69,9 @@ impl ScenarioInput for TestCase {
 /// scenarios in `fuzzamoto-scenarios/`. Note: only inputs recorded from scenarios that share the
 /// same test setup (i.e. `Scenario::new`) are useful as seeds.
 pub struct GenericScenario<TX: Transport, T: Target<TX>> {
-    connections: Vec<Connection<TX>>,
-    time: u64,
-    block_tree: BTreeMap<BlockHash, (Block, u32)>,
+    pub connections: Vec<Connection<TX>>,
+    pub time: u64,
+    pub block_tree: BTreeMap<BlockHash, (Block, u32)>,
 
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
