@@ -100,7 +100,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
     ) -> ScenarioResult<IgnoredCharacterization> {
         let mut constructed = Vec::new();
 
-        let prevs: Vec<(u32, BlockHash, bitcoin::OutPoint)> = self
+        let mut prevs: Vec<(u32, BlockHash, bitcoin::OutPoint)> = self
             .inner
             .block_tree
             .iter()
@@ -112,6 +112,8 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                 )
             })
             .collect();
+
+        prevs.sort_by_key(|(height, _, _)| *height);
 
         for action in testcase.actions {
             match action {
@@ -419,7 +421,7 @@ impl Decodable for Action {
                 let prefilled_txs = TxIndices::consensus_decode(d)?;
                 Ok(Action::SendCmpctBlock {
                     block,
-                    prefilled_txs: prefilled_txs,
+                    prefilled_txs,
                 })
             }
             4 => {
@@ -434,7 +436,7 @@ impl Decodable for Action {
             6 => {
                 let block = u16::consensus_decode(d)?;
                 let txs = TxIndices::consensus_decode(d)?;
-                Ok(Action::SendBlockTxn { block, txs: txs })
+                Ok(Action::SendBlockTxn { block, txs })
             }
             7 => {
                 let seconds = u16::consensus_decode(d)?;
