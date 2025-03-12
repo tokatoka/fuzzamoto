@@ -42,28 +42,26 @@ impl ScenarioInput for TestCase {
 /// 2. Send a message to the HTTP server from a specific connection
 /// 3. Disconnect one of the existing connections
 struct HttpServerScenario<TX, T> {
-    target: T,
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
 impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
     for HttpServerScenario<V1Transport, BitcoinCoreTarget>
 {
-    fn new(target: BitcoinCoreTarget) -> Result<Self, String> {
+    fn new(_target: &mut BitcoinCoreTarget) -> Result<Self, String> {
         Ok(Self {
-            target,
             _phantom: std::marker::PhantomData,
         })
     }
 
-    fn run(&mut self, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, target: &mut BitcoinCoreTarget, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         let mut connections = HashMap::new();
         let mut next_connection_id = 1u64;
 
         for action in input.actions {
             match action {
                 Action::Connect => {
-                    let Ok(stream) = TcpStream::connect(self.target.node.params.rpc_socket) else {
+                    let Ok(stream) = TcpStream::connect(target.node.params.rpc_socket) else {
                         return ScenarioResult::Fail(format!("Failed to connect to the target"));
                     };
                     let _ = stream.set_nodelay(true);
@@ -84,7 +82,7 @@ impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
             }
         }
 
-        if let Err(e) = self.target.is_alive() {
+        if let Err(e) = target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
@@ -97,14 +95,13 @@ impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
 impl Scenario<TestCase, IgnoredCharacterization, RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
     for HttpServerScenario<RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
 {
-    fn new(target: RecorderTarget<BitcoinCoreTarget>) -> Result<Self, String> {
+    fn new(_target: &mut RecorderTarget<BitcoinCoreTarget>) -> Result<Self, String> {
         Ok(Self {
-            target,
             _phantom: std::marker::PhantomData,
         })
     }
 
-    fn run(&mut self, _input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, _target: &mut RecorderTarget<BitcoinCoreTarget>, _input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         ScenarioResult::Ok(IgnoredCharacterization)
     }
 }

@@ -60,7 +60,7 @@ impl ScenarioInput for TestCase {
 /// `grammars/simple_regtest.btcser`), as testcases are encoded using Bitcoin's serialization
 /// format (`bitcoin::consensus::encode`).
 pub struct SimpleRegtestScenario<TX: Transport, T: Target<TX>> {
-    target: T,
+    _phantom: std::marker::PhantomData<T>,
     time: u64,
     connections: Vec<Connection<TX>>,
 }
@@ -68,7 +68,7 @@ pub struct SimpleRegtestScenario<TX: Transport, T: Target<TX>> {
 impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
     for SimpleRegtestScenario<TX, T>
 {
-    fn new(mut target: T) -> Result<Self, String> {
+    fn new(target: &mut T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
 
         let time = genesis_block.header.time;
@@ -136,13 +136,13 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
         }
 
         Ok(SimpleRegtestScenario {
-            target,
+            _phantom: std::marker::PhantomData,
             time: current_time as u64,
             connections: connections.into_iter().map(|(c, _)| c).collect(),
         })
     }
 
-    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, target: &mut T, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         for action in testcase.actions {
             match action {
                 Action::SendMessage(SendMessageAction {
@@ -161,7 +161,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                 }
                 Action::AdvanceTime(advancement) => {
                     self.time += advancement;
-                    let _ = self.target.set_mocktime(self.time);
+                    let _ = target.set_mocktime(self.time);
                 }
             }
         }
@@ -172,7 +172,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
             let _ = connection.ping();
         }
 
-        if let Err(e) = self.target.is_alive() {
+        if let Err(e) = target.is_alive() {
             return ScenarioResult::Fail(format!("Target node appears to have crashed: {}\n", e));
         }
 

@@ -45,9 +45,9 @@ where
     T: Target<TX>,
 {
     // Create a new instance of the scenario, preparing the initial state of the test
-    fn new(target: T) -> Result<Self, String>;
+    fn new(target: &mut T) -> Result<Self, String>;
     // Run the test
-    fn run(&mut self, testcase: I) -> ScenarioResult<SC>;
+    fn run(&mut self, target: &mut T, testcase: I) -> ScenarioResult<SC>;
 }
 
 #[cfg(feature = "record")]
@@ -80,13 +80,13 @@ macro_rules! fuzzamoto_main {
 
             // Define the target type
             type TargetImpl = fuzzamoto::scenarios::StdTarget<$target_type>;
-            let target = TargetImpl::new(exe_path).unwrap();
+            let mut target = TargetImpl::new(exe_path).unwrap();
 
             log::info!("Initializing scenario...");
 
             // Define the scenario type with the target as its generic parameter
             type ScenarioImpl = $scenario_type<fuzzamoto::scenarios::StdTransport, TargetImpl>;
-            let mut scenario = ScenarioImpl::new(target).unwrap();
+            let mut scenario = ScenarioImpl::new(&mut target).unwrap();
 
             // Ensure the runner dropped prior to the target and scenario when returning from main.
             let runner = runner;
@@ -102,7 +102,7 @@ macro_rules! fuzzamoto_main {
                 return;
             };
 
-            match scenario.run(testcase) {
+            match scenario.run(&mut target, testcase) {
                 ScenarioResult::Ok(_) => {}
                 ScenarioResult::Skip => {
                     drop(scenario);

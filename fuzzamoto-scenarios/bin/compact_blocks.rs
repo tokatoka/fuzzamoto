@@ -79,16 +79,16 @@ impl ScenarioInput for TestCase {
 /// 7. Send a `blocktxn` message to the target node for a previously constructed block
 /// 8. Advance the mocktime of the target node
 struct CompactBlocksScenario<TX: Transport, T: Target<TX>> {
-    target: T,
     time: u64,
     connections: Vec<Connection<TX>>,
     prevs: Vec<(u32, bitcoin::BlockHash, bitcoin::OutPoint)>,
+    _phantom: std::marker::PhantomData<T>,
 }
 
 impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
     for CompactBlocksScenario<TX, T>
 {
-    fn new(mut target: T) -> Result<Self, String> {
+    fn new(target: &mut T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
 
         let mut time = genesis_block.header.time as u64;
@@ -148,14 +148,14 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
         }
 
         Ok(CompactBlocksScenario {
-            target,
             time,
             connections,
             prevs,
+            _phantom: std::marker::PhantomData,
         })
     }
 
-    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, target: &mut T, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         let mut constructed = Vec::new();
 
         for action in testcase.actions {
@@ -324,7 +324,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                 }
                 Action::AdvanceTime { seconds } => {
                     self.time += seconds as u64;
-                    let _ = self.target.set_mocktime(self.time);
+                    let _ = target.set_mocktime(self.time);
                 }
             }
         }
@@ -333,7 +333,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
             let _ = connection.ping();
         }
 
-        if let Err(e) = self.target.is_alive() {
+        if let Err(e) = target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
