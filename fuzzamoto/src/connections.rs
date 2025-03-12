@@ -10,56 +10,28 @@ pub enum ConnectionType {
     Outbound,
 }
 
-pub trait Connection {
+pub trait Transport {
     /// Send a message to the target node
     fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String>;
 
     /// Receive a message from the target node
     fn receive(&mut self) -> Result<(String, Vec<u8>), String>;
 
-    /// Send a ping message to the target node and wait for a pong response.
-    fn ping(&mut self) -> Result<(), String>;
-
-    /// Send a message to the target node and complete a ping/pong roundtrip afterwards.
-    fn send_and_ping(&mut self, message: &(String, Vec<u8>)) -> Result<(), String>;
-
-    // Perform the the version handshake with the target node
-    fn version_handshake(
-        &mut self,
-        time: i64,
-        relay: bool,
-        starting_height: i32,
-    ) -> Result<(), String>;
+    /// Get the local address of the transport
+    fn local_addr(&self) -> Result<net::SocketAddr, String>;
 }
 
-pub struct TcpConnection {
-    connection_type: ConnectionType,
-    socket: net::TcpStream,
+pub struct V1Transport {
+    pub socket: net::TcpStream,
 }
 
-impl TcpConnection {
-    /// Create a new connection to the target node from a socket.
-    ///
-    /// # Arguments
-    ///
-    /// * `connection_type` - The type of connection to create (either inbound or outbound)
-    /// * `socket` - The socket to use for the connection
-    pub fn new(connection_type: ConnectionType, socket: net::TcpStream) -> Self {
-        Self {
-            connection_type,
-            socket,
-        }
-    }
-}
-
-impl Connection for TcpConnection {
+impl Transport for V1Transport {
     fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
         log::debug!(
-            "send {:?} message (len={} from={:?} conn={:?})",
+            "send {:?} message (len={} from={:?})",
             message.0,
             message.1.len(),
             self.socket.local_addr().unwrap(),
-            self.connection_type,
         );
 
         let mut header = Vec::with_capacity(24);
@@ -130,25 +102,65 @@ impl Connection for TcpConnection {
             .map_err(|e| format!("Failed to read payload: {}", e))?;
 
         log::debug!(
-            "received {:?} message (len={} on={:?} conn={:?})",
+            "received {:?} message (len={} on={:?})",
             command,
             payload_len,
             self.socket.local_addr().unwrap(),
-            self.connection_type,
         );
 
         Ok((command, payload))
     }
 
-    fn ping(&mut self) -> Result<(), String> {
+    fn local_addr(&self) -> Result<net::SocketAddr, String> {
+        self.socket
+            .local_addr()
+            .map_err(|e| format!("Failed to get local address: {}", e))
+    }
+}
+
+pub struct Connection<T: Transport> {
+    connection_type: ConnectionType,
+    transport: T,
+}
+
+impl<T: Transport> Connection<T> {
+    /// Create a new connection to the target node from a socket.
+    ///
+    /// # Arguments
+    ///
+    /// * `connection_type` - The type of connection to create (either inbound or outbound)
+    /// * `transport` - The transport to use for the connection
+    pub fn new(connection_type: ConnectionType, transport: T) -> Self {
+        log::debug!(
+            "new connection (type={:?} addr={:?})",
+            connection_type,
+            transport.local_addr().unwrap(),
+        );
+        Self {
+            connection_type,
+            transport,
+        }
+    }
+}
+
+impl<T: Transport> Connection<T> {
+    pub fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
+        self.transport.send(message)
+    }
+
+    pub fn receive(&mut self) -> Result<(String, Vec<u8>), String> {
+        self.transport.receive()
+    }
+
+    pub fn ping(&mut self) -> Result<(), String> {
         // Create ping message as (String, Vec<u8>) instead of RawNetworkMessage
         let ping_payload = vec![0x66, 0x75, 0x7A, 0x7A, 0x08, 0x03, 0x03, 0x03];
         let ping_message = ("ping".to_string(), ping_payload);
 
-        self.send(&ping_message)?;
+        self.transport.send(&ping_message)?;
 
         loop {
-            let received = self.receive()?;
+            let received = self.transport.receive()?;
             if received.0 == "pong" {
                 break;
             }
@@ -157,19 +169,19 @@ impl Connection for TcpConnection {
         Ok(())
     }
 
-    fn send_and_ping(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
-        self.send(message)?;
+    pub fn send_and_ping(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
+        self.transport.send(message)?;
         self.ping()?;
         Ok(())
     }
 
-    fn version_handshake(
+    pub fn version_handshake(
         &mut self,
         time: i64,
         relay: bool,
         starting_height: i32,
     ) -> Result<(), String> {
-        let socket_addr = self.socket.local_addr().unwrap();
+        let socket_addr = self.transport.local_addr().unwrap();
 
         let mut version_message = VersionMessage::new(
             ServiceFlags::NETWORK | ServiceFlags::WITNESS,
@@ -186,7 +198,7 @@ impl Connection for TcpConnection {
 
         if self.connection_type == ConnectionType::Outbound {
             loop {
-                let received = self.receive()?;
+                let received = self.transport.receive()?;
                 if received.0 == "version" {
                     break;
                 }
@@ -198,17 +210,18 @@ impl Connection for TcpConnection {
         version_message
             .consensus_encode(&mut version_bytes)
             .map_err(|e| format!("Failed to encode version message: {}", e))?;
-        self.send(&("version".to_string(), version_bytes))?;
+        self.transport
+            .send(&("version".to_string(), version_bytes))?;
 
         // Send wtxidrelay
-        self.send(&("wtxidrelay".to_string(), vec![]))?;
+        self.transport.send(&("wtxidrelay".to_string(), vec![]))?;
 
         // Send verack
-        self.send(&("verack".to_string(), vec![]))?;
+        self.transport.send(&("verack".to_string(), vec![]))?;
 
         // Wait for verack
         loop {
-            let received = self.receive()?;
+            let received = self.transport.receive()?;
             if received.0 == "verack" {
                 break;
             }

@@ -1,5 +1,5 @@
 use fuzzamoto::{
-    connections::{Connection, ConnectionType, TcpConnection},
+    connections::{Connection, ConnectionType, V1Transport},
     dictionaries::{Dictionary, FileDictionary},
     fuzzamoto_main,
     runners::Runner,
@@ -59,14 +59,14 @@ impl ScenarioInput for TestCase {
 /// Using btcser's custom mutator is not required but recommended to fuzz this scenario (see
 /// `grammars/simple_regtest.btcser`), as testcases are encoded using Bitcoin's serialization
 /// format (`bitcoin::consensus::encode`).
-pub struct SimpleRegtestScenario<C: Connection, T: Target<C>> {
+pub struct SimpleRegtestScenario<T: Target<V1Transport>> {
     target: T,
     time: u64,
-    connections: Vec<C>,
+    connections: Vec<Connection<V1Transport>>,
 }
 
-impl<C: Connection, T: Target<C>> Scenario<TestCase, IgnoredCharacterization, C, T>
-    for SimpleRegtestScenario<C, T>
+impl<T: Target<V1Transport>> Scenario<TestCase, IgnoredCharacterization, V1Transport, T>
+    for SimpleRegtestScenario<T>
 {
     fn new(mut target: T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
@@ -267,7 +267,7 @@ impl Decodable for TestCase {
 }
 
 fuzzamoto_main!(
-    SimpleRegtestScenario<TcpConnection, BitcoinCoreTarget>,
+    SimpleRegtestScenario<BitcoinCoreTarget>,
     BitcoinCoreTarget,
     TestCase
 );

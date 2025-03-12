@@ -1,5 +1,5 @@
 use crate::{
-    connections::{ConnectionType, TcpConnection},
+    connections::{Connection, ConnectionType, V1Transport},
     targets::Target,
 };
 
@@ -61,8 +61,11 @@ impl BitcoinCoreTarget {
     }
 }
 
-impl Target<TcpConnection> for BitcoinCoreTarget {
-    fn connect(&mut self, connection_type: ConnectionType) -> Result<TcpConnection, String> {
+impl Target<V1Transport> for BitcoinCoreTarget {
+    fn connect(
+        &mut self,
+        connection_type: ConnectionType,
+    ) -> Result<Connection<V1Transport>, String> {
         match connection_type {
             ConnectionType::Inbound => {
                 // For inbound, connect directly to the P2P port
@@ -79,7 +82,7 @@ impl Target<TcpConnection> for BitcoinCoreTarget {
                     .set_nodelay(true)
                     .expect("Failed to set nodelay on inbound socket");
 
-                Ok(TcpConnection::new(connection_type, socket))
+                Ok(Connection::new(connection_type, V1Transport { socket }))
             }
             ConnectionType::Outbound => {
                 let (listener, port) = Self::create_listener()?;
@@ -107,7 +110,7 @@ impl Target<TcpConnection> for BitcoinCoreTarget {
                     .set_nodelay(true)
                     .expect("Failed to set nodelay on outbound socket");
 
-                Ok(TcpConnection::new(connection_type, socket))
+                Ok(Connection::new(connection_type, V1Transport { socket }))
             }
         }
     }

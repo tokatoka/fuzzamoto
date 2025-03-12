@@ -1,6 +1,6 @@
 use bitcoin::consensus::encode::{self, Decodable, Encodable, VarInt};
 use fuzzamoto::{
-    connections::TcpConnection,
+    connections::V1Transport,
     fuzzamoto_main,
     runners::Runner,
     scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
@@ -45,7 +45,7 @@ struct HttpServerScenario {
     target: BitcoinCoreTarget,
 }
 
-impl Scenario<TestCase, IgnoredCharacterization, TcpConnection, BitcoinCoreTarget>
+impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
     for HttpServerScenario
 {
     fn new(target: BitcoinCoreTarget) -> Result<Self, String> {

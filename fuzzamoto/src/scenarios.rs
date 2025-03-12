@@ -1,4 +1,4 @@
-use crate::{connections::Connection, targets::Target};
+use crate::{connections::Transport, targets::Target};
 
 /// `ScenarioCharacterization` is a trait for characterizing the behavior of a scenario.
 pub trait ScenarioCharacterization {
@@ -32,12 +32,12 @@ pub enum ScenarioResult<SC: ScenarioCharacterization> {
 }
 
 /// `Scenario` is the interface for test scenarios that can be run against a target node.
-pub trait Scenario<I, SC, C, T>: Sized
+pub trait Scenario<I, SC, TX, T>: Sized
 where
     I: ScenarioInput,
     SC: ScenarioCharacterization,
-    C: Connection,
-    T: Target<C>,
+    TX: Transport,
+    T: Target<TX>,
 {
     // Create a new instance of the scenario, preparing the initial state of the test
     fn new(target: T) -> Result<Self, String>;

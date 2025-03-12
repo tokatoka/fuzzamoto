@@ -1,17 +1,17 @@
 pub mod bitcoin_core;
 pub use bitcoin_core::BitcoinCoreTarget;
 
-use crate::connections::{Connection, ConnectionType};
+use crate::connections::{Connection, ConnectionType, Transport};
 
 /// `Target` is the interface that the test harness will use to interact with the target Bitcoin
 /// implementation (e.g. Bitcoin Core, btcd, etc).
-pub trait Target<C: Connection> {
+pub trait Target<T: Transport> {
     /// Create a new network connection to the target.
     ///
     /// # Arguments
     ///
     /// * `connection_type` - The type of connection to create (either inbound or outbound)
-    fn connect(&mut self, connection_type: ConnectionType) -> Result<C, String>;
+    fn connect(&mut self, connection_type: ConnectionType) -> Result<Connection<T>, String>;
 
     /// Set the mocktime for the target.
     ///
