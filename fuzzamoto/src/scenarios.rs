@@ -60,6 +60,11 @@ pub type StdTransport = RecordingTransport;
 #[cfg(not(feature = "record"))]
 pub type StdTransport = V1Transport;
 
+pub fn notify_snapshot<T>(_target: &mut StdTarget<T>) {
+    #[cfg(feature = "record")]
+    _target.take_snapshot();
+}
+
 #[macro_export]
 macro_rules! fuzzamoto_main {
     ($scenario_type:ident, $target_type:ty, $testcase_type:ty) => {
@@ -87,6 +92,8 @@ macro_rules! fuzzamoto_main {
             // Define the scenario type with the target as its generic parameter
             type ScenarioImpl = $scenario_type<fuzzamoto::scenarios::StdTransport, TargetImpl>;
             let mut scenario = ScenarioImpl::new(&mut target).unwrap();
+
+            fuzzamoto::scenarios::notify_snapshot(&mut target);
 
             // Ensure the runner dropped prior to the target and scenario when returning from main.
             let runner = runner;

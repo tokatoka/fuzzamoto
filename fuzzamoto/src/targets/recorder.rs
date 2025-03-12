@@ -43,6 +43,7 @@ impl Eq for SortableAction {}
 pub struct RecorderTarget<T> {
     actions: Vec<SortableAction>,
     sent_messages: HashMap<u16, Rc<RefCell<Vec<(std::time::Instant, String, Vec<u8>)>>>>,
+    snapshot_instant: Option<std::time::Instant>,
     transport_port: u16,
     _phantom: std::marker::PhantomData<T>,
 }
@@ -89,18 +90,25 @@ impl<T> RecorderTarget<T> {
         Ok(Self {
             actions: Vec::new(),
             sent_messages: HashMap::new(),
+            snapshot_instant: None,
             transport_port: 1337,
             _phantom: std::marker::PhantomData,
         })
     }
 
-    pub fn get_actions(&mut self, snapshot_instant: std::time::Instant) -> Vec<RecordedAction> {
+    pub fn take_snapshot(&mut self) {
+        self.snapshot_instant = Some(std::time::Instant::now());
+    }
+
+    pub fn get_actions(&mut self) -> Vec<RecordedAction> {
         let mut actions = BinaryHeap::new();
 
-        actions.push(SortableAction(
-            snapshot_instant,
-            RecordedAction::TakeSnapshot,
-        ));
+        if let Some(snapshot_instant) = self.snapshot_instant {
+            actions.push(SortableAction(
+                snapshot_instant,
+                RecordedAction::TakeSnapshot,
+            ));
+        }
 
         for action in self.actions.iter() {
             actions.push(action.clone());
@@ -125,7 +133,26 @@ impl<T> RecorderTarget<T> {
 
 impl<T> Drop for RecorderTarget<T> {
     fn drop(&mut self) {
-        let actions = self.get_actions(std::time::Instant::now());
-        println!("{:?}", actions);
+        let actions = self.get_actions();
+
+        // Create a more readable representation of the actions
+        let formatted_actions: Vec<_> = actions
+            .into_iter()
+            .map(|action| match action {
+                RecordedAction::TakeSnapshot => "TakeSnapshot".to_string(),
+                RecordedAction::Connect(conn_type, port) => {
+                    format!("Connect({:?}, {})", conn_type, port)
+                }
+                RecordedAction::SetMocktime(time) => format!("SetMocktime({})", time),
+                RecordedAction::SendMessage(port, command, data) => {
+                    format!("SendMessage({}, {}, {} bytes)", port, command, data.len())
+                }
+            })
+            .collect();
+
+        println!("Recorded actions:");
+        for (i, action) in formatted_actions.iter().enumerate() {
+            println!("  {}: {}", i, action);
+        }
     }
 }
