@@ -10,6 +10,7 @@ repository.workspace = true
 inherit_stdout = [] # Inherit stdout from the fuzz target(s)
 nyx = ["dep:fuzzamoto-nyx-sys"] # Use the nyx runner
 reduced_pow = [] # Use reduced POW for block generation
+record = [] # Record interactions with targets in scenarios
 
 [dependencies]
 bitcoin = "0.31.0"

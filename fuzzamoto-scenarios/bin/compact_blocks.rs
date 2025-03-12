@@ -1,5 +1,5 @@
 use fuzzamoto::{
-    connections::{Connection, ConnectionType, V1Transport},
+    connections::{Connection, ConnectionType, Transport},
     fuzzamoto_main,
     runners::Runner,
     scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
@@ -78,15 +78,15 @@ impl ScenarioInput for TestCase {
 /// 6. Send a `tx` message to the target node for a previously constructed block
 /// 7. Send a `blocktxn` message to the target node for a previously constructed block
 /// 8. Advance the mocktime of the target node
-struct CompactBlocksScenario<T: Target<V1Transport>> {
+struct CompactBlocksScenario<TX: Transport, T: Target<TX>> {
     target: T,
     time: u64,
-    connections: Vec<Connection<V1Transport>>,
+    connections: Vec<Connection<TX>>,
     prevs: Vec<(u32, bitcoin::BlockHash, bitcoin::OutPoint)>,
 }
 
-impl<T: Target<V1Transport>> Scenario<TestCase, IgnoredCharacterization, V1Transport, T>
-    for CompactBlocksScenario<T>
+impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
+    for CompactBlocksScenario<TX, T>
 {
     fn new(mut target: T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
@@ -504,8 +504,4 @@ impl Decodable for TestCase {
     }
 }
 
-fuzzamoto_main!(
-    CompactBlocksScenario<BitcoinCoreTarget>,
-    BitcoinCoreTarget,
-    TestCase
-);
+fuzzamoto_main!(CompactBlocksScenario, BitcoinCoreTarget, TestCase);

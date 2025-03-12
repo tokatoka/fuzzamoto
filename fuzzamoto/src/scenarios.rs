@@ -1,5 +1,10 @@
 use crate::{connections::Transport, targets::Target};
 
+#[cfg(not(feature = "record"))]
+use crate::connections::V1Transport;
+#[cfg(feature = "record")]
+use crate::{connections::RecordingTransport, targets::RecorderTarget};
+
 /// `ScenarioCharacterization` is a trait for characterizing the behavior of a scenario.
 pub trait ScenarioCharacterization {
     /// Reduce the result to a 32 byte array (e.g. a hash of the result).
@@ -45,9 +50,19 @@ where
     fn run(&mut self, testcase: I) -> ScenarioResult<SC>;
 }
 
+#[cfg(feature = "record")]
+pub type StdTarget<T> = RecorderTarget<T>;
+#[cfg(not(feature = "record"))]
+pub type StdTarget<T> = T;
+
+#[cfg(feature = "record")]
+pub type StdTransport = RecordingTransport;
+#[cfg(not(feature = "record"))]
+pub type StdTransport = V1Transport;
+
 #[macro_export]
 macro_rules! fuzzamoto_main {
-    ($scenario_type:ty, $target_type:ty, $testcase_type:ty) => {
+    ($scenario_type:ident, $target_type:ty, $testcase_type:ty) => {
         fn main() {
             use env_logger;
             env_logger::init();
@@ -62,10 +77,16 @@ macro_rules! fuzzamoto_main {
 
             log::info!("Starting target...");
             let exe_path = &args[1];
-            let target = <$target_type>::new(exe_path).unwrap();
+
+            // Define the target type
+            type TargetImpl = fuzzamoto::scenarios::StdTarget<$target_type>;
+            let target = TargetImpl::new(exe_path).unwrap();
 
             log::info!("Initializing scenario...");
-            let mut scenario = <$scenario_type>::new(target).unwrap();
+
+            // Define the scenario type with the target as its generic parameter
+            type ScenarioImpl = $scenario_type<fuzzamoto::scenarios::StdTransport, TargetImpl>;
+            let mut scenario = ScenarioImpl::new(target).unwrap();
 
             // Ensure the runner dropped prior to the target and scenario when returning from main.
             let runner = runner;
