@@ -38,7 +38,7 @@ pub enum Action {
 }
 
 pub struct TestCase {
-    actions: Vec<Action>,
+    pub actions: Vec<Action>,
 }
 
 impl ScenarioInput for TestCase {

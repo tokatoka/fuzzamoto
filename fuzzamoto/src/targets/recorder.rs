@@ -1,13 +1,18 @@
 use crate::{
     connections::{Connection, ConnectionType, RecordingTransport},
+    scenarios::generic,
     targets::Target,
 };
 
-use std::cell::RefCell;
+use bitcoin::{consensus::Encodable, p2p::message::CommandString};
+
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::net;
 use std::rc::Rc;
+use std::{cell::RefCell, str::FromStr};
+
+const BASE_PORT: u16 = 1337;
 
 #[derive(Clone, Debug)]
 pub enum RecordedAction {
@@ -91,7 +96,7 @@ impl<T> RecorderTarget<T> {
             actions: Vec::new(),
             sent_messages: HashMap::new(),
             snapshot_instant: None,
-            transport_port: 1337,
+            transport_port: BASE_PORT,
             _phantom: std::marker::PhantomData,
         })
     }
@@ -133,26 +138,50 @@ impl<T> RecorderTarget<T> {
 
 impl<T> Drop for RecorderTarget<T> {
     fn drop(&mut self) {
-        let actions = self.get_actions();
+        let Ok(file) = std::env::var("FUZZAMOTO_RECORD_FILE") else {
+            return;
+        };
 
-        // Create a more readable representation of the actions
-        let formatted_actions: Vec<_> = actions
-            .into_iter()
-            .map(|action| match action {
-                RecordedAction::TakeSnapshot => "TakeSnapshot".to_string(),
-                RecordedAction::Connect(conn_type, port) => {
-                    format!("Connect({:?}, {})", conn_type, port)
+        let mut recorded_actions = self.get_actions();
+
+        // Remove all actions prior to the first TakeSnapshot action
+        if let Some(snapshot_index) = recorded_actions
+            .iter()
+            .position(|action| matches!(action, RecordedAction::TakeSnapshot))
+        {
+            recorded_actions = recorded_actions.split_off(snapshot_index);
+        }
+
+        // Map the recorded actions to the generic actions
+        let mut actions = Vec::new();
+        for action in recorded_actions {
+            match action {
+                RecordedAction::TakeSnapshot => {}
+                RecordedAction::Connect(connection_type, _) => {
+                    actions.push(generic::Action::Connect { connection_type });
                 }
-                RecordedAction::SetMocktime(time) => format!("SetMocktime({})", time),
+                RecordedAction::SetMocktime(time) => {
+                    actions.push(generic::Action::SetMocktime { time });
+                }
                 RecordedAction::SendMessage(port, command, data) => {
-                    format!("SendMessage({}, {}, {} bytes)", port, command, data.len())
+                    actions.push(generic::Action::Message {
+                        from: port - BASE_PORT,
+                        command: CommandString::from_str(&command[..command.len().min(12)])
+                            .unwrap(),
+                        data,
+                    });
                 }
-            })
-            .collect();
+            }
+        }
 
-        println!("Recorded actions:");
-        for (i, action) in formatted_actions.iter().enumerate() {
-            println!("  {}: {}", i, action);
+        let testcase = generic::TestCase { actions };
+        match std::fs::File::create(file) {
+            Ok(mut file) => {
+                if let Err(e) = testcase.consensus_encode(&mut file) {
+                    log::error!("Failed to encode generic testcase: {}", e);
+                }
+            }
+            Err(e) => log::error!("Failed to create generic testcase file: {}", e),
         }
     }
 }
