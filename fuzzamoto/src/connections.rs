@@ -169,6 +169,7 @@ impl Transport for RecordingTransport {
 pub struct Connection<T: Transport> {
     connection_type: ConnectionType,
     transport: T,
+    ping_counter: u64,
 }
 
 impl<T: Transport> Connection<T> {
@@ -187,11 +188,29 @@ impl<T: Transport> Connection<T> {
         Self {
             connection_type,
             transport,
+            ping_counter: 0,
         }
     }
 }
 
 impl<T: Transport> Connection<T> {
+    fn send_ping(&mut self, nonce: u64) -> Result<(), String> {
+        let ping_message = ("ping".to_string(), nonce.to_le_bytes().to_vec());
+        self.transport.send(&ping_message)?;
+        Ok(())
+    }
+
+    fn wait_for_pong(&mut self, nonce: u64) -> Result<(), String> {
+        loop {
+            let received = self.transport.receive()?;
+            if received.0 == "pong" && received.1.len() == 8 && received.1 == nonce.to_le_bytes() {
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
         self.transport.send(message)
     }
@@ -201,25 +220,20 @@ impl<T: Transport> Connection<T> {
     }
 
     pub fn ping(&mut self) -> Result<(), String> {
-        // Create ping message as (String, Vec<u8>) instead of RawNetworkMessage
-        let ping_payload = vec![0x66, 0x75, 0x7A, 0x7A, 0x08, 0x03, 0x03, 0x03];
-        let ping_message = ("ping".to_string(), ping_payload);
-
-        self.transport.send(&ping_message)?;
-
-        loop {
-            let received = self.transport.receive()?;
-            if received.0 == "pong" {
-                break;
-            }
-        }
-
+        self.ping_counter += 1;
+        self.send_ping(self.ping_counter)?;
+        self.wait_for_pong(self.ping_counter)?;
         Ok(())
     }
 
     pub fn send_and_ping(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
         self.transport.send(message)?;
-        self.ping()?;
+        // Sending two pings back-to-back, requires that the node calls `ProcessMessage` twice, and
+        // thus ensures `SendMessages` must have been called at least once
+        self.send_ping(0x0)?;
+        self.ping_counter += 1;
+        self.send_ping(self.ping_counter)?;
+        self.wait_for_pong(self.ping_counter)?;
         Ok(())
     }
 
