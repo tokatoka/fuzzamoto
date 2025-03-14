@@ -29,6 +29,8 @@ impl BitcoinCoreTarget {
         #[cfg(feature = "inherit_stdout")]
         {
             config.args.push("-debug");
+            config.args.push("-debugexclude=libevent");
+            config.args.push("-debugexclude=leveldb");
             config.view_stdout = true;
         }
         config.args.push("-txreconciliation");
