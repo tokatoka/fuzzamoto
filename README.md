@@ -66,6 +66,20 @@ root@...# mkdir /tmp/in && echo "AAA" > /tmp/in/A
 root@...# afl-fuzz -X -i /tmp/in -o /tmp/out -- /tmp/fuzzamoto_scenario-http-server
 ```
 
+### Multi-core campaigns
+
+Running a multi-core campaign can be done with
+[`AFL_Runner`](https://github.com/0xricksanchez/AFL_Runner) (installed in the
+[Dockerfile](Dockerfile)).
+
+Example: fuzzing the http server of Bitcoin Core with 16 cores:
+
+```
+root@...# aflr run --nyx-mode --target /tmp/fuzzamoto_scenario-http-server/ \
+    --input-dir /tmp/http_in/ --output-dir /tmp/http_out/ \
+    --runners 16
+```
+
 ### Reproducing testcases
 
 Crashing inputs or other solutions can be reproduced on any architecture with
