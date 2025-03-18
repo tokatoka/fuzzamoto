@@ -171,9 +171,9 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
         for action in testcase.actions {
             match action {
                 Action::Connect { connection_type } => {
-                    if let Ok(connection) = target.connect(connection_type) {
-                        self.connections.push(connection);
-                    }
+                    //if let Ok(connection) = target.connect(connection_type) {
+                    //    self.connections.push(connection);
+                    //}
                 }
                 Action::Message {
                     from,
