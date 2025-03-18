@@ -36,7 +36,10 @@ RUN apt-get update && apt-get install -y \
   openssh-client \
   libcapstone-dev \
   python3 \
-  libzstd-dev
+  libzstd-dev \
+  tmux \
+  vim \
+  gnuplot
 
 # Install rust and tools
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
