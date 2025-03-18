@@ -45,6 +45,8 @@ RUN rustup install nightly && rustup default nightly
 
 RUN git clone --depth 1 --branch "v0.6.0" https://github.com/0xricksanchez/AFL_Runner.git
 RUN cd AFL_Runner && cargo install --path .
+RUN mkdir -p /root/.config/tmux/ && \
+  echo "set -g prefix C-y" > /root/.config/tmux/tmux.conf
 
 # Clone AFLplusplus and build
 ENV LLVM_CONFIG=llvm-config-${LLVM_V}
