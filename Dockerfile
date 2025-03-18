@@ -117,7 +117,7 @@ WORKDIR /fuzzamoto
 COPY ./Cargo.toml .
 RUN mkdir .cargo && cargo vendor > .cargo/config
 
-ENV BITCOIND_PATH=/bitcoin/build_fuzz/src/bitcoind
+ENV BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind
 RUN cargo build --workspace --verbose --features nyx,reduced_pow --release
 
 # Build the crash handler
