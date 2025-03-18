@@ -138,7 +138,7 @@ RUN for scenario in /fuzzamoto/target/release/scenario-*; do \
       /fuzzamoto/target/release/fuzzamoto-cli init \
         --sharedir $SCENARIO_NYX_DIR \
         --crash-handler ./fuzzamoto/libnyx_crash_handler.so \
-        --bitcoind bitcoin/build_fuzz/src/bitcoind \
+        --bitcoind bitcoin/build_fuzz/bin/bitcoind \
         --scenario $scenario; \
       cp /AFLplusplus/nyx_mode/packer/packer/linux_x86_64-userspace/bin64/* $SCENARIO_NYX_DIR; \
       python3 ./AFLplusplus/nyx_mode/packer/packer/nyx_config_gen.py $SCENARIO_NYX_DIR Kernel -m 4096; \
