@@ -106,7 +106,7 @@ macro_rules! fuzzamoto_main {
 
             let Ok(testcase) = <$testcase_type>::decode(&input) else {
                 log::warn!("Failed to decode test case!");
-                drop(scenario);
+                drop(target);
                 runner.skip();
                 return;
             };
@@ -114,7 +114,7 @@ macro_rules! fuzzamoto_main {
             match scenario.run(&mut target, testcase) {
                 ScenarioResult::Ok(_) => {}
                 ScenarioResult::Skip => {
-                    drop(scenario);
+                    drop(target);
                     runner.skip();
                     return;
                 }
