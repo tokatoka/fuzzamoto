@@ -150,6 +150,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     }
 
                     test_utils::mining::fixup_commitments(&mut block);
+                    test_utils::mining::fixup_proof_of_work(&mut block);
 
                     constructed.push((from as usize % self.inner.connections.len(), block));
                 }
