@@ -3,13 +3,14 @@ use fuzzamoto::{
     fuzzamoto_main,
     runners::Runner,
     scenarios::{
-        generic::GenericScenario, IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult,
+        IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
     },
     targets::{BitcoinCoreTarget, Target},
     test_utils,
 };
 
 use bitcoin::{
+    Amount, BlockHash,
     bip152::{BlockTransactions, HeaderAndShortIds, PrefilledTransaction, ShortId},
     consensus::encode::{self, Decodable, Encodable, VarInt},
     p2p::message::NetworkMessage,
@@ -17,7 +18,6 @@ use bitcoin::{
         message_blockdata::Inventory,
         message_compact_blocks::{BlockTxn, CmpctBlock},
     },
-    Amount, BlockHash,
 };
 
 use std::io::{self, Read, Write};
@@ -124,9 +124,11 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     num_txs,
                 } => {
                     let prev = prevs[180..][prev as usize % (prevs.len() - 180)];
-                    let Ok(mut block) =
-                        test_utils::mining::mine_block(prev.1, prev.0, self.inner.time as u32 + 1)
-                    else {
+                    let Ok(mut block) = test_utils::mining::mine_block(
+                        prev.1,
+                        prev.0 + 1,
+                        self.inner.time as u32 + 1,
+                    ) else {
                         continue;
                     };
 
@@ -462,4 +464,41 @@ impl Decodable for TestCase {
     }
 }
 
+impl Encodable for TestCase {
+    fn consensus_encode<W: Write + ?Sized>(&self, s: &mut W) -> Result<usize, io::Error> {
+        let mut len = 0;
+        len += VarInt(self.actions.len() as u64).consensus_encode(s)?;
+        for action in &self.actions {
+            len += action.consensus_encode(s)?;
+        }
+        Ok(len)
+    }
+}
+
 fuzzamoto_main!(CompactBlocksScenario, BitcoinCoreTarget, TestCase);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn produce_simple_test_case() {
+        let mut test_case = TestCase {
+            actions: Vec::new(),
+        };
+        test_case.actions.push(Action::ConstructBlock {
+            from: 0,
+            prev: 199,
+            funding: 0,
+            num_txs: 0,
+        });
+        test_case.actions.push(Action::SendInv { block: 0 });
+        test_case.actions.push(Action::SendHeaders { block: 0 });
+        test_case.actions.push(Action::SendCmpctBlock {
+            block: 0,
+            prefilled_txs: TxIndices(vec![0]),
+        });
+        let mut file = std::fs::File::create("compact_blocks_test_case.bin").unwrap();
+        file.write_all(&encode::serialize(&test_case)).unwrap();
+    }
+}
