@@ -34,7 +34,7 @@ enum Commands {
         scenario: PathBuf,
     },
 
-    // Create a html coverage report for a given corpus
+    /// Create a html coverage report for a given corpus
     Coverage {
         #[arg(long, help = "Path to the output directory for the coverage report")]
         output: PathBuf,
@@ -49,6 +49,20 @@ enum Commands {
             long,
             help = "Path to the fuzzamoto scenario binary that should be copied into the share directory"
         )]
+        scenario: PathBuf,
+    },
+
+    /// Record test cases from a corpus of a specialized scenario to be used as seeds for the
+    /// generic scenario
+    Record {
+        #[arg(
+            long,
+            help = "Path to the output directory for the recorded test cases"
+        )]
+        output: PathBuf,
+        #[arg(long, help = "Path to the input corpus directory")]
+        corpus: PathBuf,
+        #[arg(long, help = "Path to the fuzzamoto scenario scenario binary")]
         scenario: PathBuf,
     },
 }
@@ -244,6 +258,27 @@ fn run_one_input(
     }
 }
 
+fn record_one_input(
+    input: PathBuf,
+    output: PathBuf,
+    scenario: PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
+    log::info!("Recording input: {}", input.display());
+    let status = std::process::Command::new(scenario)
+        .arg("./foobar")
+        .env("FUZZAMOTO_RECORD_FILE", output)
+        .env("FUZZAMOTO_INPUT", input)
+        .env("RUST_LOG", "debug")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("Scenario failed to run".into())
+    }
+}
+
 fn get_llvm_command(base: &str) -> String {
     match std::env::var("LLVM_V") {
         Ok(version) => format!("{}-{}", base, version),
@@ -321,6 +356,28 @@ fn create_coverage_report(
     Ok(())
 }
 
+fn record_test_cases(
+    output: PathBuf,
+    corpus: PathBuf,
+    scenario: PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in corpus.read_dir()? {
+        let path = entry?.path();
+        if let Err(e) = record_one_input(
+            path.clone(),
+            output.join(format!(
+                "{}.recording.bin",
+                path.file_name().unwrap().to_str().unwrap()
+            )),
+            scenario.clone(),
+        ) {
+            log::error!("Failed to record input ({:?}): {}", path, e);
+        }
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
@@ -352,6 +409,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bitcoind.clone(),
                 scenario.clone(),
             )?;
+        }
+        Commands::Record {
+            output,
+            corpus,
+            scenario,
+        } => {
+            record_test_cases(output.clone(), corpus.clone(), scenario.clone())?;
         }
     }
 
