@@ -1,11 +1,11 @@
 use bitcoin::{
-    block,
+    Amount, Block, BlockHash, CompactTarget, OutPoint, Sequence, Transaction, TxIn, TxMerkleNode,
+    TxOut, Witness, block,
     blockdata::opcodes::{OP_0, OP_TRUE},
     hash_types::{WitnessMerkleNode, Wtxid},
     hashes::Hash,
     script::ScriptBuf,
-    transaction, Amount, Block, BlockHash, CompactTarget, OutPoint, Sequence, Transaction, TxIn,
-    TxMerkleNode, TxOut, Witness,
+    transaction,
 };
 
 use bitcoin_hashes::sha256;
@@ -87,13 +87,13 @@ pub fn mine_block(prev_hash: BlockHash, height: u32, time: u32) -> Result<Block,
             witness,
         }],
         output: vec![
-            create_witness_commitment_output(WitnessMerkleNode::from_raw_hash(
-                Wtxid::all_zeros().into(),
-            )),
             TxOut {
                 value: Amount::from_int_btc(25),
                 script_pubkey: p2wsh_optrue_spk.into(),
             },
+            create_witness_commitment_output(WitnessMerkleNode::from_raw_hash(
+                Wtxid::all_zeros().into(),
+            )),
         ],
     };
 
