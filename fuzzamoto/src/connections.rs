@@ -203,7 +203,10 @@ impl<T: Transport> Connection<T> {
     fn wait_for_pong(&mut self, nonce: u64) -> Result<(), String> {
         loop {
             let received = self.transport.receive()?;
-            if received.0 == "pong" && received.1.len() == 8 && received.1 == nonce.to_le_bytes() {
+            if received.0 == "pong"
+                && (cfg!(feature = "record")
+                    || (received.1.len() == 8 && received.1 == nonce.to_le_bytes()))
+            {
                 break;
             }
         }
