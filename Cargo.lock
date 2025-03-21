@@ -565,6 +565,7 @@ dependencies = [
  "env_logger",
  "fuzzamoto",
  "log",
+ "serde_json",
 ]
 
 [[package]]

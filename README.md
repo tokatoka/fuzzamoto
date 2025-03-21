@@ -117,3 +117,11 @@ solution is to make the harness/test produce valid inputs (if possible).
 Current patches:
 
 - `bitcoin-core-rng.patch`: Attempts to make Bitcoin Core's RNG deterministic
+
+## Bugs found by Fuzzamoto
+
+| Project                                            | Bug                                             | Scenario           | Security |
+| :------------------------------------------------- | :---------------------------------------------- | :----------------- | :------- |
+| [Bitcoin Core](https://github.com/bitcoin/bitcoin) | https://github.com/bitcoin/bitcoin/issues/32111 | `wallet-migration` | ❌       |
+| [Bitcoin Core](https://github.com/bitcoin/bitcoin) | https://github.com/bitcoin/bitcoin/issues/32112 | `wallet-migration` | ❌       |
+
