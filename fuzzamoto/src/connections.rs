@@ -1,5 +1,5 @@
 use bitcoin::consensus::encode::{Encodable, ReadExt};
-use bitcoin::p2p::{address::Address, message_network::VersionMessage, ServiceFlags};
+use bitcoin::p2p::{ServiceFlags, address::Address, message_network::VersionMessage};
 use std::cell::RefCell;
 use std::io::{Read, Write};
 use std::rc::Rc;

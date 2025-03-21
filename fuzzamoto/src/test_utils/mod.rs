@@ -1,9 +1,10 @@
 pub mod mining;
 
 use bitcoin::{
+    Amount, OutPoint, Sequence, Transaction, TxIn, TxOut, Witness,
     blockdata::opcodes::{OP_0, OP_TRUE},
     script::ScriptBuf,
-    transaction, Amount, OutPoint, Sequence, Transaction, TxIn, TxOut, Witness,
+    transaction,
 };
 
 use bitcoin_hashes::sha256;
@@ -63,7 +64,7 @@ pub fn create_consolidation_tx(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::{hashes::Hash, BlockHash};
+    use bitcoin::{BlockHash, hashes::Hash};
 
     #[test]
     fn test_commitment_fixup() {

@@ -2,8 +2,8 @@ use fuzzamoto::{
     fuzzamoto_main,
     runners::Runner,
     scenarios::{
-        generic::{GenericScenario, TestCase},
         Scenario, ScenarioInput, ScenarioResult,
+        generic::{GenericScenario, TestCase},
     },
     targets::BitcoinCoreTarget,
 };

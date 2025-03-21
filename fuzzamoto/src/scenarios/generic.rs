@@ -7,6 +7,7 @@ use crate::{
 };
 
 use bitcoin::{
+    Block, BlockHash,
     consensus::encode::{self, Decodable, Encodable, VarInt},
     hashes::Hash,
     p2p::{
@@ -14,7 +15,6 @@ use bitcoin::{
         message_blockdata::Inventory,
         message_compact_blocks::SendCmpct,
     },
-    Block, BlockHash,
 };
 
 use std::collections::BTreeMap;
