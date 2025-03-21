@@ -48,7 +48,7 @@ impl Scenario<WalletDotDatBytes, IgnoredCharacterization, V1Transport, BitcoinCo
 
         Ok(Self {
             _inner: inner,
-            wallet_path,
+            wallet_path: wallet_path.join("wallet.dat"),
         })
     }
 
