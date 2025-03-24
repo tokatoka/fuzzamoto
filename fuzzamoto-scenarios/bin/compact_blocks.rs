@@ -20,7 +20,7 @@ use bitcoin::{
     },
 };
 
-use std::io::{self, Read, Write};
+use io::{self, Read, Write};
 
 // Create a newtype wrapper around Vec<u16>
 struct TxIndices(Vec<u16>);

@@ -17,8 +17,8 @@ use bitcoin::{
     },
 };
 
+use io::{self, Read, Write};
 use std::collections::BTreeMap;
-use std::io::{self, Read, Write};
 
 pub enum Action {
     Connect {

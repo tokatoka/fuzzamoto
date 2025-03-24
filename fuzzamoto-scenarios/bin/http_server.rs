@@ -7,8 +7,8 @@ use fuzzamoto::{
     targets::{BitcoinCoreTarget, RecorderTarget, Target},
 };
 
+use io::{self, Read, Write};
 use std::collections::HashMap;
-use std::io::{self, Read, Write};
 use std::net::TcpStream;
 
 enum Action {
