@@ -66,8 +66,10 @@ RUN cd AFLplusplus/nyx_mode/packer/packer/linux_x86_64-userspace && \
 # ------ Build Bitcoin Core and the nyx agent ------
 
 # Build Bitcoin Core
-ARG RECLONE_BITCOIN=
-RUN git clone --branch master https://github.com/bitcoin/bitcoin.git 
+ARG OWNER=bitcoin
+ARG REPO=bitcoin
+ARG BRANCH=master
+RUN git clone --depth 1 --branch $BRANCH https://github.com/$OWNER/$REPO.git
 
 ENV CC=$PWD/AFLplusplus/afl-clang-fast
 ENV CXX=$PWD/AFLplusplus/afl-clang-fast++
