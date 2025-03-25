@@ -86,6 +86,119 @@ impl ScenarioInput for TestCase {
 /// 8. Advance the mocktime of the target node
 struct CompactBlocksScenario<TX: Transport, T: Target<TX>> {
     inner: GenericScenario<TX, T>,
+
+    constructed_blocks: Vec<(usize, bitcoin::Block)>,
+}
+
+impl<TX: Transport, T: Target<TX>> CompactBlocksScenario<TX, T> {
+    fn get_block(&self, index: usize) -> Option<&(usize, bitcoin::Block)> {
+        if self.constructed_blocks.is_empty() {
+            return None;
+        }
+
+        let len = self.constructed_blocks.len();
+        Some(&self.constructed_blocks[index % len])
+    }
+
+    fn construct_block(
+        &mut self,
+        from: u16,
+        prev: u16,
+        funding: u16,
+        num_txs: u16,
+        prevs: &[(u32, BlockHash, bitcoin::OutPoint)],
+    ) {
+        let prev = prevs[180..][prev as usize % (prevs.len() - 180)];
+        let Ok(mut block) =
+            test_utils::mining::mine_block(prev.1, prev.0 + 1, self.inner.time as u32 + 1)
+        else {
+            return;
+        };
+
+        // Create a chain of `num_txs` transactions, each spending the previous one (one in one out).
+        let funding_outpoint = prevs[1..100][funding as usize % 100].2;
+        let mut avaliable_outpoints = vec![(funding_outpoint, Amount::from_int_btc(25))];
+        for _ in 0..num_txs {
+            let Ok(tx) = test_utils::create_consolidation_tx(avaliable_outpoints.as_slice()) else {
+                break;
+            };
+            block.txdata.push(tx);
+
+            let tx = block.txdata.last().unwrap();
+            let outpoint = bitcoin::OutPoint::new(tx.compute_txid(), 0);
+
+            avaliable_outpoints.pop();
+            avaliable_outpoints.push((outpoint, tx.output[0].value));
+        }
+
+        test_utils::mining::fixup_commitments(&mut block);
+        test_utils::mining::fixup_proof_of_work(&mut block);
+
+        self.constructed_blocks
+            .push((from as usize % self.inner.connections.len(), block));
+    }
+
+    fn send_compact_block(&mut self, block: u16, prefilled_txs: &[u16]) {
+        let Some((from, block)) = self.get_block(block as usize) else {
+            return;
+        };
+
+        // Sort and deduplicate the prefilled transaction indices
+        let mut sorted_prefilled_txs: Vec<usize> = prefilled_txs
+            .iter()
+            .map(|tx| *tx as usize % block.txdata.len())
+            .collect();
+        sorted_prefilled_txs.sort();
+        sorted_prefilled_txs.dedup();
+
+        // Create prefilled transactions with differential encoding
+        let mut prev_idx = 0;
+        let prefilled_transactions: Vec<PrefilledTransaction> = sorted_prefilled_txs
+            .clone()
+            .into_iter()
+            .map(|tx_idx| {
+                // Calculate differential index
+                let diff_idx = if tx_idx == 0 {
+                    0 // First index is not differential
+                } else {
+                    tx_idx - prev_idx - 1
+                };
+                prev_idx = tx_idx;
+
+                PrefilledTransaction {
+                    idx: diff_idx as u16,
+                    tx: block.txdata[tx_idx].clone(),
+                }
+            })
+            .collect();
+
+        let nonce = 0u64;
+        let siphash_keys = ShortId::calculate_siphash_keys(&block.header, nonce);
+
+        // Collect short IDs for all transactions except prefilled ones
+        let short_ids: Vec<ShortId> = block
+            .txdata
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| sorted_prefilled_txs.binary_search(i).is_err())
+            .map(|(_, tx)| ShortId::with_siphash_keys(&tx.compute_wtxid(), siphash_keys))
+            .collect();
+
+        let header_and_short_ids = HeaderAndShortIds {
+            header: block.header,
+            nonce,
+            short_ids,
+            prefilled_txs: prefilled_transactions,
+        };
+
+        let cmpctblock = NetworkMessage::CmpctBlock(CmpctBlock {
+            compact_block: header_and_short_ids,
+        });
+
+        let from = *from;
+        let _ = self.inner.connections[from]
+            .send(&("cmpctblock".to_string(), encode::serialize(&cmpctblock)));
+    }
 }
 
 impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
@@ -94,7 +207,10 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
     fn new(target: &mut T) -> Result<Self, String> {
         let inner = GenericScenario::new(target)?;
 
-        Ok(Self { inner })
+        Ok(Self {
+            inner,
+            constructed_blocks: Vec::new(),
+        })
     }
 
     fn run(
@@ -102,8 +218,6 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
         target: &mut T,
         testcase: TestCase,
     ) -> ScenarioResult<IgnoredCharacterization> {
-        let mut constructed = Vec::new();
-
         let mut prevs: Vec<(u32, BlockHash, bitcoin::OutPoint)> = self
             .inner
             .block_tree
@@ -127,166 +241,77 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                     funding,
                     num_txs,
                 } => {
-                    let prev = prevs[180..][prev as usize % (prevs.len() - 180)];
-                    let Ok(mut block) = test_utils::mining::mine_block(
-                        prev.1,
-                        prev.0 + 1,
-                        self.inner.time as u32 + 1,
-                    ) else {
-                        continue;
-                    };
-
-                    // Create a chain of `num_txs` transactions, each spending the previous one (one in one out).
-                    let funding_outpoint = prevs[1..100][funding as usize % 100].2;
-                    let mut avaliable_outpoints =
-                        vec![(funding_outpoint, Amount::from_int_btc(25))];
-                    for _ in 0..num_txs {
-                        let Ok(tx) =
-                            test_utils::create_consolidation_tx(avaliable_outpoints.as_slice())
-                        else {
-                            break;
-                        };
-                        block.txdata.push(tx);
-
-                        let tx = block.txdata.last().unwrap();
-                        let outpoint = bitcoin::OutPoint::new(tx.compute_txid(), 0);
-
-                        avaliable_outpoints.pop();
-                        avaliable_outpoints.push((outpoint, tx.output[0].value));
-                    }
-
-                    test_utils::mining::fixup_commitments(&mut block);
-                    test_utils::mining::fixup_proof_of_work(&mut block);
-
-                    constructed.push((from as usize % self.inner.connections.len(), block));
+                    self.construct_block(from, prev, funding, num_txs, &prevs);
                 }
+
                 Action::SendInv { block } => {
-                    if constructed.is_empty() {
-                        continue;
+                    if let Some((from, block_hash)) = self
+                        .get_block(block as usize)
+                        .map(|b| (b.0, b.1.block_hash()))
+                    {
+                        let inv = NetworkMessage::Inv(vec![Inventory::Block(block_hash)]);
+                        let _ = self.inner.connections[from]
+                            .send(&("inv".to_string(), encode::serialize(&inv)));
                     }
-                    let idx = block as usize % constructed.len();
-                    let block_hash = constructed[idx].1.block_hash();
-                    let inv = NetworkMessage::Inv(vec![Inventory::Block(block_hash)]);
-                    let _ = self.inner.connections[constructed[idx].0]
-                        .send(&("inv".to_string(), encode::serialize(&inv)));
                 }
+
                 Action::SendHeaders { block } => {
-                    if constructed.is_empty() {
-                        continue;
+                    if let Some((from, header)) =
+                        self.get_block(block as usize).map(|b| (b.0, b.1.header))
+                    {
+                        let headers = NetworkMessage::Headers(vec![header]);
+                        let _ = self.inner.connections[from]
+                            .send(&("headers".to_string(), encode::serialize(&headers)));
                     }
-                    let idx = block as usize % constructed.len();
-                    let header = constructed[idx].1.header;
-                    let headers = NetworkMessage::Headers(vec![header]);
-                    let _ = self.inner.connections[constructed[idx].0]
-                        .send(&("headers".to_string(), encode::serialize(&headers)));
                 }
+
                 Action::SendCmpctBlock {
                     block,
                     prefilled_txs,
                 } => {
-                    if constructed.is_empty() {
-                        continue;
-                    }
-                    let idx = block as usize % constructed.len();
-                    let block = &constructed[idx].1;
-
-                    // Sort and deduplicate the prefilled transaction indices
-                    let mut sorted_prefilled_txs: Vec<usize> = prefilled_txs
-                        .0
-                        .iter()
-                        .map(|tx| *tx as usize % block.txdata.len())
-                        .collect();
-                    sorted_prefilled_txs.sort();
-                    sorted_prefilled_txs.dedup();
-
-                    // Create prefilled transactions with differential encoding
-                    let mut prev_idx = 0;
-                    let prefilled_transactions: Vec<PrefilledTransaction> = sorted_prefilled_txs
-                        .clone()
-                        .into_iter()
-                        .map(|tx_idx| {
-                            // Calculate differential index
-                            let diff_idx = if tx_idx == 0 {
-                                0 // First index is not differential
-                            } else {
-                                tx_idx - prev_idx - 1
-                            };
-                            prev_idx = tx_idx;
-
-                            PrefilledTransaction {
-                                idx: diff_idx as u16,
-                                tx: block.txdata[tx_idx].clone(),
-                            }
-                        })
-                        .collect();
-
-                    let nonce = 0u64;
-                    let siphash_keys = ShortId::calculate_siphash_keys(&block.header, nonce);
-
-                    // Collect short IDs for all transactions except prefilled ones
-                    let short_ids: Vec<ShortId> = block
-                        .txdata
-                        .iter()
-                        .enumerate()
-                        .filter(|(i, _)| sorted_prefilled_txs.binary_search(i).is_err())
-                        .map(|(_, tx)| {
-                            ShortId::with_siphash_keys(&tx.compute_wtxid(), siphash_keys)
-                        })
-                        .collect();
-
-                    let header_and_short_ids = HeaderAndShortIds {
-                        header: block.header,
-                        nonce,
-                        short_ids,
-                        prefilled_txs: prefilled_transactions,
-                    };
-
-                    let cmpctblock = NetworkMessage::CmpctBlock(CmpctBlock {
-                        compact_block: header_and_short_ids,
-                    });
-                    let _ = self.inner.connections[constructed[idx].0]
-                        .send(&("cmpctblock".to_string(), encode::serialize(&cmpctblock)));
+                    self.send_compact_block(block, &prefilled_txs.0);
                 }
+
                 Action::SendBlock { block } => {
-                    if constructed.is_empty() {
-                        continue;
+                    if let Some((from, block)) = self.get_block(block as usize) {
+                        let from = *from;
+                        let block = block.clone();
+                        let _ = self.inner.connections[from]
+                            .send(&("block".to_string(), encode::serialize(&block)));
                     }
-                    let idx = block as usize % constructed.len();
-                    let _ = self.inner.connections[constructed[idx].0]
-                        .send(&("block".to_string(), encode::serialize(&constructed[idx].1)));
                 }
+
                 Action::SendTxFromBlock { block, tx } => {
-                    if constructed.is_empty() {
-                        continue;
+                    if let Some((from, block)) = self.get_block(block as usize) {
+                        let from = *from;
+                        let block = block.clone();
+                        let tx = tx as usize % block.txdata.len();
+                        let _ = self.inner.connections[from]
+                            .send(&("tx".to_string(), encode::serialize(&block.txdata[tx])));
                     }
-                    let idx = block as usize % constructed.len();
-                    let block = &constructed[idx].1;
-                    let tx = tx as usize % block.txdata.len();
-                    let _ = self.inner.connections[constructed[idx].0]
-                        .send(&("tx".to_string(), encode::serialize(&block.txdata[tx])));
                 }
+
                 Action::SendBlockTxn { block, txs } => {
-                    if constructed.is_empty() {
-                        continue;
+                    if let Some((from, block)) = self.get_block(block as usize) {
+                        let txs_indices: Vec<usize> = txs
+                            .0
+                            .iter()
+                            .map(|tx| *tx as usize % block.txdata.len())
+                            .collect();
+                        let blocktxn = NetworkMessage::BlockTxn(BlockTxn {
+                            transactions: BlockTransactions {
+                                block_hash: block.block_hash(),
+                                transactions: txs_indices
+                                    .iter()
+                                    .map(|tx| block.txdata[*tx].clone())
+                                    .collect(),
+                            },
+                        });
+                        let from = *from;
+
+                        let _ = self.inner.connections[from]
+                            .send(&("blocktxn".to_string(), encode::serialize(&blocktxn)));
                     }
-                    let idx = block as usize % constructed.len();
-                    let block = &constructed[idx].1;
-                    let txs_indices: Vec<usize> = txs
-                        .0
-                        .iter()
-                        .map(|tx| *tx as usize % block.txdata.len())
-                        .collect();
-                    let blocktxn = NetworkMessage::BlockTxn(BlockTxn {
-                        transactions: BlockTransactions {
-                            block_hash: block.block_hash(),
-                            transactions: txs_indices
-                                .iter()
-                                .map(|tx| block.txdata[*tx].clone())
-                                .collect(),
-                        },
-                    });
-                    let _ = self.inner.connections[constructed[idx].0]
-                        .send(&("blocktxn".to_string(), encode::serialize(&blocktxn)));
                 }
                 Action::AdvanceTime { seconds } => {
                     self.inner.time += seconds as u64;
