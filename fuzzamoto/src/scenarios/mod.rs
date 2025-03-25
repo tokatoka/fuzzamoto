@@ -23,9 +23,9 @@ impl ScenarioCharacterization for IgnoredCharacterization {
 }
 
 /// `ScenarioInput` is a trait for scenario input types.
-pub trait ScenarioInput: Sized {
+pub trait ScenarioInput<'a>: Sized {
     /// Decode the input from a byte slice.
-    fn decode(bytes: &[u8]) -> Result<Self, String>;
+    fn decode(bytes: &'a [u8]) -> Result<Self, String>;
 }
 
 /// `ScenarioResult` describes the various outcomes of running a scenario.
@@ -39,9 +39,9 @@ pub enum ScenarioResult<SC: ScenarioCharacterization> {
 }
 
 /// `Scenario` is the interface for test scenarios that can be run against a target node.
-pub trait Scenario<I, SC, TX, T>: Sized
+pub trait Scenario<'a, I, SC, TX, T>: Sized
 where
-    I: ScenarioInput,
+    I: ScenarioInput<'a>,
     SC: ScenarioCharacterization,
     TX: Transport,
     T: Target<TX>,

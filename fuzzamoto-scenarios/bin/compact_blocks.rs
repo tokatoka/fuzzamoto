@@ -62,7 +62,7 @@ struct TestCase {
     actions: Vec<Action>,
 }
 
-impl ScenarioInput for TestCase {
+impl ScenarioInput<'_> for TestCase {
     fn decode(bytes: &[u8]) -> Result<Self, String> {
         let mut unstructured = Unstructured::new(bytes);
         let actions = Vec::arbitrary(&mut unstructured).map_err(|e| e.to_string())?;
@@ -201,7 +201,7 @@ impl<TX: Transport, T: Target<TX>> CompactBlocksScenario<TX, T> {
     }
 }
 
-impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
+impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterization, TX, T>
     for CompactBlocksScenario<TX, T>
 {
     fn new(target: &mut T) -> Result<Self, String> {

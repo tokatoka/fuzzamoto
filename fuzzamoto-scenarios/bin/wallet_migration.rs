@@ -11,11 +11,11 @@ use fuzzamoto::{
 use std::io::Write;
 use std::path::PathBuf;
 
-struct WalletDotDatBytes(Vec<u8>);
+struct WalletDotDatBytes<'a>(&'a [u8]);
 
-impl ScenarioInput for WalletDotDatBytes {
-    fn decode(bytes: &[u8]) -> Result<Self, String> {
-        Ok(WalletDotDatBytes(bytes.to_vec()))
+impl<'a> ScenarioInput<'a> for WalletDotDatBytes<'a> {
+    fn decode(bytes: &'a [u8]) -> Result<Self, String> {
+        Ok(WalletDotDatBytes(bytes))
     }
 }
 
@@ -28,7 +28,8 @@ struct WalletMigrationScenario<TX: Transport, T: Target<TX>> {
     wallet_path: PathBuf,
 }
 
-impl Scenario<WalletDotDatBytes, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
+impl<'a>
+    Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
     for WalletMigrationScenario<V1Transport, BitcoinCoreTarget>
 {
     fn new(target: &mut BitcoinCoreTarget) -> Result<Self, String> {
@@ -79,9 +80,10 @@ impl Scenario<WalletDotDatBytes, IgnoredCharacterization, V1Transport, BitcoinCo
 
 // `WalletMigrationScenario` is specific to the `BitcoinCoreTarget` and does not allow for recording.
 // This specialisation is a nop scenario for recording.
-impl
+impl<'a>
     Scenario<
-        WalletDotDatBytes,
+        'a,
+        WalletDotDatBytes<'a>,
         IgnoredCharacterization,
         RecordingTransport,
         RecorderTarget<BitcoinCoreTarget>,

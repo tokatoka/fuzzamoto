@@ -13,11 +13,11 @@ use std::collections::HashMap;
 use std::net::TcpStream;
 
 #[derive(Arbitrary)]
-enum Action {
+enum Action<'a> {
     Connect,
     SendMessage {
         connection_id: u64,
-        message: Vec<u8>,
+        message: &'a [u8],
     },
     Disconnect {
         connection_id: u64,
@@ -25,12 +25,12 @@ enum Action {
 }
 
 #[derive(Arbitrary)]
-struct TestCase {
-    actions: Vec<Action>,
+struct TestCase<'a> {
+    actions: Vec<Action<'a>>,
 }
 
-impl ScenarioInput for TestCase {
-    fn decode(bytes: &[u8]) -> Result<Self, String> {
+impl<'a> ScenarioInput<'a> for TestCase<'a> {
+    fn decode(bytes: &'a [u8]) -> Result<Self, String> {
         let mut unstructured = Unstructured::new(bytes);
         let actions = Vec::arbitrary(&mut unstructured).map_err(|e| e.to_string())?;
         Ok(Self { actions })
@@ -49,7 +49,7 @@ struct HttpServerScenario<TX, T> {
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
-impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
+impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
     for HttpServerScenario<V1Transport, BitcoinCoreTarget>
 {
     fn new(_target: &mut BitcoinCoreTarget) -> Result<Self, String> {
@@ -82,6 +82,7 @@ impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
                 } => {
                     if let Some(connection) = connections.get_mut(&connection_id) {
                         let _ = connection.write_all(&message);
+                        let _ = connection.flush();
                     };
                 }
                 Action::Disconnect { connection_id } => {
@@ -100,9 +101,10 @@ impl Scenario<TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
 
 // `HttpServerScenario` is specific to the `BitcoinCoreTarget` and does not allow for recording.
 // This specialisation is a nop scenario for recording.
-impl
+impl<'a>
     Scenario<
-        TestCase,
+        'a,
+        TestCase<'a>,
         IgnoredCharacterization,
         RecordingTransport,
         RecorderTarget<BitcoinCoreTarget>,

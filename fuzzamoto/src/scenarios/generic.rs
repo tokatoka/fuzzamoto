@@ -41,8 +41,8 @@ pub struct TestCase {
     pub actions: Vec<Action>,
 }
 
-impl ScenarioInput for TestCase {
-    fn decode(bytes: &[u8]) -> Result<Self, String> {
+impl<'a> ScenarioInput<'a> for TestCase {
+    fn decode(bytes: &'a [u8]) -> Result<Self, String> {
         TestCase::consensus_decode(&mut &bytes[..]).map_err(|e| e.to_string())
     }
 }
@@ -76,7 +76,7 @@ pub struct GenericScenario<TX: Transport, T: Target<TX>> {
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
-impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, TX, T>
+impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacterization, TX, T>
     for GenericScenario<TX, T>
 {
     fn new(target: &mut T) -> Result<Self, String> {
