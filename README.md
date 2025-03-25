@@ -124,4 +124,5 @@ Current patches:
 | :------------------------------------------------- | :---------------------------------------------- | :----------------- | :------- |
 | [Bitcoin Core](https://github.com/bitcoin/bitcoin) | https://github.com/bitcoin/bitcoin/issues/32111 | `wallet-migration` | ❌       |
 | [Bitcoin Core](https://github.com/bitcoin/bitcoin) | https://github.com/bitcoin/bitcoin/issues/32112 | `wallet-migration` | ❌       |
+| [Bitcoin Core](https://github.com/bitcoin/bitcoin) | https://github.com/bitcoin/bitcoin/issues/32173 | `rpc-generic`      | ❌       |
 
