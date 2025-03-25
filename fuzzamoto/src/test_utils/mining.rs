@@ -102,7 +102,7 @@ pub fn mine_block(prev_hash: BlockHash, height: u32, time: u32) -> Result<Block,
         header: block::Header {
             version: block::Version::from_consensus(5),
             prev_blockhash: prev_hash,
-            merkle_root: TxMerkleNode::from_raw_hash(*coinbase.txid().as_raw_hash()),
+            merkle_root: TxMerkleNode::from_raw_hash(*coinbase.compute_txid().as_raw_hash()),
             time,
             bits: CompactTarget::from_consensus(0x207fffff),
             nonce: 0,

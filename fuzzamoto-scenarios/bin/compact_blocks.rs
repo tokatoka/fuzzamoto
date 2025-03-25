@@ -112,7 +112,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                 (
                     *height,
                     *hash,
-                    bitcoin::OutPoint::new(block.txdata[0].txid(), 0),
+                    bitcoin::OutPoint::new(block.txdata[0].compute_txid(), 0),
                 )
             })
             .collect();
@@ -149,7 +149,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                         block.txdata.push(tx);
 
                         let tx = block.txdata.last().unwrap();
-                        let outpoint = bitcoin::OutPoint::new(tx.txid(), 0);
+                        let outpoint = bitcoin::OutPoint::new(tx.compute_txid(), 0);
 
                         avaliable_outpoints.pop();
                         avaliable_outpoints.push((outpoint, tx.output[0].value));
@@ -229,7 +229,9 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
                         .iter()
                         .enumerate()
                         .filter(|(i, _)| sorted_prefilled_txs.binary_search(i).is_err())
-                        .map(|(_, tx)| ShortId::with_siphash_keys(&tx.wtxid(), siphash_keys))
+                        .map(|(_, tx)| {
+                            ShortId::with_siphash_keys(&tx.compute_wtxid(), siphash_keys)
+                        })
                         .collect();
 
                     let header_and_short_ids = HeaderAndShortIds {

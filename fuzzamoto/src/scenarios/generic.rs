@@ -130,7 +130,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
             dictionary.add(block.block_hash().as_raw_hash().as_byte_array().as_slice());
             dictionary.add(
                 block.txdata[0]
-                    .txid()
+                    .compute_txid()
                     .as_raw_hash()
                     .as_byte_array()
                     .as_slice(),
@@ -170,7 +170,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
     ) -> ScenarioResult<IgnoredCharacterization> {
         for action in testcase.actions {
             match action {
-                Action::Connect { connection_type } => {
+                Action::Connect { connection_type: _ } => {
                     //if let Ok(connection) = target.connect(connection_type) {
                     //    self.connections.push(connection);
                     //}
