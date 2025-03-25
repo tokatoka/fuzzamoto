@@ -9,10 +9,11 @@ use fuzzamoto::{
     test_utils,
 };
 
+use arbitrary::{Arbitrary, Unstructured};
 use bitcoin::{
     Amount, BlockHash,
     bip152::{BlockTransactions, HeaderAndShortIds, PrefilledTransaction, ShortId},
-    consensus::encode::{self, Decodable, Encodable, VarInt},
+    consensus::encode,
     p2p::message::NetworkMessage,
     p2p::{
         message_blockdata::Inventory,
@@ -20,11 +21,11 @@ use bitcoin::{
     },
 };
 
-use io::{self, Read, Write};
-
 // Create a newtype wrapper around Vec<u16>
+#[derive(Arbitrary)]
 struct TxIndices(Vec<u16>);
 
+#[derive(Arbitrary)]
 enum Action {
     /// Construct a new block for relay
     ConstructBlock {
@@ -56,13 +57,16 @@ enum Action {
     AdvanceTime { seconds: u16 },
 }
 
+#[derive(Arbitrary)]
 struct TestCase {
     actions: Vec<Action>,
 }
 
 impl ScenarioInput for TestCase {
     fn decode(bytes: &[u8]) -> Result<Self, String> {
-        TestCase::consensus_decode(&mut &bytes[..]).map_err(|e| e.to_string())
+        let mut unstructured = Unstructured::new(bytes);
+        let actions = Vec::arbitrary(&mut unstructured).map_err(|e| e.to_string())?;
+        Ok(Self { actions })
     }
 }
 
@@ -301,204 +305,4 @@ impl<TX: Transport, T: Target<TX>> Scenario<TestCase, IgnoredCharacterization, T
     }
 }
 
-impl Encodable for TxIndices {
-    fn consensus_encode<W: Write + ?Sized>(&self, s: &mut W) -> Result<usize, io::Error> {
-        let mut len = 0;
-        len += VarInt(self.0.len() as u64).consensus_encode(s)?;
-        for item in &self.0 {
-            len += item.consensus_encode(s)?;
-        }
-        Ok(len)
-    }
-}
-
-impl Decodable for TxIndices {
-    fn consensus_decode<D: Read + ?Sized>(d: &mut D) -> Result<Self, encode::Error> {
-        let len = VarInt::consensus_decode(d)?.0;
-        if len > 10000 {
-            return Err(encode::Error::ParseFailed("too many items"));
-        }
-        let mut items = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            items.push(u16::consensus_decode(d)?);
-        }
-        Ok(TxIndices(items))
-    }
-}
-
-impl Encodable for Action {
-    fn consensus_encode<W: Write + ?Sized>(&self, s: &mut W) -> Result<usize, io::Error> {
-        match self {
-            Action::ConstructBlock {
-                from,
-                prev,
-                funding,
-                num_txs,
-            } => {
-                let mut len = 0;
-                len += 0u8.consensus_encode(s)?; // Tag for ConstructBlock
-                len += from.consensus_encode(s)?;
-                len += prev.consensus_encode(s)?;
-                len += funding.consensus_encode(s)?;
-                len += num_txs.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendInv { block } => {
-                let mut len = 0;
-                len += 1u8.consensus_encode(s)?; // Tag for SendInv
-                len += block.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendHeaders { block } => {
-                let mut len = 0;
-                len += 2u8.consensus_encode(s)?; // Tag for SendHeaders
-                len += block.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendCmpctBlock {
-                block,
-                prefilled_txs,
-            } => {
-                let mut len = 0;
-                len += 3u8.consensus_encode(s)?; // Tag for SendCmpctBlock
-                len += block.consensus_encode(s)?;
-                len += prefilled_txs.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendBlock { block } => {
-                let mut len = 0;
-                len += 4u8.consensus_encode(s)?; // Tag for SendBlock
-                len += block.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendTxFromBlock { block, tx } => {
-                let mut len = 0;
-                len += 5u8.consensus_encode(s)?; // Tag for SendTxFromBlock
-                len += block.consensus_encode(s)?;
-                len += tx.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendBlockTxn { block, txs } => {
-                let mut len = 0;
-                len += 6u8.consensus_encode(s)?; // Tag for SendBlockTxn
-                len += block.consensus_encode(s)?;
-                len += txs.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::AdvanceTime { seconds } => {
-                let mut len = 0;
-                len += 7u8.consensus_encode(s)?; // Tag for AdvanceTime
-                len += seconds.consensus_encode(s)?;
-                Ok(len)
-            }
-        }
-    }
-}
-
-impl Decodable for Action {
-    fn consensus_decode<D: Read + ?Sized>(d: &mut D) -> Result<Self, encode::Error> {
-        let tag = u8::consensus_decode(d)? % 8;
-        match tag {
-            0 => {
-                let from = u16::consensus_decode(d)?;
-                let prev = u16::consensus_decode(d)?;
-                let funding = u16::consensus_decode(d)?;
-                let num_txs = u16::consensus_decode(d)?;
-                Ok(Action::ConstructBlock {
-                    from,
-                    prev,
-                    funding,
-                    num_txs,
-                })
-            }
-            1 => {
-                let block = u16::consensus_decode(d)?;
-                Ok(Action::SendInv { block })
-            }
-            2 => {
-                let block = u16::consensus_decode(d)?;
-                Ok(Action::SendHeaders { block })
-            }
-            3 => {
-                let block = u16::consensus_decode(d)?;
-                let prefilled_txs = TxIndices::consensus_decode(d)?;
-                Ok(Action::SendCmpctBlock {
-                    block,
-                    prefilled_txs,
-                })
-            }
-            4 => {
-                let block = u16::consensus_decode(d)?;
-                Ok(Action::SendBlock { block })
-            }
-            5 => {
-                let block = u16::consensus_decode(d)?;
-                let tx = u16::consensus_decode(d)?;
-                Ok(Action::SendTxFromBlock { block, tx })
-            }
-            6 => {
-                let block = u16::consensus_decode(d)?;
-                let txs = TxIndices::consensus_decode(d)?;
-                Ok(Action::SendBlockTxn { block, txs })
-            }
-            7 => {
-                let seconds = u16::consensus_decode(d)?;
-                Ok(Action::AdvanceTime { seconds })
-            }
-            _ => Err(encode::Error::ParseFailed("Invalid Action tag")),
-        }
-    }
-}
-
-impl Decodable for TestCase {
-    fn consensus_decode<D: Read + ?Sized>(d: &mut D) -> Result<Self, encode::Error> {
-        let len = VarInt::consensus_decode(d)?.0;
-        if len > 100 {
-            return Err(encode::Error::ParseFailed("too many actions"));
-        }
-        let mut actions = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            actions.push(Action::consensus_decode(d)?);
-        }
-        Ok(TestCase { actions })
-    }
-}
-
-impl Encodable for TestCase {
-    fn consensus_encode<W: Write + ?Sized>(&self, s: &mut W) -> Result<usize, io::Error> {
-        let mut len = 0;
-        len += VarInt(self.actions.len() as u64).consensus_encode(s)?;
-        for action in &self.actions {
-            len += action.consensus_encode(s)?;
-        }
-        Ok(len)
-    }
-}
-
 fuzzamoto_main!(CompactBlocksScenario, BitcoinCoreTarget, TestCase);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn produce_simple_test_case() {
-        let mut test_case = TestCase {
-            actions: Vec::new(),
-        };
-        test_case.actions.push(Action::ConstructBlock {
-            from: 0,
-            prev: 199,
-            funding: 0,
-            num_txs: 0,
-        });
-        test_case.actions.push(Action::SendInv { block: 0 });
-        test_case.actions.push(Action::SendHeaders { block: 0 });
-        test_case.actions.push(Action::SendCmpctBlock {
-            block: 0,
-            prefilled_txs: TxIndices(vec![0]),
-        });
-        let mut file = std::fs::File::create("compact_blocks_test_case.bin").unwrap();
-        file.write_all(&encode::serialize(&test_case)).unwrap();
-    }
-}

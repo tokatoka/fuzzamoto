@@ -1,4 +1,3 @@
-use bitcoin::consensus::encode::{self, Decodable, Encodable, VarInt};
 use fuzzamoto::{
     connections::{RecordingTransport, V1Transport},
     fuzzamoto_main,
@@ -7,10 +6,13 @@ use fuzzamoto::{
     targets::{BitcoinCoreTarget, RecorderTarget, Target},
 };
 
-use io::{self, Read, Write};
+use arbitrary::{Arbitrary, Unstructured};
+use std::io::Write;
+
 use std::collections::HashMap;
 use std::net::TcpStream;
 
+#[derive(Arbitrary)]
 enum Action {
     Connect,
     SendMessage {
@@ -22,14 +24,16 @@ enum Action {
     },
 }
 
+#[derive(Arbitrary)]
 struct TestCase {
     actions: Vec<Action>,
 }
 
 impl ScenarioInput for TestCase {
     fn decode(bytes: &[u8]) -> Result<Self, String> {
-        let mut cursor = std::io::Cursor::new(bytes);
-        TestCase::consensus_decode(&mut cursor).map_err(|e| e.to_string())
+        let mut unstructured = Unstructured::new(bytes);
+        let actions = Vec::arbitrary(&mut unstructured).map_err(|e| e.to_string())?;
+        Ok(Self { actions })
     }
 }
 
@@ -116,64 +120,6 @@ impl
         _input: TestCase,
     ) -> ScenarioResult<IgnoredCharacterization> {
         ScenarioResult::Ok(IgnoredCharacterization)
-    }
-}
-
-impl Encodable for Action {
-    fn consensus_encode<W: Write + ?Sized>(&self, s: &mut W) -> Result<usize, io::Error> {
-        let mut len = 0;
-
-        match self {
-            Action::Connect => {
-                len += 0u8.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::SendMessage {
-                connection_id,
-                message,
-            } => {
-                len += 1u8.consensus_encode(s)?;
-                len += connection_id.consensus_encode(s)?;
-                len += message.consensus_encode(s)?;
-                Ok(len)
-            }
-            Action::Disconnect { connection_id } => {
-                len += 2u8.consensus_encode(s)?;
-                len += connection_id.consensus_encode(s)?;
-                Ok(len)
-            }
-        }
-    }
-}
-
-impl Decodable for Action {
-    fn consensus_decode<D: Read + ?Sized>(d: &mut D) -> Result<Self, encode::Error> {
-        let tag = u8::consensus_decode(d)? % 3;
-        match tag {
-            0 => Ok(Action::Connect),
-            1 => Ok(Action::SendMessage {
-                connection_id: u64::consensus_decode(d)?,
-                message: Vec::<u8>::consensus_decode(d)?,
-            }),
-            2 => Ok(Action::Disconnect {
-                connection_id: u64::consensus_decode(d)?,
-            }),
-            _ => Err(encode::Error::ParseFailed("invalid action")),
-        }
-    }
-}
-
-impl Decodable for TestCase {
-    fn consensus_decode<D: Read + ?Sized>(d: &mut D) -> Result<Self, encode::Error> {
-        let len = VarInt::consensus_decode(d)?.0;
-        if len > 10000 {
-            return Err(encode::Error::ParseFailed("too many actions"));
-        }
-        let mut actions = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            actions.push(Action::consensus_decode(d)?);
-        }
-        Ok(TestCase { actions })
     }
 }
 
