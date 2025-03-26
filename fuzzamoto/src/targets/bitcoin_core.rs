@@ -28,17 +28,25 @@ impl BitcoinCoreTarget {
 
         #[cfg(feature = "inherit_stdout")]
         {
-            config.args.push("-debug");
-            config.args.push("-debugexclude=libevent");
-            config.args.push("-debugexclude=leveldb");
+            config.args.extend_from_slice(&[
+                "-debug",
+                "-debugexclude=libevent",
+                "-debugexclude=leveldb",
+            ]);
             config.view_stdout = true;
         }
-        config.args.push("-txreconciliation");
-        config.args.push("-peerbloomfilters");
-        config.args.push("-peerblockfilters");
-        config.args.push("-blockfilterindex");
-        config.args.push("-par=4");
-        config.args.push("-rpcthreads=4");
+        config.args.extend_from_slice(&[
+            "-txreconciliation",
+            "-peerbloomfilters",
+            "-peerblockfilters",
+            "-blockfilterindex",
+            "-par=4",
+            "-rpcthreads=4",
+            "-deprecatedrpc=create_bdb",
+            "-keypool=10",
+            "-listenonion=0",
+            "-i2pacceptincoming=0",
+        ]);
 
         let node = Node::with_conf(exe_path, &config)
             .map_err(|e| format!("Failed to start node: {:?}", e))?;
