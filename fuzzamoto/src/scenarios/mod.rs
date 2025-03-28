@@ -70,14 +70,14 @@ pub fn notify_snapshot<T>(_target: &mut StdTarget<T>) {
 #[macro_export]
 macro_rules! fuzzamoto_main {
     ($scenario_type:ident, $target_type:ty, $testcase_type:ty) => {
-        fn main() {
+        fn main() -> std::process::ExitCode {
             use env_logger;
             env_logger::init();
 
             let args: Vec<String> = std::env::args().collect();
             if args.len() < 2 {
                 eprintln!("Usage: {} <bitcoin-core-exe-path>", args[0]);
-                std::process::exit(1);
+                return std::process::ExitCode::from(1);
             }
 
             let runner = fuzzamoto::runners::StdRunner::new();
@@ -108,7 +108,7 @@ macro_rules! fuzzamoto_main {
                 log::warn!("Failed to decode test case!");
                 drop(target);
                 runner.skip();
-                return;
+                return std::process::ExitCode::SUCCESS;
             };
 
             match scenario.run(&mut target, testcase) {
@@ -116,15 +116,16 @@ macro_rules! fuzzamoto_main {
                 ScenarioResult::Skip => {
                     drop(target);
                     runner.skip();
-                    return;
+                    return std::process::ExitCode::SUCCESS;
                 }
                 ScenarioResult::Fail(err) => {
                     runner.fail(&format!("Test case failed: {}", err));
-                    return;
+                    return std::process::ExitCode::from(1);
                 }
             }
 
             log::info!("Test case ran successfully!");
+            return std::process::ExitCode::SUCCESS;
         }
     };
 }
