@@ -90,10 +90,14 @@ macro_rules! fuzzamoto_main {
             let mut target = TargetImpl::new(exe_path).unwrap();
 
             log::info!("Initializing scenario...");
-
             // Define the scenario type with the target as its generic parameter
             type ScenarioImpl = $scenario_type<fuzzamoto::scenarios::StdTransport, TargetImpl>;
-            let mut scenario = ScenarioImpl::new(&mut target).unwrap();
+            let Ok(mut scenario) = ScenarioImpl::new(&mut target) else {
+                log::error!("Failed to initialize scenario!");
+                let exit_code = std::env::var("FUZZAMOTO_INIT_ERROR_EXIT_CODE")
+                    .map_or(0, |v| v.parse().unwrap_or(0));
+                return std::process::ExitCode::from(exit_code);
+            };
 
             fuzzamoto::scenarios::notify_snapshot(&mut target);
 
