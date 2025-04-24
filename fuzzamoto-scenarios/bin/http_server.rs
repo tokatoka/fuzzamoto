@@ -69,6 +69,11 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization, V1Transport, Bitcoi
         for action in input.actions {
             match action {
                 Action::Connect => {
+                    if connections.len() > 128 {
+                        // Avoid "too many open files"
+                        continue;
+                    }
+
                     let Ok(stream) = TcpStream::connect(target.node.params.rpc_socket) else {
                         return ScenarioResult::Fail(format!("Failed to connect to the target"));
                     };
