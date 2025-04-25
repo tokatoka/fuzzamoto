@@ -14,6 +14,17 @@
 
 #include "nyx.h"
 
+// If we're keeping track of coverage for both the target and the scenario
+// processes, then we use a single large map to combine the coverage:
+//
+// [ ... TARGET MAP ... | ... SCENARIO MAP ... ]
+//
+// The map is shared with the target via the __AFL_SHM_ID env variable and the
+// scenario's __afl_area_ptr is set to the map pointer offset by
+// TARGET_MAP_SIZE.
+__attribute__((weak)) extern uint8_t *__afl_area_ptr;
+__attribute__((weak)) extern uint32_t __afl_map_size;
+
 static uint8_t *trace_buffer = NULL;
 static size_t trace_buffer_size = 0;
 
@@ -47,10 +58,21 @@ size_t nyx_init() {
           host_config.payload_buffer_size);
 
   agent_config_t agent_config = {0};
-#ifdef MAP_SIZE
-  agent_config.coverage_bitmap_size = MAP_SIZE;
-  hprintf("[init] using MAP_SIZE: %d\n", agent_config.coverage_bitmap_size);
+#ifdef TARGET_MAP_SIZE
+  agent_config.coverage_bitmap_size = TARGET_MAP_SIZE;
+  hprintf("[init] using TARGET_MAP_SIZE: %d\n",
+          agent_config.coverage_bitmap_size);
+  if (&__afl_area_ptr) {
+    hprintf("[init] scenario was build with afl instrumentation, extending the "
+           "map by %d edges\n",
+           __afl_map_size);
+    agent_config.coverage_bitmap_size += __afl_map_size;
+  } else {
+    hprintf("[init] scenario not compiled with afl instrumentation\n");
+  }
 #else
+  hprintf("[warn] TARGET_MAP_SIZE not set, using host supplied size: %d\n",
+          host_config.bitmap_size);
   agent_config.coverage_bitmap_size = host_config.bitmap_size;
 #endif
 
@@ -109,6 +131,12 @@ size_t nyx_get_fuzz_input(const uint8_t *data, size_t max_size) {
 
   // Reset trace buffer
   memset(trace_buffer, 0, trace_buffer_size);
+
+#ifdef TARGET_MAP_SIZE
+  if (&__afl_area_ptr) {
+    __afl_area_ptr = trace_buffer + TARGET_MAP_SIZE;
+  }
+#endif
 
   // Take snapshot
   hprintf("[init] taking snapshot\n");
