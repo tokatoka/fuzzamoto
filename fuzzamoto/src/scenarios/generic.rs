@@ -69,6 +69,7 @@ impl<'a> ScenarioInput<'a> for TestCase {
 /// scenarios in `fuzzamoto-scenarios/`. Note: only inputs recorded from scenarios that share the
 /// same test setup (i.e. `Scenario::new`) are useful as seeds.
 pub struct GenericScenario<TX: Transport, T: Target<TX>> {
+    pub target: T,
     pub connections: Vec<Connection<TX>>,
     pub time: u64,
     pub block_tree: BTreeMap<BlockHash, (Block, u32)>,
@@ -76,10 +77,8 @@ pub struct GenericScenario<TX: Transport, T: Target<TX>> {
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
-impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacterization, TX, T>
-    for GenericScenario<TX, T>
-{
-    fn new(target: &mut T) -> Result<Self, String> {
+impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
+    fn from_target(mut target: T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
 
         let mut time = genesis_block.header.time as u64;
@@ -156,22 +155,28 @@ impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacteriz
         }
 
         Ok(Self {
+            target,
             time,
             connections,
             block_tree,
             _phantom: std::marker::PhantomData,
         })
     }
+}
 
-    fn run(
-        &mut self,
-        target: &mut T,
-        testcase: TestCase,
-    ) -> ScenarioResult<IgnoredCharacterization> {
+impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacterization>
+    for GenericScenario<TX, T>
+{
+    fn new(args: &[String]) -> Result<Self, String> {
+        let target = T::from_path(&args[1])?;
+        Self::from_target(target)
+    }
+
+    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         for action in testcase.actions {
             match action {
                 Action::Connect { connection_type: _ } => {
-                    //if let Ok(connection) = target.connect(connection_type) {
+                    //if let Ok(connection) = self.target.connect(connection_type) {
                     //    self.connections.push(connection);
                     //}
                 }
@@ -192,11 +197,11 @@ impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacteriz
                     }
                 }
                 Action::SetMocktime { time } => {
-                    let _ = target.set_mocktime(time);
+                    let _ = self.target.set_mocktime(time);
                 }
                 Action::AdvanceTime { seconds } => {
                     self.time += seconds as u64;
-                    let _ = target.set_mocktime(self.time);
+                    let _ = self.target.set_mocktime(self.time);
                 }
             }
         }
@@ -205,7 +210,7 @@ impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacteriz
             let _ = connection.ping();
         }
 
-        if let Err(e) = target.is_alive() {
+        if let Err(e) = self.target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 

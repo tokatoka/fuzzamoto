@@ -54,6 +54,16 @@ pub struct RecorderTarget<T> {
 }
 
 impl<T> Target<RecordingTransport> for RecorderTarget<T> {
+    fn from_path(_exe_path: &str) -> Result<Self, String> {
+        Ok(Self {
+            actions: Vec::new(),
+            sent_messages: HashMap::new(),
+            snapshot_instant: None,
+            transport_port: BASE_PORT,
+            _phantom: std::marker::PhantomData,
+        })
+    }
+
     fn connect(
         &mut self,
         connection_type: ConnectionType,
@@ -91,16 +101,6 @@ impl<T> Target<RecordingTransport> for RecorderTarget<T> {
 }
 
 impl<T> RecorderTarget<T> {
-    pub fn new(_exe_path: &str) -> Result<Self, String> {
-        Ok(Self {
-            actions: Vec::new(),
-            sent_messages: HashMap::new(),
-            snapshot_instant: None,
-            transport_port: BASE_PORT,
-            _phantom: std::marker::PhantomData,
-        })
-    }
-
     pub fn take_snapshot(&mut self) {
         self.snapshot_instant = Some(std::time::Instant::now());
     }

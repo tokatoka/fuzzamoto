@@ -1,7 +1,6 @@
 use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
-    runners::Runner,
     scenarios::{
         IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
     },
@@ -201,11 +200,11 @@ impl<TX: Transport, T: Target<TX>> CompactBlocksScenario<TX, T> {
     }
 }
 
-impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterization, TX, T>
+impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterization>
     for CompactBlocksScenario<TX, T>
 {
-    fn new(target: &mut T) -> Result<Self, String> {
-        let inner = GenericScenario::new(target)?;
+    fn new(args: &[String]) -> Result<Self, String> {
+        let inner = GenericScenario::new(args)?;
 
         Ok(Self {
             inner,
@@ -213,11 +212,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
         })
     }
 
-    fn run(
-        &mut self,
-        target: &mut T,
-        testcase: TestCase,
-    ) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         let mut prevs: Vec<(u32, BlockHash, bitcoin::OutPoint)> = self
             .inner
             .block_tree
@@ -315,7 +310,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
                 }
                 Action::AdvanceTime { seconds } => {
                     self.inner.time += seconds as u64;
-                    let _ = target.set_mocktime(self.inner.time);
+                    let _ = self.inner.target.set_mocktime(self.inner.time);
                 }
             }
         }
@@ -324,7 +319,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
             let _ = connection.ping();
         }
 
-        if let Err(e) = target.is_alive() {
+        if let Err(e) = self.inner.target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
@@ -332,4 +327,17 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
     }
 }
 
-fuzzamoto_main!(CompactBlocksScenario, BitcoinCoreTarget, TestCase);
+#[cfg(feature = "record")]
+fuzzamoto_main!(
+    CompactBlocksScenario::<
+        fuzzamoto::connections::RecordingTransport,
+        fuzzamoto::targets::RecorderTarget<fuzzamoto::connections::RecordingTransport>,
+    >,
+    TestCase
+);
+
+#[cfg(not(feature = "record"))]
+fuzzamoto_main!(
+    CompactBlocksScenario::<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>,
+    TestCase
+);

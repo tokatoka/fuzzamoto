@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+record = []
+
 [dependencies]
 fuzzamoto = { path = "../fuzzamoto" }
 bitcoin = "0.32.0"

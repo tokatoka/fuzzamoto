@@ -1,9 +1,7 @@
 use fuzzamoto::{
-    connections::{RecordingTransport, V1Transport},
     fuzzamoto_main,
-    runners::Runner,
     scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
-    targets::{BitcoinCoreTarget, RecorderTarget, Target},
+    targets::{BitcoinCoreTarget, Target},
 };
 
 use arbitrary::{Arbitrary, Unstructured};
@@ -193,18 +191,16 @@ impl RpcParamPool {
 /// Testcases simulate the processing of a series of RPCs by the Bitcoin Core node. Each RPC is
 /// given parameters either from the fuzz input or from the `RpcParamPool` (collection of params
 /// returned by previously called RPCs).
-struct RpcScenario<TX, T> {
-    _phantom: std::marker::PhantomData<(TX, T)>,
-
+struct RpcScenario {
+    target: BitcoinCoreTarget,
     param_pool: RpcParamPool,
 
     available_rpcs: Vec<String>,
 }
 
-impl<'a> Scenario<'a, TestCase, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
-    for RpcScenario<V1Transport, BitcoinCoreTarget>
-{
-    fn new(target: &mut BitcoinCoreTarget) -> Result<Self, String> {
+impl<'a> Scenario<'a, TestCase, IgnoredCharacterization> for RpcScenario {
+    fn new(args: &[String]) -> Result<Self, String> {
+        let target = BitcoinCoreTarget::from_path(&args[1])?;
         // Remove the default wallet, so the test may create it
         let _ = target
             .node
@@ -393,17 +389,13 @@ impl<'a> Scenario<'a, TestCase, IgnoredCharacterization, V1Transport, BitcoinCor
         // TODO: get rid of hardcoded list above, without invalidating the existing seeds
 
         Ok(Self {
-            _phantom: std::marker::PhantomData,
+            target,
             param_pool: RpcParamPool::new(),
             available_rpcs,
         })
     }
 
-    fn run(
-        &mut self,
-        target: &mut BitcoinCoreTarget,
-        input: TestCase,
-    ) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         for rpc_call in input.rpc_calls {
             // Convert the rpc parameters given by the fuzzer into `serde_json::Value`s. This may
             // either result in params interpreted from the fuzz input or taken from the
@@ -415,7 +407,8 @@ impl<'a> Scenario<'a, TestCase, IgnoredCharacterization, V1Transport, BitcoinCor
 
             log::info!("{} {:?}", rpc_name, params);
 
-            let Ok(result) = target
+            let Ok(result) = self
+                .target
                 .node
                 .client
                 .call::<serde_json::Value>(rpc_name, &params)
@@ -430,36 +423,16 @@ impl<'a> Scenario<'a, TestCase, IgnoredCharacterization, V1Transport, BitcoinCor
             self.param_pool.add_rpc_result(result);
         }
 
-        if let Err(e) = target.is_alive() {
+        if let Err(e) = self.target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
         ScenarioResult::Ok(IgnoredCharacterization)
     }
 }
-
-// `RpcScenario` is specific to the `BitcoinCoreTarget` and does not allow for recording.
-// This specialisation is a nop scenario for recording.
-impl<'a>
-    Scenario<
-        'a,
-        TestCase,
-        IgnoredCharacterization,
-        RecordingTransport,
-        RecorderTarget<BitcoinCoreTarget>,
-    > for RpcScenario<RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
-{
-    fn new(_target: &mut RecorderTarget<BitcoinCoreTarget>) -> Result<Self, String> {
-        Err("Not implemented".to_string())
-    }
-
-    fn run(
-        &mut self,
-        _target: &mut RecorderTarget<BitcoinCoreTarget>,
-        _input: TestCase,
-    ) -> ScenarioResult<IgnoredCharacterization> {
-        ScenarioResult::Ok(IgnoredCharacterization)
-    }
+#[cfg(feature = "record")]
+fn main() {
+    panic!("Rpc scenario can't be recorded");
 }
-
-fuzzamoto_main!(RpcScenario, BitcoinCoreTarget, TestCase);
+#[cfg(not(feature = "record"))]
+fuzzamoto_main!(RpcScenario, TestCase);

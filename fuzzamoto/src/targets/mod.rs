@@ -7,7 +7,10 @@ use crate::connections::{Connection, ConnectionType, Transport};
 
 /// `Target` is the interface that the test harness will use to interact with the target Bitcoin
 /// implementation (e.g. Bitcoin Core, btcd, etc).
-pub trait Target<T: Transport> {
+pub trait Target<T: Transport>: Sized {
+    /// Create target from path to executable.
+    fn from_path(path: &str) -> Result<Self, String>;
+
     /// Create a new network connection to the target.
     ///
     /// # Arguments

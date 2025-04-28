@@ -20,7 +20,22 @@ impl Drop for BitcoinCoreTarget {
 }
 
 impl BitcoinCoreTarget {
-    pub fn new(exe_path: &str) -> Result<Self, String> {
+    fn create_listener() -> Result<(TcpListener, u16), String> {
+        // Bind to port 0 to let the OS assign a random available port
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .map_err(|e| format!("Failed to create TCP listener: {}", e))?;
+
+        let port = listener
+            .local_addr()
+            .map_err(|e| format!("Failed to get listener address: {}", e))?
+            .port();
+
+        Ok((listener, port))
+    }
+}
+
+impl Target<V1Transport> for BitcoinCoreTarget {
+    fn from_path(exe_path: &str) -> Result<Self, String> {
         let mut config = Conf::default();
         config.tmpdir = None;
         config.staticdir = None;
@@ -57,21 +72,6 @@ impl BitcoinCoreTarget {
         })
     }
 
-    fn create_listener() -> Result<(TcpListener, u16), String> {
-        // Bind to port 0 to let the OS assign a random available port
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .map_err(|e| format!("Failed to create TCP listener: {}", e))?;
-
-        let port = listener
-            .local_addr()
-            .map_err(|e| format!("Failed to get listener address: {}", e))?
-            .port();
-
-        Ok((listener, port))
-    }
-}
-
-impl Target<V1Transport> for BitcoinCoreTarget {
     fn connect(
         &mut self,
         connection_type: ConnectionType,

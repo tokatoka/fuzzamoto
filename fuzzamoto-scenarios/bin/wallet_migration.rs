@@ -1,11 +1,10 @@
 use fuzzamoto::{
-    connections::{RecordingTransport, Transport, V1Transport},
+    connections::{Transport, V1Transport},
     fuzzamoto_main,
-    runners::Runner,
     scenarios::{
         IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
     },
-    targets::{BitcoinCoreTarget, RecorderTarget, Target},
+    targets::{BitcoinCoreTarget, Target},
 };
 
 use std::io::Write;
@@ -24,22 +23,23 @@ impl<'a> ScenarioInput<'a> for WalletDotDatBytes<'a> {
 /// Testcases represent wallet.dat files to be migrated. All the scenario does is place the given
 /// wallet.dat file in the default wallet directory and call the `migratewallet` RPC command.
 struct WalletMigrationScenario<TX: Transport, T: Target<TX>> {
-    _inner: GenericScenario<TX, T>,
+    inner: GenericScenario<TX, T>,
     wallet_path: PathBuf,
 }
 
-impl<'a>
-    Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
+impl<'a> Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization>
     for WalletMigrationScenario<V1Transport, BitcoinCoreTarget>
 {
-    fn new(target: &mut BitcoinCoreTarget) -> Result<Self, String> {
-        let inner = GenericScenario::new(target)?;
+    fn new(args: &[String]) -> Result<Self, String> {
+        let inner = GenericScenario::<V1Transport, BitcoinCoreTarget>::new(args)?;
 
-        let _ = target
+        let _ = inner
+            .target
             .node
             .client
             .call::<serde_json::Value>("unloadwallet", &["default".into()]);
-        let wallet_path = target
+        let wallet_path = inner
+            .target
             .node
             .workdir()
             .join("regtest")
@@ -48,29 +48,27 @@ impl<'a>
         let _ = std::fs::remove_dir_all(&wallet_path);
 
         Ok(Self {
-            _inner: inner,
+            inner,
             wallet_path: wallet_path.join("wallet.dat"),
         })
     }
 
-    fn run(
-        &mut self,
-        target: &mut BitcoinCoreTarget,
-        input: WalletDotDatBytes,
-    ) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, input: WalletDotDatBytes) -> ScenarioResult<IgnoredCharacterization> {
         let _ = std::fs::create_dir_all(self.wallet_path.parent().unwrap());
 
         if let Ok(mut wallet_file) = std::fs::File::create(&self.wallet_path) {
             let _ = wallet_file.write_all(&input.0);
             let _ = wallet_file.flush();
 
-            let _ = target
+            let _ = self
+                .inner
+                .target
                 .node
                 .client
                 .call::<serde_json::Value>("migratewallet", &["default".into()]);
         }
 
-        if let Err(e) = target.is_alive() {
+        if let Err(e) = self.inner.target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
@@ -78,37 +76,12 @@ impl<'a>
     }
 }
 
-// `WalletMigrationScenario` is specific to the `BitcoinCoreTarget` and does not allow for recording.
-// This specialisation is a nop scenario for recording.
-impl<'a>
-    Scenario<
-        'a,
-        WalletDotDatBytes<'a>,
-        IgnoredCharacterization,
-        RecordingTransport,
-        RecorderTarget<BitcoinCoreTarget>,
-    > for WalletMigrationScenario<RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
-{
-    fn new(target: &mut RecorderTarget<BitcoinCoreTarget>) -> Result<Self, String> {
-        let inner = GenericScenario::new(target)?;
-
-        Ok(Self {
-            _inner: inner,
-            wallet_path: PathBuf::new(),
-        })
-    }
-
-    fn run(
-        &mut self,
-        _target: &mut RecorderTarget<BitcoinCoreTarget>,
-        _input: WalletDotDatBytes,
-    ) -> ScenarioResult<IgnoredCharacterization> {
-        ScenarioResult::Ok(IgnoredCharacterization)
-    }
+#[cfg(feature = "record")]
+fn main() {
+    panic!("Wallet migration scenario can't be recorded");
 }
-
+#[cfg(not(feature = "record"))]
 fuzzamoto_main!(
-    WalletMigrationScenario,
-    BitcoinCoreTarget,
+    WalletMigrationScenario::<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>,
     WalletDotDatBytes
 );

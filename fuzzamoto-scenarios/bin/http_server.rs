@@ -1,9 +1,8 @@
 use fuzzamoto::{
-    connections::{RecordingTransport, V1Transport},
+    connections::V1Transport,
     fuzzamoto_main,
-    runners::Runner,
     scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
-    targets::{BitcoinCoreTarget, RecorderTarget, Target},
+    targets::{BitcoinCoreTarget, Target},
 };
 
 use arbitrary::{Arbitrary, Unstructured};
@@ -46,23 +45,21 @@ impl<'a> ScenarioInput<'a> for TestCase<'a> {
 /// 2. Send a message to the HTTP server from a specific connection
 /// 3. Disconnect one of the existing connections
 struct HttpServerScenario<TX, T> {
+    target: BitcoinCoreTarget,
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
-impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization, V1Transport, BitcoinCoreTarget>
+impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization>
     for HttpServerScenario<V1Transport, BitcoinCoreTarget>
 {
-    fn new(_target: &mut BitcoinCoreTarget) -> Result<Self, String> {
+    fn new(args: &[String]) -> Result<Self, String> {
         Ok(Self {
+            target: BitcoinCoreTarget::from_path(&args[1])?,
             _phantom: std::marker::PhantomData,
         })
     }
 
-    fn run(
-        &mut self,
-        target: &mut BitcoinCoreTarget,
-        input: TestCase,
-    ) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
         let mut connections = HashMap::new();
         let mut next_connection_id = 1u64;
 
@@ -74,7 +71,7 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization, V1Transport, Bitcoi
                         continue;
                     }
 
-                    let Ok(stream) = TcpStream::connect(target.node.params.rpc_socket) else {
+                    let Ok(stream) = TcpStream::connect(self.target.node.params.rpc_socket) else {
                         return ScenarioResult::Fail(format!("Failed to connect to the target"));
                     };
                     let _ = stream.set_nodelay(true);
@@ -96,7 +93,7 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization, V1Transport, Bitcoi
             }
         }
 
-        if let Err(e) = target.is_alive() {
+        if let Err(e) = self.target.is_alive() {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
@@ -104,30 +101,9 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization, V1Transport, Bitcoi
     }
 }
 
-// `HttpServerScenario` is specific to the `BitcoinCoreTarget` and does not allow for recording.
-// This specialisation is a nop scenario for recording.
-impl<'a>
-    Scenario<
-        'a,
-        TestCase<'a>,
-        IgnoredCharacterization,
-        RecordingTransport,
-        RecorderTarget<BitcoinCoreTarget>,
-    > for HttpServerScenario<RecordingTransport, RecorderTarget<BitcoinCoreTarget>>
-{
-    fn new(_target: &mut RecorderTarget<BitcoinCoreTarget>) -> Result<Self, String> {
-        Ok(Self {
-            _phantom: std::marker::PhantomData,
-        })
-    }
-
-    fn run(
-        &mut self,
-        _target: &mut RecorderTarget<BitcoinCoreTarget>,
-        _input: TestCase,
-    ) -> ScenarioResult<IgnoredCharacterization> {
-        ScenarioResult::Ok(IgnoredCharacterization)
-    }
+#[cfg(feature = "record")]
+fn main() {
+    panic!("Http server scenario can't be recorded");
 }
-
-fuzzamoto_main!(HttpServerScenario, BitcoinCoreTarget, TestCase);
+#[cfg(not(feature = "record"))]
+fuzzamoto_main!(HttpServerScenario<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>, TestCase);

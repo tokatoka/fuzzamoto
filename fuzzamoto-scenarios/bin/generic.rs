@@ -1,6 +1,5 @@
 use fuzzamoto::{
     fuzzamoto_main,
-    runners::Runner,
     scenarios::{
         Scenario, ScenarioInput, ScenarioResult,
         generic::{GenericScenario, TestCase},
@@ -8,4 +7,13 @@ use fuzzamoto::{
     targets::BitcoinCoreTarget,
 };
 
-fuzzamoto_main!(GenericScenario, BitcoinCoreTarget, TestCase);
+#[cfg(feature = "record")]
+fn main() {
+    panic!("Generic scenario can't be recorded");
+}
+
+#[cfg(not(feature = "record"))]
+fuzzamoto_main!(
+    GenericScenario::<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>,
+    TestCase
+);
