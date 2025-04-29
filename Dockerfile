@@ -85,8 +85,10 @@ RUN sed -i --regexp-extended '/.*rm -rf .*extract_dir.*/d' ./bitcoin/depends/fun
       -j$(nproc)
 
 COPY ./target-patches/bitcoin-core-rng.patch bitcoin/
+COPY ./target-patches/remove_fcf_protection.patch bitcoin/
 RUN cd bitcoin/ && \
-      git apply bitcoin-core-rng.patch
+      git apply bitcoin-core-rng.patch && \
+      git apply remove_fcf_protection.patch
 
 RUN cd bitcoin/ && cmake -B build_fuzz \
       --toolchain ./depends/$(./depends/config.guess)/toolchain.cmake \

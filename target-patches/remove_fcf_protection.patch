@@ -1,0 +1,12 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 99490f742a..2df65629a0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -527,7 +527,6 @@ else()
+ 
+   try_append_cxx_flags("-Wstack-protector" TARGET core_interface SKIP_LINK)
+   try_append_cxx_flags("-fstack-protector-all" TARGET core_interface)
+-  try_append_cxx_flags("-fcf-protection=full" TARGET core_interface)
+ 
+   if(MINGW)
+     # stack-clash-protection is a no-op for Windows.
