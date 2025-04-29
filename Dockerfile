@@ -90,11 +90,8 @@ RUN cd bitcoin/ && \
 
 RUN cd bitcoin/ && cmake -B build_fuzz \
       --toolchain ./depends/$(./depends/config.guess)/toolchain.cmake \
-      -DSANITIZERS="address" \
       -DAPPEND_CPPFLAGS="-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION" \
-      -DAPPEND_CFLAGS="-fcf-protection=none" \
-      -DAPPEND_CXXFLAGS="-fcf-protection=none" \
-      -DAPPEND_LDFLAGS="-fcf-protection=none"
+      -DAPPEND_LDFLAGS="-fuse-ld=lld-${LLVM_V}"
 
 RUN cmake --build bitcoin/build_fuzz -j$(nproc) --target bitcoind
 
