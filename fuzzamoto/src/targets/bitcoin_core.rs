@@ -4,7 +4,9 @@ use crate::{
 };
 
 use corepc_node::{Conf, Node, P2P};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddrV4, TcpListener, TcpStream};
+
+use super::ConnectableTarget;
 
 pub struct BitcoinCoreTarget {
     pub node: Node,
@@ -153,5 +155,31 @@ Can you-"#
             .map_err(|e| format!("Failed to sync with validation interface queue: {:?}", e))?;
 
         Ok(())
+    }
+
+    fn connect_to<O: ConnectableTarget>(&mut self, other: &O) -> Result<(), String> {
+        if let Some(addr) = other.get_addr() {
+            self.node
+                .client
+                .call::<serde_json::Value>(
+                    "addconnection",
+                    &[
+                        format!("{:?}", addr).into(),
+                        "outbound-full-relay".into(),
+                        false.into(), // no v2
+                    ],
+                )
+                .map_err(|e| format!("Failed to initiate outbound connection: {:?}", e))?;
+        } else {
+            return Err("Other node does not have a valid address".to_string());
+        }
+
+        Ok(())
+    }
+}
+
+impl ConnectableTarget for BitcoinCoreTarget {
+    fn get_addr(&self) -> Option<SocketAddrV4> {
+        self.node.params.p2p_socket.clone()
     }
 }

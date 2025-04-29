@@ -12,6 +12,8 @@ use std::net;
 use std::rc::Rc;
 use std::{cell::RefCell, str::FromStr};
 
+use super::ConnectableTarget;
+
 const BASE_PORT: u16 = 1337;
 
 #[derive(Clone, Debug)]
@@ -96,6 +98,10 @@ impl<T> Target<RecordingTransport> for RecorderTarget<T> {
     }
 
     fn is_alive(&self) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn connect_to<O: ConnectableTarget>(&mut self, _other: &O) -> Result<(), String> {
         Ok(())
     }
 }
