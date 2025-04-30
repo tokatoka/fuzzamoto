@@ -1,5 +1,5 @@
 use crate::{
-    connections::{Connection, ConnectionType, Transport},
+    connections::{Connection, ConnectionType, HandshakeOpts, Transport},
     dictionaries::{Dictionary, FileDictionary},
     scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
     targets::Target,
@@ -85,19 +85,74 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         target.set_mocktime(time)?;
 
         let mut connections = vec![
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Outbound)?,
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Inbound)?,
-            target.connect(ConnectionType::Inbound)?,
+            (
+                target.connect(ConnectionType::Outbound)?,
+                true,
+                true,
+                true,
+                false,
+            ),
+            (
+                target.connect(ConnectionType::Outbound)?,
+                true,
+                true,
+                false,
+                true,
+            ),
+            (
+                target.connect(ConnectionType::Outbound)?,
+                true,
+                false,
+                true,
+                true,
+            ),
+            (
+                target.connect(ConnectionType::Outbound)?,
+                false,
+                false,
+                true,
+                false,
+            ),
+            (
+                target.connect(ConnectionType::Inbound)?,
+                true,
+                true,
+                true,
+                true,
+            ),
+            (
+                target.connect(ConnectionType::Inbound)?,
+                true,
+                true,
+                false,
+                true,
+            ),
+            (
+                target.connect(ConnectionType::Inbound)?,
+                true,
+                false,
+                true,
+                true,
+            ),
+            (
+                target.connect(ConnectionType::Inbound)?,
+                false,
+                false,
+                true,
+                false,
+            ),
         ];
 
         let mut send_compact = false;
-        for connection in connections.iter_mut() {
-            connection.version_handshake(time as i64, true, 0)?;
+        for (connection, relay, wtxidrelay, addrv2, erlay) in connections.iter_mut() {
+            connection.version_handshake(HandshakeOpts {
+                time: time as i64,
+                relay: true,
+                starting_height: 0,
+                wtxidrelay: true,
+                addrv2: true,
+                erlay: true,
+            })?;
             let sendcmpct = NetworkMessage::SendCmpct(SendCmpct {
                 version: 2,
                 send_compact,
@@ -118,7 +173,9 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
             let block = test_utils::mining::mine_block(prev_hash, height as u32, time as u32)?;
 
             // Send block to the first connection
-            connections[0].send(&("block".to_string(), encode::serialize(&block)))?;
+            connections[0]
+                .0
+                .send(&("block".to_string(), encode::serialize(&block)))?;
 
             target.set_mocktime(time as u64)?;
 
@@ -144,12 +201,12 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         let result = String::from_utf8(output.into_inner()).unwrap();
         println!("{}", result);
 
-        for connection in connections.iter_mut() {
+        for (connection, _, _, _, _) in connections.iter_mut() {
             connection.ping()?;
         }
 
         // Announce the tip on all connections
-        for connection in connections.iter_mut() {
+        for (connection, _, _, _, _) in connections.iter_mut() {
             let inv = NetworkMessage::Inv(vec![Inventory::Block(prev_hash)]);
             connection.send_and_ping(&("inv".to_string(), encode::serialize(&inv)))?;
         }
@@ -157,7 +214,7 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         Ok(Self {
             target,
             time,
-            connections,
+            connections: connections.drain(..).map(|(c, _, _, _, _)| c).collect(),
             block_tree,
             _phantom: std::marker::PhantomData,
         })

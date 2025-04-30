@@ -13,7 +13,7 @@ use bitcoin_hashes::sha256;
 // Consists of OP_RETURN, OP_PUSHBYTES_36, and four "witness header" bytes.
 const WITNESS_COMMITMENT_MAGIC: [u8; 6] = [0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
 
-fn create_witness_commitment_output(witness_merkle_root: WitnessMerkleNode) -> TxOut {
+pub fn create_witness_commitment_output(witness_merkle_root: WitnessMerkleNode) -> TxOut {
     let commitment = Block::compute_witness_commitment(&witness_merkle_root, &[0u8; 32]);
 
     let mut script_pubkey: Vec<u8> = WITNESS_COMMITMENT_MAGIC.to_vec();
@@ -25,7 +25,7 @@ fn create_witness_commitment_output(witness_merkle_root: WitnessMerkleNode) -> T
     }
 }
 
-fn find_witness_commitment_output(coinbase: &Transaction) -> Option<usize> {
+pub fn find_witness_commitment_output(coinbase: &Transaction) -> Option<usize> {
     for (i, output) in coinbase.output.iter().enumerate() {
         if output.script_pubkey.len() >= 38
             && output.script_pubkey.as_bytes()[0..6] == WITNESS_COMMITMENT_MAGIC

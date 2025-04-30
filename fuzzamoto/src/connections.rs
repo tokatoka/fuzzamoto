@@ -193,6 +193,16 @@ impl<T: Transport> Connection<T> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct HandshakeOpts {
+    pub time: i64,
+    pub relay: bool,
+    pub starting_height: i32,
+    pub wtxidrelay: bool,
+    pub addrv2: bool,
+    pub erlay: bool,
+}
+
 impl<T: Transport> Connection<T> {
     fn send_ping(&mut self, nonce: u64) -> Result<(), String> {
         let ping_message = ("ping".to_string(), nonce.to_le_bytes().to_vec());
@@ -240,26 +250,21 @@ impl<T: Transport> Connection<T> {
         Ok(())
     }
 
-    pub fn version_handshake(
-        &mut self,
-        time: i64,
-        relay: bool,
-        starting_height: i32,
-    ) -> Result<(), String> {
+    pub fn version_handshake(&mut self, opts: HandshakeOpts) -> Result<(), String> {
         let socket_addr = self.transport.local_addr().unwrap();
 
         let mut version_message = VersionMessage::new(
             ServiceFlags::NETWORK | ServiceFlags::WITNESS,
-            time,
+            opts.time,
             Address::new(&socket_addr, ServiceFlags::NONE),
             Address::new(&socket_addr, ServiceFlags::NONE),
             0xdeadbeef,
             String::from("fuzzamoto"),
-            starting_height,
+            opts.starting_height,
         );
 
         version_message.version = 70016; // wtxidrelay version
-        version_message.relay = relay;
+        version_message.relay = opts.relay;
 
         if self.connection_type == ConnectionType::Outbound {
             loop {
@@ -278,8 +283,21 @@ impl<T: Transport> Connection<T> {
         self.transport
             .send(&("version".to_string(), version_bytes))?;
 
-        // Send wtxidrelay
-        self.transport.send(&("wtxidrelay".to_string(), vec![]))?;
+        // Send optional features if configured
+        if opts.wtxidrelay {
+            self.transport.send(&("wtxidrelay".to_string(), vec![]))?;
+        }
+        if opts.addrv2 {
+            self.transport.send(&("sendaddrv2".to_string(), vec![]))?;
+        }
+        if opts.erlay {
+            let version = 1u32;
+            let salt = 0u64;
+            let mut bytes = Vec::new();
+            version.consensus_encode(&mut bytes).unwrap();
+            salt.consensus_encode(&mut bytes).unwrap();
+            self.transport.send(&("sendtxrcncl".to_string(), bytes))?;
+        }
 
         // Send verack
         self.transport.send(&("verack".to_string(), vec![]))?;

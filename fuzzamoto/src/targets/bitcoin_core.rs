@@ -3,14 +3,16 @@ use crate::{
     targets::Target,
 };
 
+use bitcoin::hashes::Hash;
 use corepc_node::{Conf, Node, P2P};
 use std::net::{SocketAddrV4, TcpListener, TcpStream};
 
-use super::ConnectableTarget;
+use super::{ConnectableTarget, HasMempool, HasTipHash};
 
 pub struct BitcoinCoreTarget {
     pub node: Node,
     listeners: Vec<TcpListener>,
+    time: u64,
 }
 
 // Gently stop the node when the target is dropped, if we are not using nyx.
@@ -63,6 +65,10 @@ impl Target<V1Transport> for BitcoinCoreTarget {
             "-keypool=10",
             "-listenonion=0",
             "-i2pacceptincoming=0",
+            "-maxmempool=5", // 5MB
+            "-dbcache=4",    // 4MiB
+            "-datacarriersize=1000000",
+            "-peertimeout=8223372036854775807",
         ]);
 
         let node = Node::with_conf(exe_path, &config)
@@ -71,6 +77,7 @@ impl Target<V1Transport> for BitcoinCoreTarget {
         Ok(Self {
             node,
             listeners: Vec::new(),
+            time: u64::MAX,
         })
     }
 
@@ -129,6 +136,13 @@ impl Target<V1Transport> for BitcoinCoreTarget {
 
     fn set_mocktime(&mut self, time: u64) -> Result<(), String> {
         let client = &self.node.client;
+
+        if self.time != u64::MAX && time > self.time {
+            // Mock the scheduler forward if we're advancing in time
+            let delta = (time - self.time).min(3600);
+            let _ = client.call::<()>("mockscheduler", &[delta.into()]);
+        }
+        self.time = time;
         client
             .call::<()>("setmocktime", &[time.into()])
             .map_err(|e| format!("Failed to set mocktime: {:?}", e))
@@ -183,3 +197,25 @@ impl ConnectableTarget for BitcoinCoreTarget {
         self.node.params.p2p_socket.clone()
     }
 }
+
+impl HasMempool for BitcoinCoreTarget {
+    fn get_mempool(&self) -> Option<serde_json::Value> {
+        self.node
+            .client
+            .call::<serde_json::Value>("getrawmempool", &[true.into()])
+            .ok()
+    }
+}
+
+impl HasTipHash for BitcoinCoreTarget {
+    fn get_tip_hash(&self) -> Option<[u8; 32]> {
+        match self.node.client.get_best_block_hash() {
+            Ok(result) => result
+                .block_hash()
+                .ok()
+                .map(|h| h.as_raw_hash().as_byte_array().clone()),
+            Err(_) => None,
+        }
+    }
+}
+

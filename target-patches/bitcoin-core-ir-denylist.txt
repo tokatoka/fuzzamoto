@@ -1,0 +1,33 @@
+# Bitcoin Core instrumentation deny list for the IR scenario.
+#
+# Goal: reduce instrumentation to the p2p reachable code.
+
+src:*/rpc/*
+src:*/qt/*
+src:*/ipc/*
+src:*/wallet/*
+src:*/univalue/*
+src:*libevent/*
+src:*sqlite/*
+
+httpserver.h
+httpserver.cpp
+httprpc.h
+httprpc.cpp
+rest.cpp
+rest.h
+descriptor.h
+descriptor.cpp
+miniscript.h
+miniscript.cpp
+psbt.cpp
+psbt.h
+core_read.cpp
+core_write.cpp
+bech32.cpp
+bech32.h
+i2p.cpp
+torcontrol.h
+torcontrol.cpp
+
+# TODO: there should be plenty more source files or functions that can be added here.
