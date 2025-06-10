@@ -77,7 +77,7 @@ ENV CXX=$PWD/AFLplusplus/afl-clang-fast++
 ENV LD=$PWD/AFLplusplus/afl-clang-fast
 
 ENV SOURCES_PATH=/tmp/bitcoin-depends
-RUN make -C bitcoin/depends NO_QT=1 NO_BDB=1 NO_ZMQ=1 NO_UPNP=1 NO_NATPMP=1 NO_USDT=1 download-linux SOURCES_PATH=$SOURCES_PATH
+RUN make -C bitcoin/depends NO_QT=1 NO_ZMQ=1 NO_USDT=1 download-linux SOURCES_PATH=$SOURCES_PATH
 # Keep extracted source 
 RUN sed -i --regexp-extended '/.*rm -rf .*extract_dir.*/d' ./bitcoin/depends/funcs.mk && \
     make -C ./bitcoin/depends DEBUG=1 NO_QT=1 NO_BDB=1 NO_ZMQ=1 NO_USDT=1 \
