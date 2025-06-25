@@ -21,7 +21,7 @@ The rough architecture when fuzzing with fuzzamoto looks as follows:
        │                                                     │ 
        │                                                     │ 
        │                                                     │ 
-┌──────┼──────────── Virtural Machine ──────────────────┐    │ 
+┌──────┼──────────── Virtual Machine ───────────────────┐    │ 
 │      │                                                │    │ 
 │ ┌────┼─────┐                            ┌───────────┐ │    │ 
 │ │ Scenario │◄───────p2p/rpc/...────────►│ Full Node │ │    No
