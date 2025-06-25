@@ -1,20 +1,20 @@
 pub mod advance_time;
+pub mod block;
+pub mod compact_filters;
 pub mod getdata;
 pub mod send_raw_message;
 pub mod tx;
 pub mod txo;
 pub mod witness;
-pub mod block;
-pub mod compact_filters;
 
 pub use advance_time::*;
+pub use block::*;
+pub use compact_filters::*;
 pub use getdata::*;
 pub use send_raw_message::*;
 pub use tx::*;
 pub use txo::*;
 pub use witness::*;
-pub use block::*;
-pub use compact_filters::*;
 
 use crate::{InstructionContext, ProgramBuilder, ProgramContext, ProgramValidationError};
 use rand::RngCore;

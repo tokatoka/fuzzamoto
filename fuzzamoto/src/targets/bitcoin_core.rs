@@ -218,4 +218,3 @@ impl HasTipHash for BitcoinCoreTarget {
         }
     }
 }
-

@@ -1,6 +1,6 @@
+pub mod block;
 pub mod cutting;
 pub mod nopping;
-pub mod block;
 
 use crate::Program;
 
@@ -11,4 +11,3 @@ pub trait Minimizer: Iterator<Item = Program> {
     /// Report failed minimization
     fn failure(&mut self);
 }
-
