@@ -74,7 +74,6 @@ RUN git clone --depth 1 --branch $BRANCH https://github.com/$OWNER/$REPO.git
 
 ENV CC=$PWD/AFLplusplus/afl-clang-fast
 ENV CXX=$PWD/AFLplusplus/afl-clang-fast++
-ENV LD=$PWD/AFLplusplus/afl-clang-fast
 
 ENV SOURCES_PATH=/tmp/bitcoin-depends
 RUN make -C bitcoin/depends NO_QT=1 NO_ZMQ=1 NO_USDT=1 download-linux SOURCES_PATH=$SOURCES_PATH
@@ -88,7 +87,7 @@ RUN sed -i --regexp-extended '/.*rm -rf .*extract_dir.*/d' ./bitcoin/depends/fun
 COPY ./target-patches/bitcoin-core-rng.patch bitcoin/
 
 RUN cd bitcoin/ && \
-      git apply bitcoin-core-rng.patch
+      git apply bitcoin-core-aggressive-rng.patch
 
 RUN cd bitcoin/ && cmake -B build_fuzz \
       --toolchain ./depends/$(./depends/config.guess)/toolchain.cmake \
@@ -98,9 +97,8 @@ RUN cd bitcoin/ && cmake -B build_fuzz \
 
 RUN cmake --build bitcoin/build_fuzz -j$(nproc) --target bitcoind
 
-ENV CC=
-ENV CXX=
-ENV LD=
+ENV CC=clang-${LLVM_V}
+ENV CXX=clang++-${LLVM_V}
 
 WORKDIR /fuzzamoto/fuzzamoto-nyx-sys
 COPY ./fuzzamoto-nyx-sys/Cargo.toml .
@@ -115,10 +113,17 @@ WORKDIR /fuzzamoto/fuzzamoto-cli
 COPY ./fuzzamoto-cli/Cargo.toml .
 COPY ./fuzzamoto-cli/src/ src/
 
+WORKDIR /fuzzamoto/fuzzamoto-ir
+COPY ./fuzzamoto-ir/Cargo.toml .
+COPY ./fuzzamoto-ir/src/ src/
+
+WORKDIR /fuzzamoto/fuzzamoto-libafl
+COPY ./fuzzamoto-libafl/Cargo.toml .
+COPY ./fuzzamoto-libafl/src/ src/
+
 WORKDIR /fuzzamoto/fuzzamoto-scenarios
 COPY ./fuzzamoto-scenarios/Cargo.toml .
 COPY ./fuzzamoto-scenarios/bin/ bin/
-COPY ./fuzzamoto-scenarios/grammars/ grammars/
 
 WORKDIR /fuzzamoto
 COPY ./Cargo.toml .
