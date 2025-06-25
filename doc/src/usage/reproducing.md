@@ -7,7 +7,7 @@ the input either through `stdin` or the `FUZZAMOTO_INPUT` environment variable.
 Build all scenarios for reproduction purposes:
 
 ```
-cargo build --release --features reproduce --workspace
+cargo build --release --package fuzzamoto-scenarios --features reproduce
 ```
 
 `--features reproduce` is used to enable features useful for reproduction, e.g.

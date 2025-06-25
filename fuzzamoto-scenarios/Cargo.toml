@@ -7,8 +7,8 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-fuzz = ["reproduce", "nyx"]
-reproduce = ["compile_in_vm", "force_send_and_ping"]
+fuzz = ["compile_in_vm", "force_send_and_ping", "nyx"]
+reproduce = ["compile_in_vm", "force_send_and_ping", "fuzzamoto/reproduce"]
 
 record = []
 nyx = ["dep:fuzzamoto-nyx-sys"]
