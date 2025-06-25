@@ -880,7 +880,7 @@ impl Compiler {
         for (idx, input) in tx_inputs_var.inputs.iter().enumerate() {
             let txo_var = self.get_variable::<Txo>(input.txo_var).unwrap();
             if let Some((operation, input_indices)) = &txo_var.scripts.requires_signing {
-                let private_key = *self.get_variable::<[u8; 32]>(input_indices[1]).unwrap();
+                let private_key = *self.get_variable::<[u8; 32]>(input_indices[0]).unwrap();
                 let sighash_flag = *self.get_variable::<u8>(input_indices[1]).unwrap();
 
                 let mut cache = SighashCache::new(&tx_var.tx);
