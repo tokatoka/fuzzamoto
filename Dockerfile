@@ -125,7 +125,7 @@ COPY ./Cargo.toml .
 RUN mkdir .cargo && cargo vendor > .cargo/config
 
 ENV BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind
-RUN cargo afl build --workspace --verbose --features nyx,reduced_pow --release
+RUN cargo build --workspace --verbose --features fuzz --release
 
 # Build the crash handler
 #   -D_GNU_SOURCE & -ldl for `#include <dlfcn.h>`

@@ -4,15 +4,15 @@ Crashing or other interesting inputs can be reproduced without the snapshotting
 VM, by building the scenario binary without the nyx feature and supplying it
 the input either through `stdin` or the `FUZZAMOTO_INPUT` environment variable.
 
-Ensure scenarios are build without the nyx feature:
+Build all scenarios for reproduction purposes:
 
 ```
-cargo build --release --features inherit_stdout,reduced_pow --workspace
+cargo build --release --features reproduce --workspace
 ```
 
-`--features inherit_stdout` is used to inherit stdout from the target
-application, such that any logs, stack traces, etc. are printed to the
-terminal.
+`--features reproduce` is used to enable features useful for reproduction, e.g.
+inherit stdout from the target application, such that any logs, stack traces,
+etc. are printed to the terminal.
 
 
 ## `http-server` example
@@ -33,7 +33,7 @@ FUZZAMOTO_INPUT=$PWD/testcase.dat RUST_LOG=info ./target/release/scenario-http-s
 
 ## Troubleshooting
 
-* Make sure to not use the nyx feature or else you'll see:
+* Make sure to not use the `nyx` feature or else you'll see:
   ```
   ...
   Segmentation fault (core dumped)
@@ -53,8 +53,9 @@ FUZZAMOTO_INPUT=$PWD/testcase.dat RUST_LOG=info ./target/release/scenario-http-s
 
 * If an input does not reproduce, check that you are compiling with all
   necessary features relevant for your case, such as `compile_in_vm`,
-  `force_send_and_ping` and `reduced_pow` (always recommended). Also check that
-  `bitcoind` was build with all required patches applied (see
+  `force_send_and_ping` and `reduced_pow` (these should all be enabled if
+  compiling with the `reproduce` feature). Also check that `bitcoind` was build
+  with all required patches applied (see
   [target-patches/](https://github.com/dergoegge/fuzzamoto/tree/master/target-patches)
   and [Patches](./target-patches.md)).
 

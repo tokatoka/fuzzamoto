@@ -103,7 +103,7 @@ ENV LD=lld-${LLVM_V}
 #
 # root@abc$ cd /fuzzamoto
 # root@abc$ BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind cargo build --workspace --verbose \
-#                 --features nyx,reduced_pow --release
+#                 --features fuzz --release
 #
 # Then, create the nyx share dir:
 #

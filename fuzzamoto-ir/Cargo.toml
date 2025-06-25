@@ -7,6 +7,9 @@ license.workspace = true
 repository.workspace = true
 
 [features]
+fuzz = ["reduced_pow"]
+reproduce = ["reduced_pow"]
+
 reduced_pow = []
 
 [dependencies]
