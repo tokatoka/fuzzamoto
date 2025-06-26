@@ -84,7 +84,7 @@ RUN sed -i --regexp-extended '/.*rm -rf .*extract_dir.*/d' ./bitcoin/depends/fun
       AR=llvm-ar-${LLVM_V} NM=llvm-nm-${LLVM_V} RANLIB=llvm-ranlib-${LLVM_V} STRIP=llvm-strip-${LLVM_V} \
       -j$(nproc)
 
-COPY ./target-patches/bitcoin-core-rng.patch bitcoin/
+COPY ./target-patches/bitcoin-core-aggressive-rng.patch bitcoin/
 
 RUN cd bitcoin/ && \
       git apply bitcoin-core-aggressive-rng.patch

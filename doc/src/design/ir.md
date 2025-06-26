@@ -65,7 +65,7 @@ execution.
 
 Fuzzamoto IR consists of a sequence of operations that take some input
 variables and produce variables as output. All variables are typed (see
-[variables.rs](https://github.com/dergoegge/fuzzamoto/tree/master/fuzzamoto-ir/src/variables.rs))
+[variable.rs](https://github.com/dergoegge/fuzzamoto/tree/master/fuzzamoto-ir/src/variable.rs))
 and operations expect variables of compatible type. The IR uses static single
 assignement form (SSA), which means every variable in the IR is assigned
 exactly once. SSA helps simplify define-use analysis, type inference and code

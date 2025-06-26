@@ -69,7 +69,7 @@ pub struct FuzzerOptions {
 
     #[arg(
         short = 'r',
-        help = "An input to rerun, instead of starting to fuzz. Will ignore all other settings apart from -d."
+        help = "An input to rerun, instead of starting to fuzz. Will ignore all other settings."
     )]
     pub rerun_input: Option<PathBuf>,
 }
