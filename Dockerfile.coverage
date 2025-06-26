@@ -2,47 +2,28 @@ FROM debian:bookworm
 
 # ------ Coverage for fuzzamoto ------
 
-RUN apt-get update
-
 ARG LLVM_V=19
 
-# Make sure we can install the llvm toolchain
-RUN apt-get install -y software-properties-common
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 15CF4D18AF4F7421
-RUN apt-add-repository "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${LLVM_V} main"
-RUN apt-add-repository "deb-src http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${LLVM_V} main"
-
-# Install deps for Bitcoin Core
-RUN apt-get update && apt-get install -y \
-  ninja-build \
-  libgtk-3-dev \
-  pax-utils \
-  python3-msgpack \
-  python3-jinja2 \
-  curl \
-  lld-${LLVM_V} \
-  llvm-${LLVM_V} \
-  llvm-${LLVM_V}-dev \
-  clang-${LLVM_V} \
-  cpio \
-  git \
-  build-essential \
-  libtool \
-  autotools-dev \
-  automake \
-  cmake \
-  pkg-config \
-  bsdmainutils \
-  openssh-client \
-  libcapstone-dev \
-  python3 \
-  libzstd-dev \
-  tmux \
-  vim \
-  gnuplot
-
-RUN apt-get install -y libsqlite3-dev
-RUN apt-get install -y libevent-dev libboost-dev
+# Install LLVM toolchain & Bitcoin Core build dependencies
+# vim & tmux are useful
+RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common wget && \
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+    apt-add-repository "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${LLVM_V} main" && \
+    apt-add-repository "deb-src http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${LLVM_V} main" && \
+    apt-get update && apt install -y --no-install-recommends \
+    build-essential \
+    clang-${LLVM_V} \
+    cmake \
+    curl \
+    git \
+    libclang-rt-${LLVM_V}-dev \
+    lld-${LLVM_V} \
+    llvm-${LLVM_V} \
+    llvm-${LLVM_V}-dev \
+    patch \
+    python3 \
+    tmux \
+    vim
 
 # Install rust and tools
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -64,7 +45,7 @@ ENV SOURCES_PATH=/tmp/bitcoin-depends
 RUN make -C bitcoin/depends NO_QT=1 NO_ZMQ=1 NO_USDT=1 download-linux SOURCES_PATH=$SOURCES_PATH
 # Keep extracted source
 RUN sed -i --regexp-extended '/.*rm -rf .*extract_dir.*/d' ./bitcoin/depends/funcs.mk && \
-    make -C ./bitcoin/depends DEBUG=1 NO_QT=1 NO_BDB=1 NO_ZMQ=1 NO_USDT=1 \
+    make -C ./bitcoin/depends DEBUG=1 NO_QT=1 NO_ZMQ=1 NO_USDT=1 \
       SOURCES_PATH=$SOURCES_PATH \
       AR=llvm-ar-${LLVM_V} NM=llvm-nm-${LLVM_V} RANLIB=llvm-ranlib-${LLVM_V} STRIP=llvm-strip-${LLVM_V} \
       -j$(nproc)
