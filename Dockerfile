@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y \
   libcapstone-dev \
   python3 \
   libzstd-dev \
+  libssl-dev \
   tmux \
   vim \
   gnuplot

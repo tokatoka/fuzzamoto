@@ -29,7 +29,11 @@ use {
     std::os::unix::io::{AsRawFd, FromRawFd},
 };
 
-use crate::{client::Client, monitor::GlobalMonitor, options::FuzzerOptions};
+use crate::{
+    client::Client,
+    monitor::{self, GlobalMonitor},
+    options::FuzzerOptions,
+};
 
 pub struct Fuzzer {
     options: FuzzerOptions,
@@ -66,7 +70,16 @@ impl Fuzzer {
             });
 
             // The stats reporter for the broker
-            let monitor = GlobalMonitor::default();
+            let monitor = if let (Some(token), Some(user)) = (
+                self.options.pushover_token.clone(),
+                self.options.pushover_user.clone(),
+            ) {
+                println!("Using pushover notifications, will notify on first bug found");
+                monitor::send_pushover_notification(&token, &user, "✅ New campaign has begun");
+                GlobalMonitor::with_pushover(token, user)
+            } else {
+                GlobalMonitor::default()
+            };
             self.launch(monitor)
         }
     }

@@ -58,6 +58,12 @@ pub struct FuzzerOptions {
     )]
     pub prune_disabled: bool,
 
+    #[arg(long, help = "Pushover token", requires = "pushover_user")]
+    pub pushover_token: Option<String>,
+
+    #[arg(long, help = "Pushover user", requires = "pushover_token")]
+    pub pushover_user: Option<String>,
+
     #[clap(short, long, help = "Enable output from the fuzzer clients")]
     pub verbose: bool,
 
