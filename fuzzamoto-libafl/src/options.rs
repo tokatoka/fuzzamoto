@@ -88,6 +88,9 @@ pub struct FuzzerOptions {
         help = "An input to rerun, instead of starting to fuzz. Will ignore all other settings."
     )]
     pub rerun_input: Option<PathBuf>,
+
+    #[arg(short = 'm', long, help = "An input to minimize")]
+    pub minimize_input: Option<PathBuf>,
 }
 
 impl FuzzerOptions {

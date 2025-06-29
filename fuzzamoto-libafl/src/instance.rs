@@ -13,7 +13,7 @@ use fuzzamoto_ir::{
 use libafl::events::SimpleEventManager;
 use libafl::{
     Error, NopFuzzer,
-    corpus::{CachedOnDiskCorpus, Corpus, CorpusId, OnDiskCorpus},
+    corpus::{CachedOnDiskCorpus, Corpus, CorpusId, OnDiskCorpus, Testcase},
     events::{
         ClientDescription, EventRestarter, LlmpRestartingEventManager, MonitorTypedEventManager,
         NopEventManager,
@@ -26,9 +26,10 @@ use libafl::{
     mutators::{ComposedByMutations, TuneableScheduledMutator},
     observers::{CanTrack, HitcountsMapObserver, StdMapObserver, TimeObserver},
     schedulers::{
-        IndexesLenTimeMinimizerScheduler, StdWeightedScheduler, powersched::PowerSchedule,
+        IndexesLenTimeMinimizerScheduler, QueueScheduler, StdWeightedScheduler,
+        powersched::PowerSchedule,
     },
-    stages::{IfStage, StagesTuple, TuneableMutationalStage},
+    stages::{IfStage, StagesTuple, StdTMinMutationalStage, TuneableMutationalStage},
     state::{HasCorpus, HasMaxSize, HasRand, StdState},
 };
 use libafl_bolts::{
@@ -45,6 +46,7 @@ use crate::{
     input::IrInput,
     mutators::{IrGenerator, IrMutator, IrSpliceMutator, LibAflByteMutator},
     options::FuzzerOptions,
+    schedulers::SupportedSchedulers,
     stages::IrMinimizerStage,
 };
 
@@ -109,7 +111,10 @@ impl<M: Monitor> Instance<'_, M> {
         let mut feedback = feedback_or!(
             // New maximization map feedback linked to the edges observer and the feedback state
             feedback_and_fast!(
+                // Disable coverage feedback if the corpus is static
                 ConstFeedback::new(!self.options.static_corpus),
+                // Disable coverage feedback if we're minimizing an input
+                ConstFeedback::new(!self.options.minimize_input.is_some()),
                 map_feedback
             ),
             // Time feedback, this one does not need a feedback state
@@ -146,23 +151,25 @@ impl<M: Monitor> Instance<'_, M> {
             }
         };
 
-        // A minimization+queue policy to get testcasess from the corpus
-        let scheduler = IndexesLenTimeMinimizerScheduler::new(
-            &trace_observer,
-            StdWeightedScheduler::with_schedule(
-                &mut state,
-                &trace_observer,
-                Some(PowerSchedule::explore()),
-            ),
-        );
-        //let scheduler = StdWeightedScheduler::with_schedule(
-        //    &mut state,
-        //    &trace_observer,
-        //    Some(PowerSchedule::explore()),
-        //);
+        let scheduler = if self.options.minimize_input.is_some() {
+            // Avoid scheduler metatdata dependency
+            SupportedSchedulers::Queue(QueueScheduler::new(), PhantomData::default())
+        } else {
+            // A minimization+queue policy to get testcasess from the corpus
+            SupportedSchedulers::LenTimeMinimizer(
+                IndexesLenTimeMinimizerScheduler::new(
+                    &trace_observer,
+                    StdWeightedScheduler::with_schedule(
+                        &mut state,
+                        &trace_observer,
+                        Some(PowerSchedule::explore()),
+                    ),
+                ),
+                PhantomData::default(),
+            )
+        };
 
         let observers = tuple_list!(trace_observer, time_observer); // stdout_observer);
-        //let scheduler = scheduler.cycling_scheduler();
 
         state.set_max_size(self.options.buffer_size);
 
@@ -257,17 +264,38 @@ impl<M: Monitor> Instance<'_, M> {
             .set_mutation_probabilities(&mut state, weights.iter().map(|w| *w / sum).collect())
             .unwrap();
 
+        let minimizing_crash = self.options.minimize_input.is_some();
+
         let mut stages = tuple_list!(
             IfStage::new(
-                |_, _, _, _| Ok(!self.options.static_corpus),
+                |_, _, _, _| Ok(!self.options.static_corpus || minimizing_crash),
                 tuple_list!(
-                    IrMinimizerStage::<CuttingMinimizer, _, _>::new(trace_handle.clone()),
-                    IrMinimizerStage::<NoppingMinimizer, _, _>::new(trace_handle.clone()),
-                    IrMinimizerStage::<BlockMinimizer, _, _>::new(trace_handle.clone()),
-                    IrMinimizerStage::<NoppingMinimizer, _, _>::new(trace_handle.clone())
+                    IrMinimizerStage::<CuttingMinimizer, _, _>::new(
+                        trace_handle.clone(),
+                        200,
+                        minimizing_crash
+                    ),
+                    IrMinimizerStage::<NoppingMinimizer, _, _>::new(
+                        trace_handle.clone(),
+                        200,
+                        minimizing_crash
+                    ),
+                    IrMinimizerStage::<BlockMinimizer, _, _>::new(
+                        trace_handle.clone(),
+                        200,
+                        minimizing_crash
+                    ),
+                    IrMinimizerStage::<NoppingMinimizer, _, _>::new(
+                        trace_handle.clone(),
+                        200,
+                        minimizing_crash
+                    )
                 )
             ),
-            TuneableMutationalStage::new(&mut state, mutator)
+            IfStage::new(
+                |_, _, _, _| Ok(!self.options.minimize_input.is_some()),
+                tuple_list!(TuneableMutationalStage::new(&mut state, mutator))
+            )
         );
         self.fuzz(&mut state, &mut fuzzer, &mut executor, &mut stages)
     }
@@ -287,7 +315,10 @@ impl<M: Monitor> Instance<'_, M> {
         let corpus_dirs = [self.options.input_dir()];
 
         if state.must_load_initial_inputs() {
-            if self.options.static_corpus {
+            if let Some(minimize_input) = &self.options.minimize_input {
+                let input = IrInput::unparse(minimize_input);
+                state.corpus_mut().add(Testcase::from(input)).unwrap();
+            } else if self.options.static_corpus {
                 state
                     .load_initial_inputs_forced(fuzzer, executor, &mut self.mgr, &corpus_dirs)
                     .unwrap_or_else(|_| {
@@ -320,7 +351,9 @@ impl<M: Monitor> Instance<'_, M> {
             println!("We imported {} inputs from disk", state.corpus().count());
         }
 
-        if let Some(iters) = self.options.iterations {
+        if self.options.minimize_input.is_some() {
+            fuzzer.fuzz_one(stages, executor, state, &mut self.mgr)?;
+        } else if let Some(iters) = self.options.iterations {
             fuzzer.fuzz_loop_for(stages, executor, state, &mut self.mgr, iters)?;
 
             // It's important, that we store the state before restarting!

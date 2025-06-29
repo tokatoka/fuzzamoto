@@ -13,6 +13,8 @@ mod mutators;
 #[cfg(target_os = "linux")]
 mod options;
 #[cfg(target_os = "linux")]
+mod schedulers;
+#[cfg(target_os = "linux")]
 mod stages;
 
 #[cfg(target_os = "linux")]

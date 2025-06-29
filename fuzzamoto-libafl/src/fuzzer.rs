@@ -101,9 +101,10 @@ impl Fuzzer {
         let client = Client::new(&self.options);
 
         #[cfg(not(feature = "simplemgr"))]
-        if self.options.rerun_input.is_some() {
-            // If we want to rerun a single input but we use a restarting mgr, we'll have to create a fake restarting mgr that doesn't actually restart.
-            // It's not pretty but better than recompiling with simplemgr.
+        if self.options.rerun_input.is_some() || self.options.minimize_input.is_some() {
+            // If we want to rerun a single input but we use a restarting mgr, we'll have to create
+            // a fake restarting mgr that doesn't actually restart. It's not pretty but better than
+            // recompiling with simplemgr.
 
             // Just a random number, let's hope it's free :)
             let broker_port = 13120;
@@ -114,7 +115,8 @@ impl Fuzzer {
             )
             .unwrap();
 
-            // To rerun an input, instead of using a launcher, we create dummy parameters and run the client directly.
+            // To rerun an input, instead of using a launcher, we create dummy parameters and run
+            // the client directly.
             return client.run(
                 None,
                 MonitorTypedEventManager::<_, M>::new(

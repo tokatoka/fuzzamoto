@@ -4,7 +4,7 @@ use fuzzamoto_ir::Minimizer;
 use libafl::{
     Evaluator, ExecutesInput, HasMetadata,
     events::EventFirer,
-    executors::{Executor, HasObservers},
+    executors::{Executor, ExitKind, HasObservers},
     feedbacks::MapNoveltiesMetadata,
     inputs::Input,
     observers::{CanTrack, MapObserver, ObserversTuple},
@@ -18,6 +18,8 @@ use crate::input::IrInput;
 pub struct IrMinimizerStage<M, T, O> {
     trace_handle: Handle<T>,
     consecutive_failures: usize,
+    max_consecutive_failures: usize,
+    minimizing_crash: bool,
     _phantom: PhantomData<(M, O)>,
 }
 
@@ -27,10 +29,16 @@ where
     T: AsRef<O> + CanTrack,
     M: Minimizer,
 {
-    pub fn new(trace_handle: Handle<T>) -> Self {
+    pub fn new(
+        trace_handle: Handle<T>,
+        max_consecutive_failures: usize,
+        minimizing_crash: bool,
+    ) -> Self {
         Self {
             trace_handle,
             consecutive_failures: 0,
+            max_consecutive_failures,
+            minimizing_crash,
             _phantom: PhantomData::default(),
         }
     }
@@ -73,9 +81,9 @@ where
         let novelties = state
             .current_testcase()?
             .borrow()
-            .metadata::<MapNoveltiesMetadata>()?
-            .list
-            .clone();
+            .metadata::<MapNoveltiesMetadata>()
+            .map(|m| m.list.clone())
+            .unwrap_or(vec![]);
 
         let mut success = false;
         let mut current_ir = state.current_input_cloned()?;
@@ -87,7 +95,7 @@ where
         );
         let mut minimizer = M::new(current_ir.ir().clone());
         while let Some(prog) = minimizer.next() {
-            if self.consecutive_failures > 200 {
+            if self.consecutive_failures > self.max_consecutive_failures {
                 break;
             }
 
@@ -102,12 +110,16 @@ where
             }
 
             let attempt = IrInput::new(prog);
-            let _ = fuzzer.execute_input(state, executor, manager, &attempt);
+            let Ok(exit_kind) = fuzzer.execute_input(state, executor, manager, &attempt) else {
+                continue;
+            };
 
             let number_of_retained_novelties = executor.observers()[&self.trace_handle]
                 .as_ref()
                 .how_many_set(&novelties);
-            if number_of_retained_novelties == novelties.len() {
+            if (self.minimizing_crash && exit_kind != ExitKind::Ok)
+                || (!self.minimizing_crash && number_of_retained_novelties == novelties.len())
+            {
                 // Minimization still has all the same novelties
                 success = true;
                 current_ir = attempt;
