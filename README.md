@@ -26,3 +26,4 @@ Check out the [book](https://dergoegge.github.io/fuzzamoto/index.html) for more 
 | [Bitcoin Core](https://github.com/bitcoin/bitcoin) | [`migratewallet` RPC assertion failure](https://github.com/bitcoin/bitcoin/issues/32112) | `wallet-migration` |
 | [Bitcoin Core](https://github.com/bitcoin/bitcoin) | [assertion failure in `CheckBlockIndex`](https://github.com/bitcoin/bitcoin/issues/32173) | `rpc-generic` |
 | [Bitcoin Core PR#30277](https://github.com/bitcoin/bitcoin/pull/30277) | [Remotely reachable assertion failure in `Miniketch::Deserialize`](https://github.com/bitcoin/bitcoin/pull/30277#issuecomment-2992101654) | `ir` |
+| [Bitcoin Core PR#28676](https://github.com/bitcoin/bitcoin/pull/28676) | [Assertion failure in `CTxMemPool::check()`](https://github.com/bitcoin/bitcoin/pull/28676#issuecomment-3016809091) | `ir` |
