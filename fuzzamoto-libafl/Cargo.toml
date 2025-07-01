@@ -34,7 +34,7 @@ vergen = { version = "8.2.1", features = [
 ] }
 
 [dependencies]
-clap = { version = "4.5.18", features = ["derive", "string"] }
+clap = { version = "4.5.18", features = ["derive", "string", "env"] }
 
 libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", tag = "0.15.2", features = ["tui_monitor"] }
 libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL.git", tag = "0.15.2", features = ["errors_backtrace"] }
