@@ -26,7 +26,7 @@ And then create a new container from it (mounting the current directory to
 `/fuzzamoto`):
 
 ```
-docker run --privileged -it fuzzamoto-libafl -v $PWD:/fuzzamoto bash
+docker run --privileged -it -v $PWD:/fuzzamoto fuzzamoto-libafl bash
 ```
 
 `--privileged` is required to enable the use of kvm by Nyx.
