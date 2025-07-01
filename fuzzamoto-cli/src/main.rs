@@ -238,6 +238,81 @@ fn create_sharedir(
 
     log::info!("Created share directory: {}", sharedir.display());
 
+    // Get the cargo checkout path for libafl_nyx
+    let libafl_nyx_path = std::process::Command::new("cargo")
+        .arg("metadata")
+        .arg("--format-version=1")
+        .output()?
+        .stdout;
+    let libafl_nyx_path = serde_json::from_slice::<serde_json::Value>(&libafl_nyx_path)?;
+    let libafl_nyx_path = PathBuf::from(
+        libafl_nyx_path
+            .as_object()
+            .unwrap()
+            .get("packages")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| {
+                p.as_object()
+                    .unwrap()
+                    .get("name")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    == "libafl_nyx"
+            })
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .get("manifest_path")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    );
+    let libafl_nyx_path = libafl_nyx_path.parent().unwrap();
+
+    log::info!("Libafl nyx path: {:?}", libafl_nyx_path);
+
+    // Compile the 64-bit packer userspace binaries
+    log::info!("Compiling packer binaries");
+    let packer_path = libafl_nyx_path.join("packer/packer/");
+    let userspace_path = packer_path.join("linux_x86_64-userspace");
+    let status = std::process::Command::new("bash")
+        .current_dir(&userspace_path)
+        .arg("compile_64.sh")
+        .status()?;
+    if !status.success() {
+        return Err("Failed to compile packer binaries".into());
+    }
+
+    // Copy the binaries to the share directory
+    let binaries = userspace_path.join("bin64");
+    for entry in binaries.read_dir()? {
+        let path = entry?.path();
+        assert!(path.is_file());
+        std::fs::copy(&path, sharedir.join(path.file_name().unwrap()))?;
+        log::info!(
+            "Copied packer binary: {}",
+            path.file_name().unwrap().to_str().unwrap()
+        );
+    }
+
+    // Generate the nyx config
+    log::info!("Generating nyx config");
+    let status = std::process::Command::new("python3")
+        .current_dir(&packer_path)
+        .arg("nyx_config_gen.py")
+        .arg(&sharedir)
+        .arg("Kernel")
+        .arg("-m")
+        .arg("4096")
+        .status()?;
+    if !status.success() {
+        return Err("Failed to generate nyx config".into());
+    }
+
     Ok(())
 }
 
@@ -388,7 +463,10 @@ fn record_test_cases(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    // Log info by default
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
 
     let cli = Cli::parse();
 

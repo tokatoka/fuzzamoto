@@ -94,35 +94,3 @@ RUN cmake --build bitcoin/build_fuzz -j$(nproc) --target bitcoind
 ENV CC=clang-${LLVM_V}
 ENV CXX=clang++-${LLVM_V}
 ENV LD=lld-${LLVM_V}
-
-# Build this dockerfile and then run it with `--privileged` and mount the fuzzamoto repo into it:
-#
-# $ docker build -f Dockerfile.libafl -t fuzzamoto-libafl .
-# $ docker run --privileged -v $PWD:/fuzzamoto -it fuzzamoto-libafl bash
-#
-# Inside the container, run:
-#
-# root@abc$ cd /fuzzamoto
-# root@abc$ BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind cargo build --workspace --verbose \
-#                 --features fuzz --release
-#
-# Then, create the nyx share dir:
-#
-# root@abc$ clang-19 -fPIC -DENABLE_NYX -D_GNU_SOURCE -DNO_PT_NYX \
-#    ./fuzzamoto-nyx-sys/src/nyx-crash-handler.c -ldl -I. -shared -o libnyx_crash_handler.so
-# root@abc$ target/release/fuzzamoto-cli init --sharedir /tmp/fuzzamoto_scenario-ir \
-#                 --crash-handler /fuzzamoto/libnyx_crash_handler.so \
-#                 --bitcoind /bitcoin/build_fuzz/bin/bitcoind \
-#                 --scenario ./target/release/scenario-ir
-# root@abc$ (cd /root/.cargo/git/checkouts/libafl-*/*/libafl_nyx/packer/packer/linux_x86_64-userspace/ && ./compile_64.sh)
-# root@abc$ cp /root/.cargo/git/checkouts/libafl-*/*/libafl_nyx/packer/packer/linux_x86_64-userspace/bin64/* /tmp/fuzzamoto_scenario-ir/
-# root@abc$ python3 /root/.cargo/git/checkouts/libafl-*/*/libafl_nyx/packer/packer/nyx_config_gen.py /tmp/fuzzamoto_scenario-ir Kernel -m 4096
-# root@abc$ mount -o remount,size=50% /dev/shm # we need a lot of shared memory (50% is probably too much)
-#
-# Then, run the fuzzer:
-#
-# root@abc$ mkdir /tmp/in
-# root@abc$ ./target/release/fuzzamoto-cli ir generate --output /tmp/in --iterations 10 --programs 16 --context ./program.ctx
-# root@abc$ ./target/release/fuzzamoto-libafl --input /tmp/in/ --output /tmp/out/ \
-#                 --share /tmp/fuzzamoto_scenario-ir/ --timeout 2000 \
-#                 --cores 0-9

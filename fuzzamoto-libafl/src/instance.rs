@@ -4,8 +4,8 @@ use fuzzamoto_ir::{
     AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, CombineMutator,
     CompactFilterQueryGenerator, ConcatMutator, GetDataGenerator, HeaderGenerator, InputMutator,
     InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator,
-    OperationMutator, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator, TxoGenerator,
-    WitnessGenerator, cutting::CuttingMinimizer, minimizers::block::BlockMinimizer,
+    OperationMutator, Program, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator,
+    TxoGenerator, WitnessGenerator, cutting::CuttingMinimizer, minimizers::block::BlockMinimizer,
     nopping::NoppingMinimizer,
 };
 
@@ -194,6 +194,24 @@ impl<M: Monitor> Instance<'_, M> {
             .expect("Could not read ir context file");
         let full_program_context: fuzzamoto_ir::FullProgramContext =
             postcard::from_bytes(&bytes).expect("could not deser ir context");
+
+        if self
+            .options
+            .input_dir()
+            .read_dir()
+            .unwrap()
+            .next()
+            .is_none()
+        {
+            let initial_input = IrInput::new(Program::unchecked_new(
+                full_program_context.context.clone(),
+                vec![],
+            ));
+            let bytes = postcard::to_allocvec(&initial_input).unwrap();
+
+            let file_path = self.options.input_dir().join("initial_input");
+            std::fs::write(&file_path, bytes).unwrap();
+        }
 
         let rng = SmallRng::seed_from_u64(state.rand_mut().next());
 
