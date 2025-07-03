@@ -131,7 +131,7 @@ COPY ./Cargo.toml .
 RUN mkdir .cargo && cargo vendor > .cargo/config
 
 ENV BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind
-RUN cargo build --workspace --verbose --features fuzz --release
+RUN cargo build --package fuzzamoto-scenarios --package fuzzamoto-cli --verbose --features fuzz --release
 
 # Build the crash handler
 #   -D_GNU_SOURCE & -ldl for `#include <dlfcn.h>`
