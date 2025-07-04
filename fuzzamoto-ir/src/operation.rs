@@ -430,224 +430,15 @@ impl Operation {
     }
 
     pub fn num_inner_outputs(&self) -> usize {
-        match self {
-            Operation::BeginBuildTx
-            | Operation::BeginBuildTxInputs
-            | Operation::BeginBuildTxOutputs
-            | Operation::BeginBuildInventory
-            | Operation::BeginWitnessStack
-            | Operation::BeginBlockTransactions => 1,
-            Operation::Nop {
-                outputs: _,
-                inner_outputs,
-            } => *inner_outputs,
-            // Exhaustive match to fail when new ops are added
-            Operation::LoadBytes(_)
-            | Operation::LoadMsgType(_)
-            | Operation::LoadNode(_)
-            | Operation::LoadConnection(_)
-            | Operation::LoadConnectionType(_)
-            | Operation::LoadDuration(_)
-            | Operation::LoadBlockHeight(_)
-            | Operation::LoadCompactFilterType(_)
-            | Operation::SendRawMessage
-            | Operation::AdvanceTime
-            | Operation::LoadTime(_)
-            | Operation::LoadSize(_)
-            | Operation::SetTime
-            | Operation::BuildPayToWitnessScriptHash
-            | Operation::BuildRawScripts
-            | Operation::BuildPayToScriptHash
-            | Operation::BuildOpReturnScripts
-            | Operation::BuildPayToAnchor
-            | Operation::BuildPayToPubKey
-            | Operation::BuildPayToPubKeyHash
-            | Operation::BuildPayToWitnessPubKeyHash
-            | Operation::LoadTxo { .. }
-            | Operation::LoadHeader { .. }
-            | Operation::LoadAmount(..)
-            | Operation::LoadTxVersion(..)
-            | Operation::LoadBlockVersion(..)
-            | Operation::LoadLockTime(..)
-            | Operation::LoadSequence(..)
-            | Operation::LoadPrivateKey(..)
-            | Operation::LoadSigHashFlags(..)
-            | Operation::EndBuildTx
-            | Operation::EndBuildTxInputs
-            | Operation::EndBuildTxOutputs
-            | Operation::EndBuildInventory
-            | Operation::AddTxidInv
-            | Operation::AddTxidWithWitnessInv
-            | Operation::AddWtxidInv
-            | Operation::SendGetData
-            | Operation::SendInv
-            | Operation::AddTxInput
-            | Operation::AddTxOutput
-            | Operation::TakeTxo
-            | Operation::EndWitnessStack
-            | Operation::AddWitness
-            | Operation::EndBlockTransactions
-            | Operation::BuildBlock
-            | Operation::AddBlockInv
-            | Operation::AddBlockWithWitnessInv
-            | Operation::AddFilteredBlockInv
-            | Operation::AddTx
-            | Operation::SendTx
-            | Operation::SendTxNoWit
-            | Operation::SendHeader
-            | Operation::SendBlock
-            | Operation::SendGetCFilters
-            | Operation::SendGetCFHeaders
-            | Operation::SendGetCFCheckpt
-            | Operation::SendBlockNoWit => 0,
-        }
+        self.get_inner_output_variables().len()
     }
 
     pub fn num_outputs(&self) -> usize {
-        match self {
-            Operation::Nop { outputs, .. } => *outputs,
-            Operation::LoadBytes(_) => 1,
-            Operation::LoadMsgType(_) => 1,
-            Operation::LoadNode(_) => 1,
-            Operation::LoadConnection(_) => 1,
-            Operation::LoadConnectionType(_) => 1,
-            Operation::LoadDuration(_) => 1,
-            Operation::SendRawMessage => 0,
-            Operation::AdvanceTime => 1,
-            Operation::LoadTime(_) => 1,
-            Operation::LoadSize(_) => 1,
-            Operation::SetTime => 0,
-            Operation::BuildPayToWitnessScriptHash => 1,
-            Operation::BuildPayToScriptHash => 1,
-            Operation::BuildRawScripts => 1,
-            Operation::BuildOpReturnScripts => 1,
-            Operation::BuildPayToAnchor => 1,
-            Operation::BuildPayToPubKey => 1,
-            Operation::BuildPayToPubKeyHash => 1,
-            Operation::BuildPayToWitnessPubKeyHash => 1,
-            Operation::LoadTxo { .. } => 1,
-            Operation::LoadHeader { .. } => 1,
-            Operation::LoadAmount(..) => 1,
-            Operation::LoadTxVersion(..) => 1,
-            Operation::LoadBlockVersion(..) => 1,
-            Operation::LoadBlockHeight(_) => 1,
-            Operation::LoadCompactFilterType(_) => 1,
-            Operation::LoadLockTime(..) => 1,
-            Operation::LoadSequence(..) => 1,
-            Operation::LoadPrivateKey(..) => 1,
-            Operation::LoadSigHashFlags(..) => 1,
-            Operation::BeginBuildTx => 0,
-            Operation::EndBuildTx => 1,
-            Operation::BeginBuildTxInputs => 0,
-            Operation::EndBuildTxInputs => 1,
-            Operation::BeginBuildTxOutputs => 0,
-            Operation::EndBuildTxOutputs => 1,
-            Operation::AddTxInput => 0,
-            Operation::AddTxOutput => 0,
-            Operation::TakeTxo => 1,
-            Operation::AddWitness => 0,
-            Operation::BeginWitnessStack => 0,
-            Operation::EndWitnessStack => 1,
-            Operation::BeginBuildInventory => 0,
-            Operation::EndBuildInventory => 1,
-            Operation::AddTxidInv => 0,
-            Operation::AddTxidWithWitnessInv => 0,
-            Operation::AddWtxidInv => 0,
-            Operation::AddBlockInv => 0,
-            Operation::AddBlockWithWitnessInv => 0,
-            Operation::AddFilteredBlockInv => 0,
-
-            Operation::BuildBlock => 2,
-            Operation::AddTx => 0,
-            Operation::EndBlockTransactions => 1,
-            Operation::BeginBlockTransactions => 0,
-
-            Operation::SendGetData => 0,
-            Operation::SendInv => 0,
-            Operation::SendTx => 0,
-            Operation::SendTxNoWit => 0,
-            Operation::SendHeader => 0,
-            Operation::SendBlock => 0,
-            Operation::SendBlockNoWit => 0,
-            Operation::SendGetCFilters => 0,
-            Operation::SendGetCFHeaders => 0,
-            Operation::SendGetCFCheckpt => 0,
-        }
+        self.get_output_variables().len()
     }
 
     pub fn num_inputs(&self) -> usize {
-        match self {
-            Operation::Nop { .. } => 0,
-            Operation::LoadBytes(_) => 0,
-            Operation::LoadMsgType(_) => 0,
-            Operation::LoadNode(_) => 0,
-            Operation::LoadConnection(_) => 0,
-            Operation::LoadConnectionType(_) => 0,
-            Operation::LoadDuration(_) => 0,
-            Operation::SendRawMessage => 3,
-            Operation::AdvanceTime => 2,
-            Operation::LoadTime(_) => 0,
-            Operation::LoadBlockHeight(_) => 0,
-            Operation::LoadCompactFilterType(_) => 0,
-            Operation::LoadSize(_) => 0,
-            Operation::SetTime => 1,
-            Operation::BuildPayToWitnessScriptHash => 2,
-            Operation::BuildRawScripts => 3,
-            Operation::BuildPayToScriptHash => 2,
-            Operation::BuildOpReturnScripts => 1,
-            Operation::BuildPayToAnchor => 0,
-            Operation::BuildPayToPubKey => 2,
-            Operation::BuildPayToPubKeyHash => 2,
-            Operation::BuildPayToWitnessPubKeyHash => 2,
-            Operation::LoadTxo { .. } => 0,
-            Operation::LoadHeader { .. } => 0,
-            Operation::LoadAmount(..) => 0,
-            Operation::LoadTxVersion(..) => 0,
-            Operation::LoadBlockVersion(..) => 0,
-            Operation::LoadLockTime(..) => 0,
-            Operation::LoadSequence(..) => 0,
-            Operation::LoadPrivateKey(..) => 0,
-            Operation::LoadSigHashFlags(..) => 0,
-
-            Operation::BeginWitnessStack => 0,
-            Operation::EndWitnessStack => 1,
-            Operation::AddWitness => 2,
-
-            Operation::BeginBuildTx => 2,
-            Operation::EndBuildTx => 3,
-            Operation::BeginBuildTxInputs => 0,
-            Operation::EndBuildTxInputs => 1,
-            Operation::BeginBuildTxOutputs => 1,
-            Operation::EndBuildTxOutputs => 1,
-            Operation::AddTxInput => 3,
-            Operation::AddTxOutput => 3,
-            Operation::TakeTxo => 1,
-
-            Operation::BeginBuildInventory => 0,
-            Operation::EndBuildInventory => 1,
-            Operation::AddTxidInv => 2,
-            Operation::AddTxidWithWitnessInv => 2,
-            Operation::AddWtxidInv => 2,
-            Operation::AddBlockInv => 2,
-            Operation::AddBlockWithWitnessInv => 2,
-            Operation::AddFilteredBlockInv => 2,
-
-            Operation::BuildBlock => 4,
-            Operation::AddTx => 2,
-            Operation::EndBlockTransactions => 1,
-            Operation::BeginBlockTransactions => 0,
-
-            Operation::SendGetData => 2,
-            Operation::SendInv => 2,
-            Operation::SendTx => 2,
-            Operation::SendTxNoWit => 2,
-            Operation::SendHeader => 2,
-            Operation::SendBlock => 2,
-            Operation::SendBlockNoWit => 2,
-            Operation::SendGetCFilters => 4,
-            Operation::SendGetCFHeaders => 4,
-            Operation::SendGetCFCheckpt => 3,
-        }
+        self.get_input_variables().len()
     }
 
     pub fn check_input_types(&self, variables: &[Variable]) -> Result<(), ProgramValidationError> {
@@ -672,165 +463,8 @@ impl Operation {
                 Ok(())
             };
 
-        match self {
-            Operation::SendRawMessage => check_expected(
-                variables,
-                &[Variable::Connection, Variable::MsgType, Variable::Bytes],
-            ),
-            Operation::AdvanceTime => {
-                check_expected(variables, &[Variable::Time, Variable::Duration])
-            }
-            Operation::SetTime => check_expected(variables, &[Variable::Time]),
-            Operation::BuildPayToWitnessScriptHash => {
-                // Script to be wrapped and additional witness stack
-                check_expected(variables, &[Variable::Bytes, Variable::ConstWitnessStack])
-            }
-            Operation::BuildPayToScriptHash => {
-                // Script to be wrapped and additional witness stack
-                check_expected(variables, &[Variable::Bytes, Variable::ConstWitnessStack])
-            }
-            Operation::BuildRawScripts => check_expected(
-                variables,
-                &[
-                    Variable::Bytes,
-                    Variable::Bytes,
-                    Variable::ConstWitnessStack,
-                ],
-            ),
-            Operation::BuildOpReturnScripts => check_expected(variables, &[Variable::Size]),
-            Operation::BuildPayToPubKey => {
-                check_expected(variables, &[Variable::PrivateKey, Variable::SigHashFlags])
-            }
-            Operation::BuildPayToPubKeyHash => {
-                check_expected(variables, &[Variable::PrivateKey, Variable::SigHashFlags])
-            }
-            Operation::BuildPayToWitnessPubKeyHash => {
-                check_expected(variables, &[Variable::PrivateKey, Variable::SigHashFlags])
-            }
-            Operation::BeginBuildTx => {
-                check_expected(variables, &[Variable::TxVersion, Variable::LockTime])
-            }
-            Operation::EndBuildTx => check_expected(
-                variables,
-                &[
-                    Variable::MutTx,
-                    Variable::ConstTxInputs,
-                    Variable::ConstTxOutputs,
-                ],
-            ),
-            Operation::EndBuildTxInputs => check_expected(variables, &[Variable::MutTxInputs]),
-            Operation::EndBuildTxOutputs => check_expected(variables, &[Variable::MutTxOutputs]),
-            Operation::AddTxInput => check_expected(
-                variables,
-                &[Variable::MutTxInputs, Variable::Txo, Variable::Sequence],
-            ),
-            Operation::AddTxOutput => check_expected(
-                variables,
-                &[
-                    Variable::MutTxOutputs,
-                    Variable::Scripts,
-                    Variable::ConstAmount,
-                ],
-            ),
-            Operation::BeginBuildTxOutputs => check_expected(variables, &[Variable::ConstTxInputs]),
-            Operation::TakeTxo => check_expected(variables, &[Variable::ConstTx]),
-            Operation::AddWitness => {
-                check_expected(variables, &[Variable::MutWitnessStack, Variable::Bytes])
-            }
-            Operation::EndWitnessStack => check_expected(variables, &[Variable::MutWitnessStack]),
-            Operation::SendTx | Operation::SendTxNoWit => {
-                check_expected(variables, &[Variable::Connection, Variable::ConstTx])
-            }
-            Operation::EndBuildInventory => check_expected(variables, &[Variable::MutInventory]),
-
-            Operation::AddTxidInv | Operation::AddTxidWithWitnessInv | Operation::AddWtxidInv => {
-                check_expected(variables, &[Variable::MutInventory, Variable::ConstTx])
-            }
-            Operation::AddBlockInv
-            | Operation::AddBlockWithWitnessInv
-            | Operation::AddFilteredBlockInv => {
-                check_expected(variables, &[Variable::MutInventory, Variable::Block])
-            }
-
-            Operation::BuildBlock => check_expected(
-                variables,
-                &[
-                    Variable::Header, // prev
-                    Variable::Time,
-                    Variable::BlockVersion,
-                    Variable::ConstBlockTransactions,
-                ],
-            ),
-            Operation::AddTx => check_expected(
-                variables,
-                &[Variable::MutBlockTransactions, Variable::ConstTx],
-            ),
-            Operation::EndBlockTransactions => {
-                check_expected(variables, &[Variable::MutBlockTransactions])
-            }
-
-            Operation::SendGetData | Operation::SendInv => {
-                check_expected(variables, &[Variable::Connection, Variable::ConstInventory])
-            }
-            Operation::SendHeader => {
-                check_expected(variables, &[Variable::Connection, Variable::Header])
-            }
-            Operation::SendBlock | Operation::SendBlockNoWit => {
-                check_expected(variables, &[Variable::Connection, Variable::Block])
-            }
-            Operation::SendGetCFilters => check_expected(
-                variables,
-                &[
-                    Variable::Connection,
-                    Variable::CompactFilterType,
-                    Variable::BlockHeight,
-                    Variable::Header,
-                ],
-            ),
-            Operation::SendGetCFHeaders => check_expected(
-                variables,
-                &[
-                    Variable::Connection,
-                    Variable::CompactFilterType,
-                    Variable::BlockHeight,
-                    Variable::Header,
-                ],
-            ),
-            Operation::SendGetCFCheckpt => check_expected(
-                variables,
-                &[
-                    Variable::Connection,
-                    Variable::CompactFilterType,
-                    Variable::Header,
-                ],
-            ),
-            // Exhaustive match to fail when new ops are added
-            Operation::Nop { .. }
-            | Operation::LoadBytes(_)
-            | Operation::BuildPayToAnchor
-            | Operation::LoadMsgType(_)
-            | Operation::LoadNode(_)
-            | Operation::LoadConnection(_)
-            | Operation::LoadConnectionType(_)
-            | Operation::LoadDuration(_)
-            | Operation::LoadBlockHeight(_)
-            | Operation::LoadCompactFilterType(_)
-            | Operation::LoadTime(_)
-            | Operation::LoadTxo { .. }
-            | Operation::LoadHeader { .. }
-            | Operation::LoadAmount(..)
-            | Operation::LoadTxVersion(..)
-            | Operation::LoadBlockVersion(..)
-            | Operation::LoadLockTime(..)
-            | Operation::LoadSequence(..)
-            | Operation::LoadSize(_)
-            | Operation::LoadPrivateKey(..)
-            | Operation::LoadSigHashFlags(..)
-            | Operation::BeginBuildTxInputs
-            | Operation::BeginBuildInventory
-            | Operation::BeginBlockTransactions
-            | Operation::BeginWitnessStack => Ok(()),
-        }
+        let expected_variables = self.get_input_variables();
+        check_expected(variables, &expected_variables)
     }
 
     pub fn get_output_variables(&self) -> Vec<Variable> {
@@ -904,6 +538,119 @@ impl Operation {
             Operation::SendGetCFilters => vec![],
             Operation::SendGetCFHeaders => vec![],
             Operation::SendGetCFCheckpt => vec![],
+        }
+    }
+
+    pub fn get_input_variables(&self) -> Vec<Variable> {
+        match self {
+            Operation::SendRawMessage => {
+                vec![Variable::Connection, Variable::MsgType, Variable::Bytes]
+            }
+            Operation::AdvanceTime => vec![Variable::Time, Variable::Duration],
+            Operation::SetTime => vec![Variable::Time],
+            Operation::BuildPayToWitnessScriptHash => {
+                vec![Variable::Bytes, Variable::ConstWitnessStack]
+            }
+            Operation::BuildPayToScriptHash => vec![Variable::Bytes, Variable::ConstWitnessStack],
+            Operation::BuildRawScripts => vec![
+                Variable::Bytes,
+                Variable::Bytes,
+                Variable::ConstWitnessStack,
+            ],
+            Operation::BuildOpReturnScripts => vec![Variable::Size],
+            Operation::BuildPayToPubKey => vec![Variable::PrivateKey, Variable::SigHashFlags],
+            Operation::BuildPayToPubKeyHash => vec![Variable::PrivateKey, Variable::SigHashFlags],
+            Operation::BuildPayToWitnessPubKeyHash => {
+                vec![Variable::PrivateKey, Variable::SigHashFlags]
+            }
+            Operation::BeginBuildTx => vec![Variable::TxVersion, Variable::LockTime],
+            Operation::EndBuildTx => vec![
+                Variable::MutTx,
+                Variable::ConstTxInputs,
+                Variable::ConstTxOutputs,
+            ],
+            Operation::EndBuildTxInputs => vec![Variable::MutTxInputs],
+            Operation::EndBuildTxOutputs => vec![Variable::MutTxOutputs],
+            Operation::AddTxInput => vec![Variable::MutTxInputs, Variable::Txo, Variable::Sequence],
+            Operation::AddTxOutput => vec![
+                Variable::MutTxOutputs,
+                Variable::Scripts,
+                Variable::ConstAmount,
+            ],
+            Operation::BeginBuildTxOutputs => vec![Variable::ConstTxInputs],
+            Operation::TakeTxo => vec![Variable::ConstTx],
+            Operation::AddWitness => vec![Variable::MutWitnessStack, Variable::Bytes],
+            Operation::EndWitnessStack => vec![Variable::MutWitnessStack],
+            Operation::SendTx | Operation::SendTxNoWit => {
+                vec![Variable::Connection, Variable::ConstTx]
+            }
+            Operation::EndBuildInventory => vec![Variable::MutInventory],
+            Operation::AddTxidInv | Operation::AddTxidWithWitnessInv | Operation::AddWtxidInv => {
+                vec![Variable::MutInventory, Variable::ConstTx]
+            }
+            Operation::AddBlockInv
+            | Operation::AddBlockWithWitnessInv
+            | Operation::AddFilteredBlockInv => {
+                vec![Variable::MutInventory, Variable::Block]
+            }
+            Operation::BuildBlock => vec![
+                Variable::Header,
+                Variable::Time,
+                Variable::BlockVersion,
+                Variable::ConstBlockTransactions,
+            ],
+            Operation::AddTx => vec![Variable::MutBlockTransactions, Variable::ConstTx],
+            Operation::EndBlockTransactions => vec![Variable::MutBlockTransactions],
+            Operation::SendGetData | Operation::SendInv => {
+                vec![Variable::Connection, Variable::ConstInventory]
+            }
+            Operation::SendHeader => vec![Variable::Connection, Variable::Header],
+            Operation::SendBlock | Operation::SendBlockNoWit => {
+                vec![Variable::Connection, Variable::Block]
+            }
+            Operation::SendGetCFilters => vec![
+                Variable::Connection,
+                Variable::CompactFilterType,
+                Variable::BlockHeight,
+                Variable::Header,
+            ],
+            Operation::SendGetCFHeaders => vec![
+                Variable::Connection,
+                Variable::CompactFilterType,
+                Variable::BlockHeight,
+                Variable::Header,
+            ],
+            Operation::SendGetCFCheckpt => vec![
+                Variable::Connection,
+                Variable::CompactFilterType,
+                Variable::Header,
+            ],
+            // Operations with no inputs
+            Operation::Nop { .. }
+            | Operation::LoadBytes(_)
+            | Operation::LoadMsgType(_)
+            | Operation::LoadNode(_)
+            | Operation::LoadConnection(_)
+            | Operation::LoadConnectionType(_)
+            | Operation::LoadDuration(_)
+            | Operation::LoadBlockHeight(_)
+            | Operation::LoadCompactFilterType(_)
+            | Operation::LoadTime(_)
+            | Operation::LoadTxo { .. }
+            | Operation::LoadHeader { .. }
+            | Operation::LoadAmount(..)
+            | Operation::LoadTxVersion(..)
+            | Operation::LoadBlockVersion(..)
+            | Operation::LoadLockTime(..)
+            | Operation::LoadSequence(..)
+            | Operation::LoadSize(_)
+            | Operation::LoadPrivateKey(..)
+            | Operation::LoadSigHashFlags(..)
+            | Operation::BeginBuildTxInputs
+            | Operation::BeginBuildInventory
+            | Operation::BeginBlockTransactions
+            | Operation::BeginWitnessStack
+            | Operation::BuildPayToAnchor => vec![],
         }
     }
 
