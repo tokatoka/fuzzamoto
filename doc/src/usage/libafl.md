@@ -63,7 +63,7 @@ Then, run the fuzzer:
 
 ```
 mkdir /tmp/in
-./target/release/fuzzamoto-libafl
+./target/release/fuzzamoto-libafl \
     --input /tmp/in/ --output /tmp/out/ \
     --share /tmp/fuzzamoto_scenario-ir/ \
     --cores 0-15 # 16 cores, adjust for your system
