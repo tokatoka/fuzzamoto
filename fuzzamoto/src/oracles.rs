@@ -1,6 +1,6 @@
 use crate::{
     connections::Transport,
-    targets::{HasTipHash, Target},
+    targets::{ConnectableTarget, HasTipHash, Target},
 };
 use std::{
     marker::PhantomData,
@@ -47,6 +47,8 @@ where
 pub struct ConsensusContext<'a, T1, T2> {
     pub primary: &'a T1,
     pub reference: &'a T2,
+    pub consensus_timeout: Duration,
+    pub poll_interval: Duration,
 }
 
 /// `ConsensusOracle` checks if two full node targets reach consensus on the chain tip hash
@@ -66,14 +68,12 @@ where
     T2: Target<TX2> + HasTipHash,
 {
     fn evaluate(&self, context: &ConsensusContext<'a, T1, T2>) -> OracleResult {
-        const CONSENSUS_TIMEOUT: Duration = Duration::from_secs(5);
-        const POLL_INTERVAL: Duration = Duration::from_millis(10);
         let start = Instant::now();
 
         let mut primary_tip = None;
         let mut reference_tip = None;
 
-        while start.elapsed() < CONSENSUS_TIMEOUT {
+        while start.elapsed() < context.consensus_timeout {
             primary_tip = context.primary.get_tip_hash();
             reference_tip = context.reference.get_tip_hash();
 
@@ -82,15 +82,49 @@ where
                 return OracleResult::Pass;
             }
 
-            std::thread::sleep(POLL_INTERVAL);
+            std::thread::sleep(context.poll_interval);
         }
 
         OracleResult::Fail(format!(
-            "Nodes did not reach consensus within {CONSENSUS_TIMEOUT:?}. Primary: {primary_tip:?}, Reference: {reference_tip:?}"
+            "Nodes did not reach consensus within {:?}. Primary: {primary_tip:?}, Reference: {reference_tip:?}",
+            context.consensus_timeout
         ))
     }
 
     fn name(&self) -> &str {
         "ConsensusOracle"
+    }
+}
+
+pub struct NetSplitContext<'a, T1, T2> {
+    pub primary: &'a T1,
+    pub reference: &'a T2,
+}
+
+/// `NetSplitOracle` checks if two full node targets are connected
+pub struct NetSplitOracle<TX1, TX2>(PhantomData<TX1>, PhantomData<TX2>);
+
+impl<TX1, TX2> Default for NetSplitOracle<TX1, TX2> {
+    fn default() -> Self {
+        Self(PhantomData, PhantomData)
+    }
+}
+
+impl<'a, T1, T2, TX1, TX2> Oracle<NetSplitContext<'a, T1, T2>> for NetSplitOracle<TX1, TX2>
+where
+    TX1: Transport,
+    TX2: Transport,
+    T1: Target<TX1> + ConnectableTarget,
+    T2: Target<TX2> + ConnectableTarget,
+{
+    fn evaluate(&self, context: &NetSplitContext<'a, T1, T2>) -> OracleResult {
+        match context.reference.is_connected_to(context.primary) {
+            false => OracleResult::Fail("Nodes are no longer connected!".to_string()),
+            true => OracleResult::Pass,
+        }
+    }
+
+    fn name(&self) -> &str {
+        "NetSplitOracle"
     }
 }

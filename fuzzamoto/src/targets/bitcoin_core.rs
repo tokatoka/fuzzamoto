@@ -5,7 +5,10 @@ use crate::{
 
 use bitcoin::hashes::Hash;
 use corepc_node::{Conf, Node, P2P};
-use std::net::{SocketAddrV4, TcpListener, TcpStream};
+use std::{
+    net::{SocketAddrV4, TcpListener, TcpStream},
+    str::FromStr,
+};
 
 use super::{ConnectableTarget, HasTipHash};
 
@@ -195,6 +198,30 @@ Can you-"#
 impl ConnectableTarget for BitcoinCoreTarget {
     fn get_addr(&self) -> Option<SocketAddrV4> {
         self.node.params.p2p_socket.clone()
+    }
+
+    fn is_connected_to<O: ConnectableTarget>(&self, other: &O) -> bool {
+        let Some(other_addr) = other.get_addr() else {
+            return false;
+        };
+
+        let Ok(peer_info) = self
+            .node
+            .client
+            .call::<serde_json::Value>("getpeerinfo", &[])
+        else {
+            return false;
+        };
+
+        // Iterate through all connected peers and attempt to find `other_addr`
+        for peer in peer_info.as_array().unwrap() {
+            let addr = peer.get("addr").unwrap().as_str().unwrap();
+            if SocketAddrV4::from_str(addr).unwrap() == other_addr {
+                return true;
+            }
+        }
+
+        false
     }
 }
 

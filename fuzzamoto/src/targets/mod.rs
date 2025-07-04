@@ -41,6 +41,8 @@ pub trait ConnectableTarget {
     fn get_addr(&self) -> Option<SocketAddrV4> {
         None
     }
+
+    fn is_connected_to<O: ConnectableTarget>(&self, other: &O) -> bool;
 }
 
 

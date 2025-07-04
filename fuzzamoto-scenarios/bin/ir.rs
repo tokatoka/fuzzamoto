@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 #[cfg(feature = "nyx")]
 use fuzzamoto_nyx_sys::*;
 
@@ -9,8 +11,11 @@ use fuzzamoto::{
     scenarios::{
         IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
     },
-    targets::{BitcoinCoreTarget, HasTipHash, Target},
+    targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, Target},
 };
+
+#[cfg(feature = "netsplit")]
+use fuzzamoto::oracles::{NetSplitContext, NetSplitOracle};
 use fuzzamoto_ir::{
     Program, ProgramContext,
     compiler::{CompiledAction, CompiledProgram, Compiler},
@@ -18,8 +23,10 @@ use fuzzamoto_ir::{
 
 /// `IrScenario` is a scenario with the same context as `GenericScenario` but it operates on
 /// `fuzzamoto_ir::CompiledProgram`s as input.
-struct IrScenario<TX: Transport, T: Target<TX>> {
+struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
+    #[cfg(feature = "netsplit")]
+    second: T,
 }
 
 pub struct TestCase {
@@ -42,10 +49,10 @@ impl<'a> ScenarioInput<'a> for TestCase {
 impl<TX, T> Scenario<'_, TestCase, IgnoredCharacterization> for IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + HasTipHash,
+    T: Target<TX> + HasTipHash + ConnectableTarget,
 {
     fn new(args: &[String]) -> Result<Self, String> {
-        let inner = GenericScenario::new(args)?;
+        let inner: GenericScenario<TX, T> = GenericScenario::new(args)?;
 
         // Dump program context
         let context = ProgramContext {
@@ -126,7 +133,45 @@ where
             std::fs::write(context_file, &full_context).map_err(|e| e.to_string())?;
         };
 
-        Ok(Self { inner })
+        #[cfg(feature = "netsplit")]
+        let mut second = {
+            let mut second = if args.len() > 2 {
+                T::from_path(&args[2])?
+            } else {
+                T::from_path(&args[1])?
+            };
+            second.connect_to(&inner.target)?;
+
+            const SYNC_TIMEOUT: Duration = Duration::from_secs(10);
+            const POLL_INTERVAL: Duration = Duration::from_millis(10);
+            let start = Instant::now();
+
+            let mut synced = false;
+            while start.elapsed() < SYNC_TIMEOUT {
+                let primary_tip = inner.target.get_tip_hash();
+                let reference_tip = second.get_tip_hash();
+
+                if primary_tip.is_some() && primary_tip == reference_tip {
+                    log::info!("Nodes synced successfully!");
+                    synced = true;
+                    break;
+                }
+
+                std::thread::sleep(POLL_INTERVAL);
+            }
+
+            if !synced {
+                return Err("nodes failed to sync".to_string());
+            }
+
+            second
+        };
+
+        Ok(Self {
+            inner,
+            #[cfg(feature = "netsplit")]
+            second,
+        })
     }
 
     fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
@@ -152,6 +197,8 @@ where
                 }
                 CompiledAction::SetTime(time) => {
                     let _ = self.inner.target.set_mocktime(time);
+                    #[cfg(feature = "netsplit")]
+                    let _ = self.second.set_mocktime(time);
                 }
                 _ => {}
             }
@@ -163,9 +210,24 @@ where
 
         let crash_oracle = CrashOracle::<TX>::default();
         match crash_oracle.evaluate(&self.inner.target) {
-            OracleResult::Pass => ScenarioResult::Ok(IgnoredCharacterization),
-            OracleResult::Fail(e) => ScenarioResult::Fail(format!("{}", e)),
+            OracleResult::Fail(e) => return ScenarioResult::Fail(format!("{}", e)),
+            _ => {}
+        };
+
+        #[cfg(feature = "netsplit")]
+        {
+            let net_split_oracle = NetSplitOracle::<TX, TX>::default();
+            match net_split_oracle.evaluate(&NetSplitContext {
+                primary: &self.inner.target,
+                reference: &self.second,
+            }) {
+                OracleResult::Pass => ScenarioResult::Ok(IgnoredCharacterization),
+                OracleResult::Fail(e) => ScenarioResult::Fail(format!("{}", e)),
+            }
         }
+
+        #[cfg(not(feature = "netsplit"))]
+        ScenarioResult::Ok(IgnoredCharacterization)
     }
 }
 
