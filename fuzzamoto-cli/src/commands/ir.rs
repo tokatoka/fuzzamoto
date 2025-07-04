@@ -11,6 +11,32 @@ use rand::Rng;
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 
+use crate::error::{CliError, Result};
+
+pub struct IrCommand;
+
+impl IrCommand {
+    pub fn execute(command: &IRCommands) -> Result<()> {
+        match command {
+            IRCommands::Generate {
+                output,
+                iterations,
+                programs,
+                context,
+            } => generate_ir(output, *iterations, *programs, context),
+            IRCommands::Compile { input, output } => compile_ir(input, output),
+            IRCommands::Print { input, json } => print_ir(input, *json),
+            IRCommands::Convert {
+                from,
+                to,
+                input,
+                output,
+            } => convert_ir(from, to, input, output),
+            IRCommands::Analyze { input } => analyze_ir(input),
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum IRCommands {
     /// Generate fuzzamoto IR
@@ -74,7 +100,7 @@ pub fn generate_ir(
     iterations: usize,
     programs: usize,
     context: &PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let context = std::fs::read(context.clone())?;
     let context: FullProgramContext = postcard::from_bytes(&context)?;
 
@@ -142,7 +168,7 @@ pub fn generate_ir(
     Ok(())
 }
 
-fn compile_ir_file(input: &PathBuf, output: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn compile_ir_file(input: &PathBuf, output: &PathBuf) -> Result<()> {
     assert!(input.is_file());
 
     let bytes = std::fs::read(input)?;
@@ -157,7 +183,7 @@ fn compile_ir_file(input: &PathBuf, output: &PathBuf) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-fn compile_ir_dir(input: &PathBuf, output: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn compile_ir_dir(input: &PathBuf, output: &PathBuf) -> Result<()> {
     for entry in input.read_dir()? {
         let path = entry?.path();
         if path.is_file() && !path.file_name().unwrap().to_str().unwrap().starts_with(".") {
@@ -174,19 +200,21 @@ fn compile_ir_dir(input: &PathBuf, output: &PathBuf) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-pub fn compile_ir(input: &PathBuf, output: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub fn compile_ir(input: &PathBuf, output: &PathBuf) -> Result<()> {
     if input.is_file() {
         compile_ir_file(input, output)?;
     } else if input.is_dir() && output.is_dir() {
         compile_ir_dir(input, output)?;
     } else {
-        return Err("Invalid input or output".into());
+        return Err(CliError::InvalidInput(
+            "Invalid input or output".to_string(),
+        ));
     }
 
     Ok(())
 }
 
-pub fn print_ir(input: &PathBuf, json: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn print_ir(input: &PathBuf, json: bool) -> Result<()> {
     let bytes = std::fs::read(input)?;
     let program: Program = postcard::from_bytes(&bytes)?;
 
@@ -203,7 +231,7 @@ fn convert_ir_dir(
     to: &CorpusFormat,
     input: &PathBuf,
     output: &PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     for entry in input.read_dir()? {
         let path = entry?.path();
         if path.is_file() && !path.file_name().unwrap().to_str().unwrap().starts_with(".") {
@@ -232,7 +260,7 @@ fn convert_ir_file(
     to: &CorpusFormat,
     input: &PathBuf,
     output: &PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let bytes = std::fs::read(input)?;
     let program: Program = match *from {
         CorpusFormat::Postcard => postcard::from_bytes(&bytes)?,
@@ -253,13 +281,15 @@ pub fn convert_ir(
     to: &CorpusFormat,
     input: &PathBuf,
     output: &PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     if input.is_file() {
         convert_ir_file(from, to, input, output)?;
     } else if input.is_dir() && output.is_dir() {
         convert_ir_dir(from, to, input, output)?;
     } else {
-        return Err("Invalid input or output".into());
+        return Err(CliError::InvalidInput(
+            "Invalid input or output".to_string(),
+        ));
     }
 
     Ok(())
@@ -338,7 +368,7 @@ fn print_size_scatter_plot(points: &[Point]) {
     println!("\nDensity: · (1 program)  : (2-3)  ⁘ (4-5)  ⬢ (>5 programs)");
 }
 
-pub fn analyze_ir(input: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub fn analyze_ir(input: &PathBuf) -> Result<()> {
     const IR_BUCKET_SIZE: usize = 256;
     const COMPILED_BUCKET_SIZE: usize = 1024 * 75;
     const SENDS_BUCKET_SIZE: usize = 1;
