@@ -1,3 +1,4 @@
+#[cfg(feature = "netsplit")]
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "nyx")]
@@ -20,6 +21,16 @@ use fuzzamoto_ir::{
     Program, ProgramContext,
     compiler::{CompiledAction, CompiledProgram, Compiler},
 };
+
+const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
+const LATE_BLOCK_HEIGHT_LIMIT: u32 = 190;
+const COINBASE_VALUE: u64 = 25 * 100_000_000;
+const CONTEXT_FILE_NAME: &str = "ir.context";
+// OP_TRUE script pubkey: 0x0 0x20 sha256(OP_TRUE)
+const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
+    0u8, 32, 74, 232, 21, 114, 240, 110, 27, 136, 253, 92, 237, 122, 26, 0, 9, 69, 67, 46, 131,
+    225, 85, 30, 111, 114, 30, 233, 192, 11, 140, 195, 50, 96,
+];
 
 /// `IrScenario` is a scenario with the same context as `GenericScenario` but it operates on
 /// `fuzzamoto_ir::CompiledProgram`s as input.
@@ -46,28 +57,27 @@ impl<'a> ScenarioInput<'a> for TestCase {
     }
 }
 
-impl<TX, T> Scenario<'_, TestCase, IgnoredCharacterization> for IrScenario<TX, T>
+impl<TX, T> IrScenario<TX, T>
 where
     TX: Transport,
     T: Target<TX> + HasTipHash + ConnectableTarget,
 {
-    fn new(args: &[String]) -> Result<Self, String> {
-        let inner: GenericScenario<TX, T> = GenericScenario::new(args)?;
-
-        // Dump program context
-        let context = ProgramContext {
+    /// Build the IR program context
+    fn build_program_context(inner: &GenericScenario<TX, T>) -> ProgramContext {
+        ProgramContext {
             num_nodes: 1,
             num_connections: inner.connections.len(),
             timestamp: inner.time,
-        };
+        }
+    }
 
-        log::info!("IR context: {:?}", context);
-
-        let mut txos: Vec<fuzzamoto_ir::Txo> = Vec::new();
+    /// Extract coinbase outputs from mature blocks (height < 100) for use in IR programs
+    fn build_txos(inner: &GenericScenario<TX, T>) -> Vec<fuzzamoto_ir::Txo> {
+        let mut txos = Vec::new();
         for (block, _height) in inner
             .block_tree
             .values()
-            .filter(|(_, height)| *height < 100)
+            .filter(|(_, height)| *height < COINBASE_MATURITY_HEIGHT_LIMIT)
         {
             let coinbase = block.coinbase().unwrap();
             let mut hash = [0u8; 32];
@@ -81,21 +91,21 @@ where
 
             txos.push(fuzzamoto_ir::Txo {
                 outpoint: (hash, 0u32),
-                value: 25 * 100_000_000,
-                script_pubkey: vec![
-                    // 0x0 0x20 sha256(OP_TRUE)
-                    0u8, 32, 74, 232, 21, 114, 240, 110, 27, 136, 253, 92, 237, 122, 26, 0, 9, 69,
-                    67, 46, 131, 225, 85, 30, 111, 114, 30, 233, 192, 11, 140, 195, 50, 96,
-                ],
+                value: COINBASE_VALUE,
+                script_pubkey: OP_TRUE_SCRIPT_PUBKEY.to_vec(),
                 spending_script_sig: vec![],
                 spending_witness: vec![vec![0x51]],
             });
         }
+        txos
+    }
 
-        let headers = inner
+    /// Extract block headers from late blocks (height > 190) for use in IR programs
+    fn build_headers(inner: &GenericScenario<TX, T>) -> Vec<fuzzamoto_ir::Header> {
+        inner
             .block_tree
             .values()
-            .filter(|(_, height)| *height > 190)
+            .filter(|(_, height)| *height > LATE_BLOCK_HEIGHT_LIMIT)
             .map(|(block, height)| fuzzamoto_ir::Header {
                 prev: *block.header.prev_blockhash.as_byte_array(),
                 merkle_root: *block.header.merkle_root.as_byte_array(),
@@ -105,9 +115,15 @@ where
                 version: block.header.version.to_consensus(),
                 height: *height,
             })
-            .collect();
+            .collect()
+    }
 
-        // Dump full program context to host (if using nyx) or to a file if `DUMP_CONTEXT` is set
+    /// Dump the full program context either to Nyx host or to a file
+    fn dump_context(
+        context: ProgramContext,
+        txos: Vec<fuzzamoto_ir::Txo>,
+        headers: Vec<fuzzamoto_ir::Header>,
+    ) -> Result<(), String> {
         let full_context = postcard::to_allocvec(&fuzzamoto_ir::FullProgramContext {
             context,
             txos,
@@ -117,11 +133,10 @@ where
 
         #[cfg(feature = "nyx")]
         {
-            let ctx_file_name = "ir.context";
             unsafe {
                 nyx_dump_file_to_host(
-                    ctx_file_name.as_ptr() as *const i8,
-                    ctx_file_name.len(),
+                    CONTEXT_FILE_NAME.as_ptr() as *const i8,
+                    CONTEXT_FILE_NAME.len(),
                     full_context.as_ptr(),
                     full_context.len(),
                 );
@@ -131,67 +146,66 @@ where
         #[cfg(not(feature = "nyx"))]
         if let Ok(context_file) = std::env::var("DUMP_CONTEXT") {
             std::fs::write(context_file, &full_context).map_err(|e| e.to_string())?;
-        };
+        }
 
-        #[cfg(feature = "netsplit")]
-        let mut second = {
-            let mut second = if args.len() > 2 {
-                T::from_path(&args[2])?
-            } else {
-                T::from_path(&args[1])?
-            };
-            second.connect_to(&inner.target)?;
-
-            const SYNC_TIMEOUT: Duration = Duration::from_secs(10);
-            const POLL_INTERVAL: Duration = Duration::from_millis(10);
-            let start = Instant::now();
-
-            let mut synced = false;
-            while start.elapsed() < SYNC_TIMEOUT {
-                let primary_tip = inner.target.get_tip_hash();
-                let reference_tip = second.get_tip_hash();
-
-                if primary_tip.is_some() && primary_tip == reference_tip {
-                    log::info!("Nodes synced successfully!");
-                    synced = true;
-                    break;
-                }
-
-                std::thread::sleep(POLL_INTERVAL);
-            }
-
-            if !synced {
-                return Err("nodes failed to sync".to_string());
-            }
-
-            second
-        };
-
-        Ok(Self {
-            inner,
-            #[cfg(feature = "netsplit")]
-            second,
-        })
+        Ok(())
     }
 
-    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
-        for action in testcase.program.actions {
+    #[cfg(feature = "netsplit")]
+    fn create_and_sync_second_target(args: &[String], primary: &T) -> Result<T, String> {
+        let mut second = if args.len() > 2 {
+            T::from_path(&args[2])?
+        } else {
+            T::from_path(&args[1])?
+        };
+        second.connect_to(primary)?;
+        Self::sync_nodes(primary, &mut second)?;
+        Ok(second)
+    }
+
+    #[cfg(feature = "netsplit")]
+    fn sync_nodes(primary: &T, reference: &mut T) -> Result<(), String> {
+        const SYNC_TIMEOUT: Duration = Duration::from_secs(10);
+        const POLL_INTERVAL: Duration = Duration::from_millis(10);
+
+        let start = Instant::now();
+        let mut synced = false;
+
+        while start.elapsed() < SYNC_TIMEOUT {
+            let primary_tip = primary.get_tip_hash();
+            let reference_tip = reference.get_tip_hash();
+
+            if primary_tip.is_some() && primary_tip == reference_tip {
+                log::info!("Nodes synced successfully!");
+                synced = true;
+                break;
+            }
+
+            std::thread::sleep(POLL_INTERVAL);
+        }
+
+        if !synced {
+            return Err("nodes failed to sync".to_string());
+        }
+
+        Ok(())
+    }
+
+    fn process_actions(&mut self, actions: Vec<CompiledAction>) {
+        for action in actions {
             match action {
                 CompiledAction::SendRawMessage(from, command, message) => {
                     if self.inner.connections.is_empty() {
-                        continue;
+                        return;
                     }
 
                     let num_connections = self.inner.connections.len();
-                    if let Some(connection) = self
-                        .inner
-                        .connections
-                        .get_mut(from as usize % num_connections)
+                    if let Some(connection) = self.inner.connections.get_mut(from % num_connections)
                     {
                         if cfg!(feature = "force_send_and_ping") {
-                            let _ = connection.send_and_ping(&(command.to_string(), message));
+                            let _ = connection.send_and_ping(&(command, message));
                         } else {
-                            let _ = connection.send(&(command.to_string(), message));
+                            let _ = connection.send(&(command, message));
                         }
                     }
                 }
@@ -203,31 +217,65 @@ where
                 _ => {}
             }
         }
+    }
 
+    fn ping_connections(&mut self) {
         for connection in self.inner.connections.iter_mut() {
             let _ = connection.ping();
         }
+    }
 
+    fn evaluate_oracles(&self) -> ScenarioResult<IgnoredCharacterization> {
         let crash_oracle = CrashOracle::<TX>::default();
-        match crash_oracle.evaluate(&self.inner.target) {
-            OracleResult::Fail(e) => return ScenarioResult::Fail(format!("{}", e)),
-            _ => {}
-        };
+        if let OracleResult::Fail(e) = crash_oracle.evaluate(&self.inner.target) {
+            return ScenarioResult::Fail(format!("{}", e));
+        }
 
         #[cfg(feature = "netsplit")]
         {
             let net_split_oracle = NetSplitOracle::<TX, TX>::default();
-            match net_split_oracle.evaluate(&NetSplitContext {
+            if let OracleResult::Fail(e) = net_split_oracle.evaluate(&NetSplitContext {
                 primary: &self.inner.target,
                 reference: &self.second,
             }) {
-                OracleResult::Pass => ScenarioResult::Ok(IgnoredCharacterization),
-                OracleResult::Fail(e) => ScenarioResult::Fail(format!("{}", e)),
+                return ScenarioResult::Fail(format!("{}", e));
             }
         }
 
-        #[cfg(not(feature = "netsplit"))]
         ScenarioResult::Ok(IgnoredCharacterization)
+    }
+}
+
+impl<TX, T> Scenario<'_, TestCase, IgnoredCharacterization> for IrScenario<TX, T>
+where
+    TX: Transport,
+    T: Target<TX> + HasTipHash + ConnectableTarget,
+{
+    fn new(args: &[String]) -> Result<Self, String> {
+        let inner: GenericScenario<TX, T> = GenericScenario::new(args)?;
+
+        let context = Self::build_program_context(&inner);
+        log::info!("IR context: {:?}", context);
+
+        let txos = Self::build_txos(&inner);
+        let headers = Self::build_headers(&inner);
+
+        Self::dump_context(context, txos, headers)?;
+
+        #[cfg(feature = "netsplit")]
+        let second = Self::create_and_sync_second_target(args, &inner.target)?;
+
+        Ok(Self {
+            inner,
+            #[cfg(feature = "netsplit")]
+            second,
+        })
+    }
+
+    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+        self.process_actions(testcase.program.actions);
+        self.ping_connections();
+        self.evaluate_oracles()
     }
 }
 
