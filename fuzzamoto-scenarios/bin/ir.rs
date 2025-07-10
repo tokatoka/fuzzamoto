@@ -9,16 +9,16 @@ use fuzzamoto::{
     scenarios::{
         IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
     },
-    targets::{BitcoinCoreTarget, HasMempool, HasTipHash, Target},
+    targets::{BitcoinCoreTarget, HasTipHash, Target},
 };
 use fuzzamoto_ir::{
     Program, ProgramContext,
-    compiler::{CompiledAction, CompiledProgram, Compiler, Probe},
+    compiler::{CompiledAction, CompiledProgram, Compiler},
 };
 
 /// `IrScenario` is a scenario with the same context as `GenericScenario` but it operates on
 /// `fuzzamoto_ir::CompiledProgram`s as input.
-struct IrScenario<TX: Transport, T: Target<TX> + HasMempool> {
+struct IrScenario<TX: Transport, T: Target<TX>> {
     inner: GenericScenario<TX, T>,
 }
 
@@ -42,7 +42,7 @@ impl<'a> ScenarioInput<'a> for TestCase {
 impl<TX, T> Scenario<'_, TestCase, IgnoredCharacterization> for IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + HasMempool + HasTipHash,
+    T: Target<TX> + HasTipHash,
 {
     fn new(args: &[String]) -> Result<Self, String> {
         let inner = GenericScenario::new(args)?;
@@ -152,26 +152,6 @@ where
                 }
                 CompiledAction::SetTime(time) => {
                     let _ = self.inner.target.set_mocktime(time);
-                }
-                CompiledAction::Probe(Probe::Mempool) => {
-                    match self.inner.target.get_mempool() {
-                        Some(mempool) => {
-                            let _mempool_bytes = serde_json::to_vec(&mempool).unwrap();
-                            let _file_name = "mempool.probe";
-                            #[cfg(feature = "nyx")]
-                            {
-                                unsafe {
-                                    nyx_dump_file_to_host(
-                                        _file_name.as_ptr() as *const i8,
-                                        _file_name.len(),
-                                        _mempool_bytes.as_ptr(),
-                                        _mempool_bytes.len(),
-                                    );
-                                }
-                            }
-                        }
-                        None => log::warn!("Failed to probe mempool contents"),
-                    };
                 }
                 _ => {}
             }

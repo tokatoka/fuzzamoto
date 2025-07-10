@@ -39,15 +39,8 @@ pub enum CompiledAction {
     /// Set mock time for all nodes in the test
     SetTime(u64),
 
-    /// Probe state of the nodes under test to enable smarter mutations
-    Probe(Probe),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum Probe {
-    /// Probe for mempool contents
-    Mempool,
-}
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CompiledProgram {

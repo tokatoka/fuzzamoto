@@ -43,9 +43,6 @@ pub trait ConnectableTarget {
     }
 }
 
-pub trait HasMempool {
-    fn get_mempool(&self) -> Option<serde_json::Value>;
-}
 
 pub trait HasTipHash {
     fn get_tip_hash(&self) -> Option<[u8; 32]>;

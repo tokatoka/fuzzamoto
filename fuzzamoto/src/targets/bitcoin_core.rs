@@ -7,7 +7,7 @@ use bitcoin::hashes::Hash;
 use corepc_node::{Conf, Node, P2P};
 use std::net::{SocketAddrV4, TcpListener, TcpStream};
 
-use super::{ConnectableTarget, HasMempool, HasTipHash};
+use super::{ConnectableTarget, HasTipHash};
 
 pub struct BitcoinCoreTarget {
     pub node: Node,
@@ -198,14 +198,6 @@ impl ConnectableTarget for BitcoinCoreTarget {
     }
 }
 
-impl HasMempool for BitcoinCoreTarget {
-    fn get_mempool(&self) -> Option<serde_json::Value> {
-        self.node
-            .client
-            .call::<serde_json::Value>("getrawmempool", &[true.into()])
-            .ok()
-    }
-}
 
 impl HasTipHash for BitcoinCoreTarget {
     fn get_tip_hash(&self) -> Option<[u8; 32]> {
