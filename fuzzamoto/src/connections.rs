@@ -118,7 +118,6 @@ impl Transport for V1Transport {
     }
 }
 
-
 pub struct Connection<T: Transport> {
     connection_type: ConnectionType,
     transport: T,
@@ -166,9 +165,7 @@ impl<T: Transport> Connection<T> {
     fn wait_for_pong(&mut self, nonce: u64) -> Result<(), String> {
         loop {
             let received = self.transport.receive()?;
-            if received.0 == "pong"
-                && received.1.len() == 8 && received.1 == nonce.to_le_bytes()
-            {
+            if received.0 == "pong" && received.1.len() == 8 && received.1 == nonce.to_le_bytes() {
                 break;
             }
         }

@@ -45,7 +45,6 @@ pub trait ConnectableTarget {
     fn is_connected_to<O: ConnectableTarget>(&self, other: &O) -> bool;
 }
 
-
 pub trait HasTipHash {
     fn get_tip_hash(&self) -> Option<[u8; 32]>;
 }

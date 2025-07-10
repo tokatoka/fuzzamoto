@@ -43,7 +43,6 @@ where
     fn run(&mut self, testcase: I) -> ScenarioResult<SC>;
 }
 
-
 #[macro_export]
 macro_rules! fuzzamoto_main {
     ($scenario_type:ty, $testcase_type:ty) => {

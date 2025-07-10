@@ -38,9 +38,7 @@ pub enum CompiledAction {
     SendRawMessage(usize, String, Vec<u8>),
     /// Set mock time for all nodes in the test
     SetTime(u64),
-
 }
-
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CompiledProgram {

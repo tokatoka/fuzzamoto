@@ -225,7 +225,6 @@ impl ConnectableTarget for BitcoinCoreTarget {
     }
 }
 
-
 impl HasTipHash for BitcoinCoreTarget {
     fn get_tip_hash(&self) -> Option<[u8; 32]> {
         match self.node.client.get_best_block_hash() {
