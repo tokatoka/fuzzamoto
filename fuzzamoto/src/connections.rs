@@ -1,8 +1,6 @@
 use bitcoin::consensus::encode::{Encodable, ReadExt};
 use bitcoin::p2p::{ServiceFlags, address::Address, message_network::VersionMessage};
-use std::cell::RefCell;
 use std::io::{Read, Write};
-use std::rc::Rc;
 
 use std::net;
 
@@ -120,51 +118,6 @@ impl Transport for V1Transport {
     }
 }
 
-/// `RecordingTransport` is a transport that records all messages that get send. No actual network
-/// communication is performed, which is why received messages are not recorded (i.e. there is no
-/// real communication happening with an actual target).
-pub struct RecordingTransport {
-    sent: Rc<RefCell<Vec<(std::time::Instant, String, Vec<u8>)>>>,
-    received: u64,
-    local_addr: net::SocketAddr,
-}
-
-impl RecordingTransport {
-    pub fn new(
-        local_addr: net::SocketAddr,
-        sent: Rc<RefCell<Vec<(std::time::Instant, String, Vec<u8>)>>>,
-    ) -> Self {
-        Self {
-            sent,
-            received: 0,
-            local_addr,
-        }
-    }
-}
-
-impl Transport for RecordingTransport {
-    fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
-        // Used for maintaining global send order across multiple `RecordingTransport` instances
-        let current_time = std::time::Instant::now();
-        self.sent
-            .borrow_mut()
-            .push((current_time, message.0.clone(), message.1.clone()));
-        Ok(())
-    }
-
-    fn receive(&mut self) -> Result<(String, Vec<u8>), String> {
-        // Emulate receiving "verack", "pong" and "version" messages. These are currently the only
-        // messages that the scenarios expect to receive
-        let msg_types = ["verack", "pong", "version"];
-        let msg_type = msg_types[self.received as usize % msg_types.len()];
-        self.received += 1;
-        Ok((msg_type.to_string(), vec![]))
-    }
-
-    fn local_addr(&self) -> Result<net::SocketAddr, String> {
-        Ok(self.local_addr)
-    }
-}
 
 pub struct Connection<T: Transport> {
     connection_type: ConnectionType,
@@ -214,8 +167,7 @@ impl<T: Transport> Connection<T> {
         loop {
             let received = self.transport.receive()?;
             if received.0 == "pong"
-                && (cfg!(feature = "record")
-                    || (received.1.len() == 8 && received.1 == nonce.to_le_bytes()))
+                && received.1.len() == 8 && received.1 == nonce.to_le_bytes()
             {
                 break;
             }

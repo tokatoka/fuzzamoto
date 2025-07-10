@@ -101,9 +101,4 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization>
     }
 }
 
-#[cfg(feature = "record")]
-fn main() {
-    panic!("Http server scenario can't be recorded");
-}
-#[cfg(not(feature = "record"))]
 fuzzamoto_main!(HttpServerScenario<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>, TestCase);

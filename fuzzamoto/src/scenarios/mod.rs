@@ -43,10 +43,6 @@ where
     fn run(&mut self, testcase: I) -> ScenarioResult<SC>;
 }
 
-//pub fn notify_snapshot<T>(_target: &mut StdTarget<T>) {
-//    #[cfg(feature = "record")]
-//    _target.take_snapshot();
-//}
 
 #[macro_export]
 macro_rules! fuzzamoto_main {
@@ -73,8 +69,6 @@ macro_rules! fuzzamoto_main {
                     return ExitCode::from(exit_code);
                 }
             };
-
-            // TODO notify_snapshot(&mut target);
 
             // Ensure the runner dropped prior to the scenario when returning from main.
             let runner = runner;

@@ -189,16 +189,6 @@ where
     }
 }
 
-#[cfg(feature = "record")]
-fuzzamoto_main!(
-    IrScenario::<
-        fuzzamoto::connections::RecordingTransport,
-        fuzzamoto::targets::RecorderTarget<fuzzamoto::connections::RecordingTransport>,
-    >,
-    TestCase
-);
-
-#[cfg(not(feature = "record"))]
 fuzzamoto_main!(
     IrScenario::<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>,
     TestCase

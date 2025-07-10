@@ -60,19 +60,6 @@ enum Commands {
         scenario: PathBuf,
     },
 
-    /// Record test cases from a corpus of a specialized scenario to be used as seeds for the
-    /// generic scenario
-    Record {
-        #[arg(
-            long,
-            help = "Path to the output directory for the recorded test cases"
-        )]
-        output: PathBuf,
-        #[arg(long, help = "Path to the input corpus directory")]
-        corpus: PathBuf,
-        #[arg(long, help = "Path to the fuzzamoto scenario scenario binary")]
-        scenario: PathBuf,
-    },
     /// Fuzzamoto intermediate representation (IR) commands
     IR {
         #[command(subcommand)]
@@ -113,11 +100,6 @@ fn main() -> Result<()> {
             bitcoind.clone(),
             scenario.clone(),
         ),
-        Commands::Record {
-            output,
-            corpus,
-            scenario,
-        } => RecordCommand::execute(output.clone(), corpus.clone(), scenario.clone()),
         Commands::IR { command } => IrCommand::execute(command),
     }
 }

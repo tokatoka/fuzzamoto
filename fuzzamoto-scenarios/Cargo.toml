@@ -10,7 +10,6 @@ repository.workspace = true
 fuzz = ["compile_in_vm", "force_send_and_ping", "nyx"]
 reproduce = ["compile_in_vm", "force_send_and_ping", "fuzzamoto/reproduce"]
 
-record = []
 nyx = ["dep:fuzzamoto-nyx-sys"]
 compile_in_vm = []
 # Force every sent message to be followed by two ping/pong roundtrips

@@ -327,16 +327,6 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
     }
 }
 
-#[cfg(feature = "record")]
-fuzzamoto_main!(
-    CompactBlocksScenario::<
-        fuzzamoto::connections::RecordingTransport,
-        fuzzamoto::targets::RecorderTarget<fuzzamoto::connections::RecordingTransport>,
-    >,
-    TestCase
-);
-
-#[cfg(not(feature = "record"))]
 fuzzamoto_main!(
     CompactBlocksScenario::<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>,
     TestCase

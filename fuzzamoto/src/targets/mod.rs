@@ -1,7 +1,5 @@
 pub mod bitcoin_core;
-pub mod recorder;
 pub use bitcoin_core::BitcoinCoreTarget;
-pub use recorder::{RecordedAction, RecorderTarget};
 
 use crate::connections::{Connection, ConnectionType, Transport};
 use std::net::SocketAddrV4;

@@ -60,14 +60,6 @@ impl<'a> ScenarioInput<'a> for TestCase {
 ///
 /// At the end of each test case execution the scenario ensures all sent messages are processed
 /// through a ping/pong roundtrip and checks that the target remains alive with `Target::is_alive`.
-///
-/// Using btcser's custom mutator is not required but recommended to fuzz this scenario (see
-/// `grammars/simple_regtest.btcser`), as testcases are encoded using Bitcoin's serialization
-/// format (`bitcoin::consensus::encode`).
-///
-/// It is also recommended to seed this scenario with inputs recorded from the specialised
-/// scenarios in `fuzzamoto-scenarios/`. Note: only inputs recorded from scenarios that share the
-/// same test setup (i.e. `Scenario::new`) are useful as seeds.
 pub struct GenericScenario<TX: Transport, T: Target<TX>> {
     pub target: T,
     pub connections: Vec<Connection<TX>>,

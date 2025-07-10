@@ -76,11 +76,6 @@ impl<'a> Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization>
     }
 }
 
-#[cfg(feature = "record")]
-fn main() {
-    panic!("Wallet migration scenario can't be recorded");
-}
-#[cfg(not(feature = "record"))]
 fuzzamoto_main!(
     WalletMigrationScenario::<fuzzamoto::connections::V1Transport, BitcoinCoreTarget>,
     WalletDotDatBytes

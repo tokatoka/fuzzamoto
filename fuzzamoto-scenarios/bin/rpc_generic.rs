@@ -430,9 +430,4 @@ impl<'a> Scenario<'a, TestCase, IgnoredCharacterization> for RpcScenario {
         ScenarioResult::Ok(IgnoredCharacterization)
     }
 }
-#[cfg(feature = "record")]
-fn main() {
-    panic!("Rpc scenario can't be recorded");
-}
-#[cfg(not(feature = "record"))]
 fuzzamoto_main!(RpcScenario, TestCase);
