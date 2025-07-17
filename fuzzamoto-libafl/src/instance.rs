@@ -264,6 +264,10 @@ impl<M: Monitor> Instance<'_, M> {
             .set_mutation_probabilities(&mut state, weights.iter().map(|w| *w / sum).collect())
             .unwrap();
 
+        mutator
+            .set_iter_probabilities_pow(&mut state, vec![0.025f32, 0.1, 0.4, 0.3, 0.1, 0.05, 0.025])
+            .unwrap();
+
         let minimizing_crash = self.options.minimize_input.is_some();
 
         let mut stages = tuple_list!(
