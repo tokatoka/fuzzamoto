@@ -68,3 +68,30 @@ mkdir /tmp/in
     --share /tmp/fuzzamoto_scenario-ir/ \
     --cores 0-15 # 16 cores, adjust for your system
 ```
+
+Once it's running you'll see output similar to the following:
+
+```
+...
+💗 time: 0h-12m-38s (x13) execs: 273166 cov: 5.443% corpus: 30988 exec/sec: 366.3 bugs: 0
+📊 time: 0h-12m-38s (x13) execs: 273166 cov: 5.443% corpus: 30988 exec/sec: 366.2 bugs: 0
+📊 time: 0h-12m-38s (x13) execs: 273166 cov: 5.443% corpus: 30989 exec/sec: 366.0 bugs: 0
+💗 time: 0h-12m-40s (x13) execs: 273621 cov: 5.443% corpus: 30989 exec/sec: 365.7 bugs: 0
+📊 time: 0h-12m-40s (x13) execs: 273621 cov: 5.443% corpus: 30989 exec/sec: 365.7 bugs: 0
+...
+```
+
+📊 inidcates that a new intersting input has been discovered and 💗 indicates a
+heart-beat event from one of the fuzzers instances. Insect emojis such as 🪲
+indicate that a new bug has been found.
+
+## Troubleshooting
+
+If the `cov` metric displayed in `fuzzamoto-libafl`'s output stays at 0%, then
+something is likely wrong and you'll need to troubleshoot.
+
+* Use the `--verbose` flag to get more helpful output
+* Make sure the `target/` directory was created by the container you're working
+  in. If it was created by e.g. another container previously, then `libafl_nyx`
+  will likely not have been build in your current container and the fuzzer will
+  fail to start Nyx VMs
