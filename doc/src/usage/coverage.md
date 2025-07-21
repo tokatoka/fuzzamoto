@@ -14,5 +14,5 @@ Example:
 
 ```
 docker build -t fuzzamoto-coverage -f Dockerfile.coverage .
-docker run --privileged -it -v HOST_OUTPUT_DIR:/mnt/output -v HOST_CORPUS_DIR:/mnt/corpus fuzzamoto-coverage /fuzzamoto/target/release/scenario-compact-blocks
+docker run --privileged -it -v $HOST_OUTPUT_DIR:/mnt/output -v $HOST_CORPUS_DIR:/mnt/corpus fuzzamoto-coverage /fuzzamoto/target/release/scenario-compact-blocks
 ```
