@@ -115,7 +115,7 @@ impl<TX: Transport, T: Target<TX>> CompactBlocksScenario<TX, T> {
         };
 
         // Create a chain of `num_txs` transactions, each spending the previous one (one in one out).
-        let funding_outpoint = prevs[1..100][funding as usize % 100].2;
+        let funding_outpoint = prevs[1..=100][funding as usize % 100].2;
         let mut avaliable_outpoints = vec![(funding_outpoint, Amount::from_int_btc(25))];
         for _ in 0..num_txs {
             let Ok(tx) = test_utils::create_consolidation_tx(avaliable_outpoints.as_slice()) else {
