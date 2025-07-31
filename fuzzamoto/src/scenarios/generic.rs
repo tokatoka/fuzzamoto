@@ -139,11 +139,11 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         for (connection, relay, wtxidrelay, addrv2, erlay) in connections.iter_mut() {
             connection.version_handshake(HandshakeOpts {
                 time: time as i64,
-                relay: true,
+                relay: *relay,
                 starting_height: 0,
-                wtxidrelay: true,
-                addrv2: true,
-                erlay: true,
+                wtxidrelay: *wtxidrelay,
+                addrv2: *addrv2,
+                erlay: *erlay,
             })?;
             let sendcmpct = NetworkMessage::SendCmpct(SendCmpct {
                 version: 2,
