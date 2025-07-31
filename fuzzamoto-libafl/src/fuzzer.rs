@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     fs::{File, OpenOptions},
     io::{self, Write},
+    rc::Rc,
 };
 
 use clap::Parser;
@@ -61,13 +62,19 @@ impl Fuzzer {
                     .open(l)
                     .ok()
                     .map(RefCell::new)
+                    .map(Rc::new)
             });
 
-            #[cfg(unix)]
-            let stdout_cpy = RefCell::new(unsafe {
-                let new_fd = dup(io::stdout().as_raw_fd()).unwrap();
-                File::from_raw_fd(new_fd)
-            });
+            let log_fn = {
+                let log = log.clone();
+                move |s: &str| {
+                    println!("{}", s);
+
+                    if let Some(log) = &log {
+                        writeln!(log.borrow_mut(), "{:?} {}", current_time(), s).unwrap();
+                    }
+                }
+            };
 
             // The stats reporter for the broker
             let monitor = if let (Some(token), Some(user)) = (
@@ -76,9 +83,9 @@ impl Fuzzer {
             ) {
                 println!("Using pushover notifications, will notify on first bug found");
                 monitor::send_pushover_notification(&token, &user, "✅ New campaign has begun");
-                GlobalMonitor::with_pushover(token, user)
+                GlobalMonitor::with_pushover(token, user, log_fn)
             } else {
-                GlobalMonitor::default()
+                GlobalMonitor::new(log_fn)
             };
             self.launch(monitor)
         }

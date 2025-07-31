@@ -4,13 +4,18 @@ use libafl::{
 };
 use libafl_bolts::ClientId;
 
-#[derive(Clone, Debug, Default)]
-pub struct GlobalMonitor {
+#[derive(Clone, Debug)]
+pub struct GlobalMonitor<F>
+where
+    F: FnMut(&str),
+{
     total_execs: u64,
     corpus_size: u64,
     objective_size: u64,
 
     pushover_creds: Option<(String, String)>,
+
+    log_fn: F,
 }
 
 pub fn send_pushover_notification(token: &str, user: &str, message: &str) {
@@ -25,16 +30,35 @@ pub fn send_pushover_notification(token: &str, user: &str, message: &str) {
     }
 }
 
-impl GlobalMonitor {
-    pub fn with_pushover(token: String, user: String) -> Self {
+impl<F> GlobalMonitor<F>
+where
+    F: FnMut(&str),
+{
+    pub fn with_pushover(token: String, user: String, log_fn: F) -> Self {
         Self {
+            total_execs: 0,
+            corpus_size: 0,
+            objective_size: 0,
             pushover_creds: Some((token, user)),
-            ..Default::default()
+            log_fn,
+        }
+    }
+
+    pub fn new(log_fn: F) -> Self {
+        Self {
+            total_execs: 0,
+            corpus_size: 0,
+            objective_size: 0,
+            pushover_creds: None,
+            log_fn,
         }
     }
 }
 
-impl Monitor for GlobalMonitor {
+impl<F> Monitor for GlobalMonitor<F>
+where
+    F: FnMut(&str),
+{
     fn display(
         &mut self,
         client_stats_manager: &mut ClientStatsManager,
@@ -76,7 +100,7 @@ impl Monitor for GlobalMonitor {
         };
 
         if let Some(event) = event {
-            println!(
+            let fmt = format!(
                 "{} time: {} (x{}) execs: {} cov: {} corpus: {} exec/sec: {} bugs: {}",
                 event,
                 global_stats.run_time_pretty,
@@ -87,6 +111,7 @@ impl Monitor for GlobalMonitor {
                 global_stats.execs_per_sec_pretty,
                 global_stats.objective_size
             );
+            (self.log_fn)(&fmt);
         }
     }
 }
