@@ -1,5 +1,5 @@
-pub mod block;
 pub mod cutting;
+pub mod instr_block;
 pub mod nopping;
 
 use crate::Program;

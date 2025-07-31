@@ -2,13 +2,13 @@ use super::Minimizer;
 use crate::Program;
 
 /// `BlockMinimizer` is a minimizer that removes entire blocks of instructions from the program.
-pub struct BlockMinimizer {
+pub struct InstrBlockMinimizer {
     last_good: Program,
     current: Program,
     current_index: usize,
 }
 
-impl Minimizer for BlockMinimizer {
+impl Minimizer for InstrBlockMinimizer {
     fn new(program: Program) -> Self {
         Self {
             last_good: program.clone(),
@@ -26,7 +26,7 @@ impl Minimizer for BlockMinimizer {
     }
 }
 
-impl Iterator for BlockMinimizer {
+impl Iterator for InstrBlockMinimizer {
     type Item = Program;
 
     fn next(&mut self) -> Option<Self::Item> {

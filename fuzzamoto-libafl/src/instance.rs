@@ -2,10 +2,10 @@ use std::{marker::PhantomData, path::PathBuf, process, time::Duration};
 
 use fuzzamoto_ir::{
     AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, CombineMutator,
-    CompactFilterQueryGenerator, ConcatMutator, GetDataGenerator, HeaderGenerator, InputMutator,
+    CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator, InputMutator,
     InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator,
     OperationMutator, Program, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator,
-    TxoGenerator, WitnessGenerator, cutting::CuttingMinimizer, minimizers::block::BlockMinimizer,
+    TxoGenerator, WitnessGenerator, cutting::CuttingMinimizer, instr_block::InstrBlockMinimizer,
     nopping::NoppingMinimizer,
 };
 
@@ -29,7 +29,7 @@ use libafl::{
         IndexesLenTimeMinimizerScheduler, QueueScheduler, StdWeightedScheduler,
         powersched::PowerSchedule,
     },
-    stages::{IfStage, StagesTuple, StdTMinMutationalStage, TuneableMutationalStage},
+    stages::{IfStage, StagesTuple, TuneableMutationalStage},
     state::{HasCorpus, HasMaxSize, HasRand, StdState},
 };
 use libafl_bolts::{
@@ -284,7 +284,7 @@ impl<M: Monitor> Instance<'_, M> {
                         200,
                         minimizing_crash
                     ),
-                    IrMinimizerStage::<BlockMinimizer, _, _>::new(
+                    IrMinimizerStage::<InstrBlockMinimizer, _, _>::new(
                         trace_handle.clone(),
                         200,
                         minimizing_crash

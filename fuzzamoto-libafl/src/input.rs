@@ -42,7 +42,7 @@ impl HasLen for IrInput {
 }
 
 impl HasTargetBytes for IrInput {
-    fn target_bytes(&self) -> OwnedSlice<u8> {
+    fn target_bytes(&self) -> OwnedSlice<'_, u8> {
         #[cfg(not(feature = "compile_in_vm"))]
         {
             let mut compiler = fuzzamoto_ir::compiler::Compiler::new();

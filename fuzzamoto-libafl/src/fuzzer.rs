@@ -1,9 +1,4 @@
-use std::{
-    cell::RefCell,
-    fs::{File, OpenOptions},
-    io::{self, Write},
-    rc::Rc,
-};
+use std::{cell::RefCell, fs::OpenOptions, io::Write, rc::Rc};
 
 use clap::Parser;
 #[cfg(feature = "simplemgr")]
@@ -23,11 +18,6 @@ use libafl_bolts::{
     shmem::{ShMemProvider, StdShMemProvider},
     staterestore::StateRestorer,
     tuples::tuple_list,
-};
-#[cfg(unix)]
-use {
-    nix::unistd::dup,
-    std::os::unix::io::{AsRawFd, FromRawFd},
 };
 
 use crate::{
@@ -98,7 +88,8 @@ impl Fuzzer {
         // The shared memory allocator
         let mut shmem_provider = StdShMemProvider::new()?;
 
-        /* If we are running in verbose, don't provide a replacement stdout, otherwise, use /dev/null */
+        // If we are running in verbose, don't provide a replacement stdout, otherwise, use
+        // /dev/null
         let stdout = if self.options.verbose {
             None
         } else {

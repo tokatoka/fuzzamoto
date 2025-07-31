@@ -21,9 +21,9 @@ pub struct Client<'a> {
     options: &'a FuzzerOptions,
 }
 
-impl Client<'_> {
-    pub fn new(options: &FuzzerOptions) -> Client {
-        Client { options }
+impl<'a> Client<'a> {
+    pub fn new(options: &'a FuzzerOptions) -> Self {
+        Self { options }
     }
 
     pub fn run<M: Monitor>(

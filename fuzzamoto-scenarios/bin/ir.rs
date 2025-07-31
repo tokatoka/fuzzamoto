@@ -25,7 +25,6 @@ use fuzzamoto_ir::{
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
 const LATE_BLOCK_HEIGHT_LIMIT: u32 = 190;
 const COINBASE_VALUE: u64 = 25 * 100_000_000;
-const CONTEXT_FILE_NAME: &str = "ir.context";
 // OP_TRUE script pubkey: 0x0 0x20 sha256(OP_TRUE)
 const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
     0u8, 32, 74, 232, 21, 114, 240, 110, 27, 136, 253, 92, 237, 122, 26, 0, 9, 69, 67, 46, 131,
@@ -133,6 +132,7 @@ where
 
         #[cfg(feature = "nyx")]
         {
+            const CONTEXT_FILE_NAME: &str = "ir.context";
             unsafe {
                 nyx_dump_file_to_host(
                     CONTEXT_FILE_NAME.as_ptr() as *const i8,

@@ -9,8 +9,6 @@ pub enum CliError {
     InvalidInput(String),
     ShareDirExists,
     FileNotFound(String),
-    CompileError(String),
-    NyxError(String),
 }
 
 impl fmt::Display for CliError {
@@ -23,8 +21,6 @@ impl fmt::Display for CliError {
             CliError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
             CliError::ShareDirExists => write!(f, "Share directory already exists"),
             CliError::FileNotFound(path) => write!(f, "File not found: {}", path),
-            CliError::CompileError(msg) => write!(f, "Compile error: {}", msg),
-            CliError::NyxError(msg) => write!(f, "Nyx error: {}", msg),
         }
     }
 }

@@ -1,7 +1,4 @@
-use libafl::{
-    Error,
-    monitors::{Monitor, stats::ClientStatsManager},
-};
+use libafl::monitors::{Monitor, stats::ClientStatsManager};
 use libafl_bolts::ClientId;
 
 #[derive(Clone, Debug)]
@@ -11,7 +8,6 @@ where
 {
     total_execs: u64,
     corpus_size: u64,
-    objective_size: u64,
 
     pushover_creds: Option<(String, String)>,
 
@@ -38,7 +34,6 @@ where
         Self {
             total_execs: 0,
             corpus_size: 0,
-            objective_size: 0,
             pushover_creds: Some((token, user)),
             log_fn,
         }
@@ -48,7 +43,6 @@ where
         Self {
             total_execs: 0,
             corpus_size: 0,
-            objective_size: 0,
             pushover_creds: None,
             log_fn,
         }
@@ -63,7 +57,7 @@ where
         &mut self,
         client_stats_manager: &mut ClientStatsManager,
         event_msg: &str,
-        sender_id: ClientId,
+        _sender_id: ClientId,
     ) {
         let trace = client_stats_manager
             .aggregated()
