@@ -48,6 +48,7 @@ impl Instruction {
             | Operation::AddTxidWithWitnessInv
             | Operation::AddTxidInv
             | Operation::AddWtxidInv
+            | Operation::AddCompactBlockInv
             | Operation::AddBlockInv
             | Operation::AddBlockWithWitnessInv
             | Operation::AddFilteredBlockInv
@@ -98,6 +99,7 @@ impl Instruction {
             | Operation::AddTxidInv
             | Operation::AddWtxidInv
             | Operation::AddTxidWithWitnessInv
+            | Operation::AddCompactBlockInv
             | Operation::AddBlockInv
             | Operation::AddBlockWithWitnessInv
             | Operation::AddFilteredBlockInv

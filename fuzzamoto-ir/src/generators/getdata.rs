@@ -63,6 +63,7 @@ impl<R: RngCore> Generator<R> for InventoryGenerator {
                     Operation::AddBlockWithWitnessInv,
                     Operation::AddBlockInv,
                     Operation::AddFilteredBlockInv,
+                    Operation::AddCompactBlockInv,
                 ]
                 .choose(rng)
                 .unwrap()

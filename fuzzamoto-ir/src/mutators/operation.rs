@@ -50,25 +50,38 @@ impl<R: RngCore, M: OperationByteMutator> Mutator<R> for OperationMutator<M> {
                 .choose(rng)
                 .unwrap()
                 .clone(),
-            Operation::AddFilteredBlockInv => {
-                [Operation::AddBlockInv, Operation::AddBlockWithWitnessInv]
-                    .choose(rng)
-                    .unwrap()
-                    .clone()
-            }
-            Operation::AddBlockInv => [
-                Operation::AddFilteredBlockInv,
+            Operation::AddFilteredBlockInv => [
+                Operation::AddBlockInv,
                 Operation::AddBlockWithWitnessInv,
+                Operation::AddCompactBlockInv,
             ]
             .choose(rng)
             .unwrap()
             .clone(),
-            Operation::AddBlockWithWitnessInv => {
-                [Operation::AddFilteredBlockInv, Operation::AddBlockInv]
-                    .choose(rng)
-                    .unwrap()
-                    .clone()
-            }
+            Operation::AddBlockInv => [
+                Operation::AddFilteredBlockInv,
+                Operation::AddBlockWithWitnessInv,
+                Operation::AddCompactBlockInv,
+            ]
+            .choose(rng)
+            .unwrap()
+            .clone(),
+            Operation::AddBlockWithWitnessInv => [
+                Operation::AddFilteredBlockInv,
+                Operation::AddBlockInv,
+                Operation::AddCompactBlockInv,
+            ]
+            .choose(rng)
+            .unwrap()
+            .clone(),
+            Operation::AddCompactBlockInv => [
+                Operation::AddBlockInv,
+                Operation::AddBlockWithWitnessInv,
+                Operation::AddFilteredBlockInv,
+            ]
+            .choose(rng)
+            .unwrap()
+            .clone(),
 
             Operation::BuildPayToPubKey => [
                 Operation::BuildPayToPubKeyHash,
