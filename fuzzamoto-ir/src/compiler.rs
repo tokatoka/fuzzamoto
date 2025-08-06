@@ -154,6 +154,7 @@ impl Compiler {
                 | Operation::AddTxidWithWitnessInv
                 | Operation::AddWtxidInv
                 | Operation::AddTxidInv
+                | Operation::AddCompactBlockInv
                 | Operation::AddBlockInv
                 | Operation::AddBlockWithWitnessInv
                 | Operation::AddFilteredBlockInv => {
@@ -256,6 +257,12 @@ impl Compiler {
             Operation::AddTxidInv => {
                 let tx_var = self.get_input::<Tx>(&instruction.inputs, 1)?;
                 let inv = Inventory::Transaction(tx_var.tx.compute_txid());
+                let inventory_var = self.get_input_mut::<Vec<Inventory>>(&instruction.inputs, 0)?;
+                inventory_var.push(inv);
+            }
+            Operation::AddCompactBlockInv => {
+                let block_var = self.get_input::<bitcoin::Block>(&instruction.inputs, 1)?;
+                let inv = Inventory::CompactBlock(block_var.header.block_hash());
                 let inventory_var = self.get_input_mut::<Vec<Inventory>>(&instruction.inputs, 0)?;
                 inventory_var.push(inv);
             }

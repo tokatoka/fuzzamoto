@@ -88,7 +88,7 @@ pub enum Operation {
     /// Inventory building
     BeginBuildInventory,
     EndBuildInventory,
-    // TODO: AddCompactBlockInv
+    AddCompactBlockInv,
     AddTxidInv,             // Tx by txid without witness
     AddTxidWithWitnessInv,  // Tx by txid with witness
     AddWtxidInv,            // Tx by wtxid with witness
@@ -216,6 +216,7 @@ impl fmt::Display for Operation {
 
             Operation::BeginBuildInventory => write!(f, "BeginBuildInventory"),
             Operation::EndBuildInventory => write!(f, "EndBuildInventory"),
+            Operation::AddCompactBlockInv => write!(f, "AddCompactBlockInv"),
             Operation::AddTxidInv => write!(f, "AddTxidInv"),
             Operation::AddTxidWithWitnessInv => write!(f, "AddTxidWithWitnessInv"),
             Operation::AddWtxidInv => write!(f, "AddWtxidInv"),
@@ -312,6 +313,7 @@ impl Operation {
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
             | Operation::EndBuildInventory
+            | Operation::AddCompactBlockInv
             | Operation::AddTxidInv
             | Operation::AddTxidWithWitnessInv
             | Operation::AddWtxidInv
@@ -407,6 +409,7 @@ impl Operation {
             | Operation::BeginWitnessStack
             | Operation::AddWitness
             | Operation::BeginBuildInventory
+            | Operation::AddCompactBlockInv
             | Operation::AddTxidInv
             | Operation::AddTxidWithWitnessInv
             | Operation::AddWtxidInv
@@ -512,6 +515,7 @@ impl Operation {
 
             Operation::BeginBuildInventory => vec![],
             Operation::EndBuildInventory => vec![Variable::ConstInventory],
+            Operation::AddCompactBlockInv => vec![],
             Operation::AddTxidInv => vec![],
             Operation::AddTxidWithWitnessInv => vec![],
             Operation::AddWtxidInv => vec![],
@@ -585,6 +589,7 @@ impl Operation {
                 vec![Variable::Connection, Variable::ConstTx]
             }
             Operation::EndBuildInventory => vec![Variable::MutInventory],
+            Operation::AddCompactBlockInv => vec![Variable::MutInventory, Variable::Block],
             Operation::AddTxidInv | Operation::AddTxidWithWitnessInv | Operation::AddWtxidInv => {
                 vec![Variable::MutInventory, Variable::ConstTx]
             }
@@ -706,6 +711,7 @@ impl Operation {
             | Operation::EndWitnessStack
             | Operation::AddWitness
             | Operation::EndBuildInventory
+            | Operation::AddCompactBlockInv
             | Operation::AddTxidInv
             | Operation::AddTxidWithWitnessInv
             | Operation::AddWtxidInv
