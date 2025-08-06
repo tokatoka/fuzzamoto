@@ -13,6 +13,14 @@ Both a host directory and a corpus directory must be mounted.
 Example:
 
 ```
+export HOST_OUTPUT_DIR="$(pwd)/coverage-output"
+export HOST_CORPUS_DIR="$(pwd)/your-corpus"
+export SCENARIO="name"
+
 docker build -t fuzzamoto-coverage -f Dockerfile.coverage .
-docker run --privileged -it -v $HOST_OUTPUT_DIR:/mnt/output -v $HOST_CORPUS_DIR:/mnt/corpus fuzzamoto-coverage /fuzzamoto/target/release/scenario-compact-blocks
+docker run --privileged -it \
+    -v $HOST_OUTPUT_DIR:/mnt/output \
+    -v $HOST_CORPUS_DIR:/mnt/corpus \
+    fuzzamoto-coverage \
+    /fuzzamoto/target/release/scenario-$SCENARIO
 ```

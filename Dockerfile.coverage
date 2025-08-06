@@ -94,7 +94,7 @@ COPY ./Cargo.toml .
 RUN mkdir .cargo && cargo vendor > .cargo/config
 
 ENV BITCOIND_PATH=/bitcoin/build_fuzz_cov/bin/bitcoind
-RUN cargo build -p fuzzamoto-scenarios --bins -p fuzzamoto-cli --verbose --features "fuzzamoto/reduced_pow" --release
+RUN cargo build -p fuzzamoto-scenarios --bins -p fuzzamoto-cli --verbose --features "reproduce" --release
 
 ENV LLVM_V=${LLVM_V}
 
