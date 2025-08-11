@@ -40,7 +40,7 @@ pub struct TestCase {
 ```
 
 If we want to focus on fuzzing deeper logic instead, then we'll need to make
-input generation/mutation aware of the structural requirements. This is were an
+input generation/mutation aware of the structural requirements. This is where an
 intermediate representation, that holds relevant type and structural
 information, becomes useful.
 
