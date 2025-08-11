@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, path::PathBuf, process, time::Duration};
+use std::{cell::RefCell, marker::PhantomData, path::PathBuf, process, time::Duration};
 
 use fuzzamoto_ir::{
     AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, CombineMutator,
@@ -29,7 +29,7 @@ use libafl::{
         IndexesLenTimeMinimizerScheduler, QueueScheduler, StdWeightedScheduler,
         powersched::PowerSchedule,
     },
-    stages::{IfStage, StagesTuple, TuneableMutationalStage},
+    stages::{ClosureStage, IfStage, StagesTuple, TuneableMutationalStage, WhileStage},
     state::{HasCorpus, HasMaxSize, HasRand, StdState},
 };
 use libafl_bolts::{
@@ -270,30 +270,42 @@ impl<M: Monitor> Instance<'_, M> {
 
         let minimizing_crash = self.options.minimize_input.is_some();
 
+        // Counter holding the number of successful minimizations in the last round
+        let continue_minimizing = RefCell::new(1u64);
+
         let mut stages = tuple_list!(
-            IfStage::new(
-                |_, _, _, _| Ok(!self.options.static_corpus || minimizing_crash),
+            ClosureStage::new(|_a: &mut _, _b: &mut _, _c: &mut _, _d: &mut _| {
+                // Always try minimizing at least for one pass
+                *continue_minimizing.borrow_mut() = 1;
+                Ok(())
+            }),
+            WhileStage::new(
+                |_, _, _, _| Ok((!self.options.static_corpus || minimizing_crash)
+                    && *continue_minimizing.borrow() > 0),
                 tuple_list!(
+                    ClosureStage::new(|_a: &mut _, _b: &mut _, _c: &mut _, _d: &mut _| {
+                        // Reset the minimization counter
+                        *continue_minimizing.borrow_mut() = 0;
+                        Ok(())
+                    }),
                     IrMinimizerStage::<CuttingMinimizer, _, _>::new(
                         trace_handle.clone(),
                         200,
-                        minimizing_crash
-                    ),
-                    IrMinimizerStage::<NoppingMinimizer, _, _>::new(
-                        trace_handle.clone(),
-                        200,
-                        minimizing_crash
+                        minimizing_crash,
+                        &continue_minimizing
                     ),
                     IrMinimizerStage::<InstrBlockMinimizer, _, _>::new(
                         trace_handle.clone(),
                         200,
-                        minimizing_crash
+                        minimizing_crash,
+                        &continue_minimizing
                     ),
                     IrMinimizerStage::<NoppingMinimizer, _, _>::new(
                         trace_handle.clone(),
                         200,
-                        minimizing_crash
-                    )
+                        minimizing_crash,
+                        &continue_minimizing
+                    ),
                 )
             ),
             IfStage::new(

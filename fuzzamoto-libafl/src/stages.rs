@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, marker::PhantomData};
+use std::{borrow::Borrow, cell::RefCell, marker::PhantomData};
 
 use fuzzamoto_ir::Minimizer;
 use libafl::{
@@ -15,15 +15,16 @@ use libafl_bolts::tuples::Handle;
 
 use crate::input::IrInput;
 
-pub struct IrMinimizerStage<M, T, O> {
+pub struct IrMinimizerStage<'a, M, T, O> {
     trace_handle: Handle<T>,
     consecutive_failures: usize,
     max_consecutive_failures: usize,
     minimizing_crash: bool,
+    keep_minimizing: &'a RefCell<u64>,
     _phantom: PhantomData<(M, O)>,
 }
 
-impl<M, T, O> IrMinimizerStage<M, T, O>
+impl<'a, M, T, O> IrMinimizerStage<'a, M, T, O>
 where
     O: MapObserver,
     T: AsRef<O> + CanTrack,
@@ -33,19 +34,21 @@ where
         trace_handle: Handle<T>,
         max_consecutive_failures: usize,
         minimizing_crash: bool,
+        keep_minimizing: &'a RefCell<u64>,
     ) -> Self {
         Self {
             trace_handle,
             consecutive_failures: 0,
             max_consecutive_failures,
             minimizing_crash,
+            keep_minimizing,
             _phantom: PhantomData::default(),
         }
     }
 }
 
 // ?????
-impl<M, T, O, S> Restartable<S> for IrMinimizerStage<M, T, O> {
+impl<'a, M, T, O, S> Restartable<S> for IrMinimizerStage<'a, M, T, O> {
     fn should_restart(&mut self, _state: &mut S) -> Result<bool, libafl::Error> {
         Ok(true)
     }
@@ -55,7 +58,7 @@ impl<M, T, O, S> Restartable<S> for IrMinimizerStage<M, T, O> {
     }
 }
 
-impl<M, E, EM, S, Z, OT, T, O> Stage<E, EM, S, Z> for IrMinimizerStage<M, T, O>
+impl<'a, M, E, EM, S, Z, OT, T, O> Stage<E, EM, S, Z> for IrMinimizerStage<'a, M, T, O>
 where
     M: Minimizer,
     S: HasCorpus<IrInput> + HasCurrentTestcase<IrInput> + HasMetadata,
@@ -136,6 +139,7 @@ where
         log::info!("{} done reducing", std::any::type_name::<M>(),);
 
         if success {
+            *self.keep_minimizing.borrow_mut() += 1;
             current_ir.ir_mut().remove_nops();
 
             log::info!(
