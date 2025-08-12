@@ -11,6 +11,7 @@ impl InitCommand {
         bitcoind: PathBuf,
         secondary_bitcoind: Option<PathBuf>,
         scenario: PathBuf,
+        nyx_dir: Option<PathBuf>,
     ) -> Result<()> {
         file_ops::ensure_sharedir_not_exists(&sharedir)?;
         file_ops::create_dir_all(&sharedir)?;
@@ -89,11 +90,14 @@ impl InitCommand {
 
         log::info!("Created share directory: {}", sharedir.display());
 
-        // Get libafl_nyx path and compile packer binaries
-        let libafl_nyx_path = nyx::get_libafl_nyx_path()?;
-        nyx::compile_packer_binaries(&libafl_nyx_path)?;
-        nyx::copy_packer_binaries(&libafl_nyx_path, &sharedir)?;
-        nyx::generate_nyx_config(&libafl_nyx_path, &sharedir)?;
+        let nyx_dir = match nyx_dir {
+            Some(nyx_dir) => nyx_dir,
+            // If nyx dir isn't specified, try to locate the libafl_nyx path
+            None => nyx::get_libafl_nyx_path()?,
+        };
+        nyx::compile_packer_binaries(&nyx_dir)?;
+        nyx::copy_packer_binaries(&nyx_dir, &sharedir)?;
+        nyx::generate_nyx_config(&nyx_dir, &sharedir)?;
 
         // Create fuzz_no_pt.sh script
         let scenario_name = scenario

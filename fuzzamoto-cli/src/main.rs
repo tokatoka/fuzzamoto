@@ -40,6 +40,9 @@ enum Commands {
             help = "Path to the fuzzamoto scenario binary that should be copied into the share directory"
         )]
         scenario: PathBuf,
+
+        #[arg(long, help = "Path to the nyx installation")]
+        nyx_dir: Option<PathBuf>,
     },
 
     /// Create a html coverage report for a given corpus
@@ -82,12 +85,14 @@ fn main() -> Result<()> {
             bitcoind,
             secondary_bitcoind,
             scenario,
+            nyx_dir,
         } => InitCommand::execute(
             sharedir.clone(),
             crash_handler.clone(),
             bitcoind.clone(),
             secondary_bitcoind.clone(),
             scenario.clone(),
+            nyx_dir.clone(),
         ),
         Commands::Coverage {
             output,

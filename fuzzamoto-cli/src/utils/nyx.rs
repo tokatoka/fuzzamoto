@@ -47,10 +47,10 @@ pub fn get_libafl_nyx_path() -> Result<PathBuf> {
     Ok(libafl_nyx_path)
 }
 
-pub fn compile_packer_binaries(libafl_nyx_path: &Path) -> Result<()> {
+pub fn compile_packer_binaries(nyx_path: &Path) -> Result<()> {
     log::info!("Compiling packer binaries");
 
-    let packer_path = libafl_nyx_path.join("packer/packer/");
+    let packer_path = nyx_path.join("packer/packer/");
     let userspace_path = packer_path.join("linux_x86_64-userspace");
 
     run_command_with_status("bash", &["compile_64.sh"], Some(&userspace_path))?;
@@ -58,8 +58,8 @@ pub fn compile_packer_binaries(libafl_nyx_path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn copy_packer_binaries(libafl_nyx_path: &Path, dst_dir: &Path) -> Result<()> {
-    let packer_path = libafl_nyx_path.join("packer/packer/");
+pub fn copy_packer_binaries(nyx_path: &Path, dst_dir: &Path) -> Result<()> {
+    let packer_path = nyx_path.join("packer/packer/");
     let userspace_path = packer_path.join("linux_x86_64-userspace");
     let binaries_path = userspace_path.join("bin64");
 
@@ -68,10 +68,10 @@ pub fn copy_packer_binaries(libafl_nyx_path: &Path, dst_dir: &Path) -> Result<()
     Ok(())
 }
 
-pub fn generate_nyx_config(libafl_nyx_path: &Path, sharedir: &Path) -> Result<()> {
+pub fn generate_nyx_config(nyx_path: &Path, sharedir: &Path) -> Result<()> {
     log::info!("Generating nyx config");
 
-    let packer_path = libafl_nyx_path.join("packer/packer/");
+    let packer_path = nyx_path.join("packer/packer/");
 
     run_command_with_status(
         "python3",

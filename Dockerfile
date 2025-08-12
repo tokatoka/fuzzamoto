@@ -61,10 +61,6 @@ RUN cd AFLplusplus && make PERFORMANCE=1 install -j$(nproc --ignore 1)
 # Build qemu-nyx and libnyx
 RUN cd AFLplusplus/nyx_mode/ && ./build_nyx_support.sh
 
-# Compile nyx htools
-RUN cd AFLplusplus/nyx_mode/packer/packer/linux_x86_64-userspace && \
-  ./compile_64.sh
-
 # ------ Build Bitcoin Core and the nyx agent ------
 
 # Build Bitcoin Core
@@ -131,7 +127,8 @@ COPY ./Cargo.toml .
 RUN mkdir .cargo && cargo vendor > .cargo/config
 
 ENV BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind
-RUN cargo build --package fuzzamoto-scenarios --package fuzzamoto-cli --verbose --features fuzz --release
+RUN cargo build --package fuzzamoto-scenarios --package fuzzamoto-cli \
+  --verbose --features "fuzzamoto/fuzz,fuzzamoto-scenarios/fuzz" --release
 
 # Build the crash handler
 #   -D_GNU_SOURCE & -ldl for `#include <dlfcn.h>`
@@ -152,8 +149,7 @@ RUN for scenario in /fuzzamoto/target/release/scenario-*; do \
         --sharedir $SCENARIO_NYX_DIR \
         --crash-handler ./fuzzamoto/libnyx_crash_handler.so \
         --bitcoind bitcoin/build_fuzz/bin/bitcoind \
-        --scenario $scenario; \
-      cp /AFLplusplus/nyx_mode/packer/packer/linux_x86_64-userspace/bin64/* $SCENARIO_NYX_DIR; \
-      python3 ./AFLplusplus/nyx_mode/packer/packer/nyx_config_gen.py $SCENARIO_NYX_DIR Kernel -m 4096; \
+        --scenario $scenario \
+        --nyx-dir /AFLplusplus/nyx_mode; \
       fi \
     done
