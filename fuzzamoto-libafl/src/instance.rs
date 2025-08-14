@@ -46,6 +46,11 @@ use crate::{
     stages::IrMinimizerStage,
 };
 
+#[cfg(feature = "bench")]
+use crate::stages::BenchStatsStage;
+#[cfg(not(feature = "bench"))]
+use libafl::stages::nop::NopStage;
+
 pub type ClientState =
     StdState<CachedOnDiskCorpus<IrInput>, IrInput, StdRand, OnDiskCorpus<IrInput>>;
 
@@ -99,6 +104,18 @@ where
         let map_feedback = MaxMapFeedback::new(&trace_observer);
 
         let trace_handle = map_feedback.observer_handle().clone();
+
+        #[cfg(feature = "bench")]
+        let bench_stats_stage = BenchStatsStage::new(
+            trace_handle.clone(),
+            Duration::from_secs(30),
+            self.options.bench_dir().join(format!(
+                "bench-cpu_{:03}.csv",
+                self.client_description.core_id().0
+            )),
+        );
+        #[cfg(not(feature = "bench"))]
+        let bench_stats_stage = NopStage::new();
 
         // let stdout_observer = StdOutObserver::new("hprintf_output");
 
@@ -306,7 +323,8 @@ where
             IfStage::new(
                 |_, _, _, _| Ok(!self.options.minimize_input.is_some()),
                 tuple_list!(TuneableMutationalStage::new(&mut state, mutator))
-            )
+            ),
+            bench_stats_stage,
         );
         self.fuzz(&mut state, &mut fuzzer, &mut executor, &mut stages)
     }

@@ -1,3 +1,8 @@
+#[cfg(feature = "bench")]
+pub mod bench_stats;
+#[cfg(feature = "bench")]
+pub use bench_stats::*;
+
 use std::{borrow::Borrow, cell::RefCell, marker::PhantomData};
 
 use fuzzamoto_ir::Minimizer;

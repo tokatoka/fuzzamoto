@@ -23,6 +23,9 @@ compile_in_vm = []
 
 introspection = ["libafl/introspection"]
 
+# Collect stats for benchmarking purposes
+bench = []
+
 [build-dependencies]
 vergen = { version = "8.2.1", features = [
   "build",

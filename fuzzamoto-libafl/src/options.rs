@@ -108,6 +108,13 @@ impl FuzzerOptions {
         dir
     }
 
+    #[cfg(feature = "bench")]
+    pub fn bench_dir(&self) -> PathBuf {
+        let mut dir = PathBuf::from(&self.output);
+        dir.push("bench");
+        dir
+    }
+
     pub fn queue_dir(&self, core_id: CoreId) -> PathBuf {
         let mut dir = self.output_dir(core_id).clone();
         dir.push("queue");
