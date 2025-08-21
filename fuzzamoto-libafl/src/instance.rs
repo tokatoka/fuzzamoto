@@ -1,4 +1,4 @@
-use std::{cell::RefCell, marker::PhantomData, path::PathBuf, process, time::Duration};
+use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, time::Duration};
 
 use fuzzamoto_ir::{
     AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, CombineMutator,
@@ -80,6 +80,9 @@ where
             .input_buffer_size(self.options.buffer_size)
             .timeout_secs(timeout.as_secs() as u8)
             .timeout_micro_secs(timeout.subsec_micros() as u32)
+            .workdir_path(Cow::from(
+                self.options.work_dir().to_str().unwrap().to_string(),
+            ))
             .build();
 
         let helper = NyxHelper::new(self.options.shared_dir(), settings)?;
@@ -189,9 +192,8 @@ where
 
         let mut executor = NyxExecutor::builder().build(helper, observers);
 
-        // TODO can we avoid hardcoding this path
-        let bytes = std::fs::read(PathBuf::from("/tmp/workdir/dump/ir.context"))
-            .expect("Could not read ir context file");
+        let ir_context_dump = self.options.work_dir().join("dump/ir.context");
+        let bytes = std::fs::read(ir_context_dump).expect("Could not read ir context file");
         let full_program_context: fuzzamoto_ir::FullProgramContext =
             postcard::from_bytes(&bytes).expect("could not deser ir context");
 

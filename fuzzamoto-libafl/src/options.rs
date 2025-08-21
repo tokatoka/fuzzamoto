@@ -114,6 +114,12 @@ impl FuzzerOptions {
         dir
     }
 
+    pub fn work_dir(&self) -> PathBuf {
+        let mut dir = PathBuf::from(&self.output);
+        dir.push("workdir");
+        dir
+    }
+
     pub fn crashes_dir(&self, core_id: CoreId) -> PathBuf {
         let mut dir = self.output_dir(core_id).clone();
         dir.push("crashes");
