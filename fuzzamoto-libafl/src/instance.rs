@@ -9,20 +9,17 @@ use fuzzamoto_ir::{
     nopping::NoppingMinimizer,
 };
 
-#[cfg(feature = "simplemgr")]
-use libafl::events::SimpleEventManager;
 use libafl::{
     Error, NopFuzzer,
     corpus::{CachedOnDiskCorpus, Corpus, CorpusId, OnDiskCorpus, Testcase},
     events::{
-        ClientDescription, EventRestarter, LlmpRestartingEventManager, MonitorTypedEventManager,
-        NopEventManager,
+        ClientDescription, EventFirer, EventReceiver, EventRestarter, NopEventManager,
+        ProgressReporter, SendExiting,
     },
     executors::Executor,
     feedback_and_fast, feedback_or,
     feedbacks::{ConstFeedback, CrashFeedback, HasObserverHandle, MaxMapFeedback, TimeFeedback},
     fuzzer::{Evaluator, Fuzzer, StdFuzzer},
-    monitors::Monitor,
     mutators::{ComposedByMutations, TuneableScheduledMutator},
     observers::{CanTrack, HitcountsMapObserver, StdMapObserver, TimeObserver},
     schedulers::{
@@ -35,7 +32,6 @@ use libafl::{
 use libafl_bolts::{
     HasLen, current_nanos,
     rands::{Rand, StdRand},
-    shmem::{StdShMem, StdShMemProvider},
     tuples::tuple_list,
 };
 use libafl_nyx::{executor::NyxExecutor, helper::NyxHelper, settings::NyxSettings};
@@ -53,25 +49,22 @@ use crate::{
 pub type ClientState =
     StdState<CachedOnDiskCorpus<IrInput>, IrInput, StdRand, OnDiskCorpus<IrInput>>;
 
-#[cfg(feature = "simplemgr")]
-pub type ClientMgr<M> = SimpleEventManager<IrInput, M, ClientState>;
-#[cfg(not(feature = "simplemgr"))]
-pub type ClientMgr<M> = MonitorTypedEventManager<
-    LlmpRestartingEventManager<(), IrInput, ClientState, StdShMem, StdShMemProvider>,
-    M,
->;
-
 #[derive(TypedBuilder)]
-pub struct Instance<'a, M: Monitor> {
+pub struct Instance<'a, EM> {
     options: &'a FuzzerOptions,
     /// The harness. We create it before forking, then `take()` it inside the client.
-    mgr: ClientMgr<M>,
+    mgr: EM,
     client_description: ClientDescription,
-    #[builder(default=PhantomData)]
-    phantom: PhantomData<M>,
 }
 
-impl<M: Monitor> Instance<'_, M> {
+impl<EM> Instance<'_, EM>
+where
+    EM: EventFirer<IrInput, ClientState>
+        + EventRestarter<ClientState>
+        + ProgressReporter<ClientState>
+        + SendExiting
+        + EventReceiver<IrInput, ClientState>,
+{
     pub fn run(mut self, state: Option<ClientState>) -> Result<(), Error> {
         let parent_cpu_id = self
             .options
@@ -324,9 +317,8 @@ impl<M: Monitor> Instance<'_, M> {
         stages: &mut ST,
     ) -> Result<(), Error>
     where
-        Z: Fuzzer<E, ClientMgr<M>, IrInput, ClientState, ST>
-            + Evaluator<E, ClientMgr<M>, IrInput, ClientState>,
-        ST: StagesTuple<E, ClientMgr<M>, ClientState, Z>,
+        Z: Fuzzer<E, EM, IrInput, ClientState, ST> + Evaluator<E, EM, IrInput, ClientState>,
+        ST: StagesTuple<E, EM, ClientState, Z>,
     {
         let corpus_dirs = [self.options.input_dir()];
 

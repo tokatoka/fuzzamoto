@@ -58,7 +58,7 @@ where
         client_stats_manager: &mut ClientStatsManager,
         event_msg: &str,
         _sender_id: ClientId,
-    ) {
+    ) -> Result<(), libafl::Error> {
         let trace = client_stats_manager
             .aggregated()
             .get("trace")
@@ -107,5 +107,7 @@ where
             );
             (self.log_fn)(&fmt);
         }
+
+        Ok(())
     }
 }

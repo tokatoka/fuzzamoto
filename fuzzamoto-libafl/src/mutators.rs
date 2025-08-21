@@ -6,7 +6,7 @@ use libafl::{
     Error,
     corpus::{Corpus, CorpusId, NopCorpus},
     inputs::BytesInput,
-    mutators::{MutationResult, Mutator, StdScheduledMutator, havoc_mutations},
+    mutators::{HavocScheduledMutator, MutationResult, Mutator, havoc_mutations},
     random_corpus_id,
     state::{HasCorpus, HasRand, StdState},
 };
@@ -249,7 +249,7 @@ impl fuzzamoto_ir::OperationByteMutator for LibAflByteMutator {
     fn mutate_bytes(&mut self, bytes: &mut Vec<u8>) {
         let mut input = BytesInput::from(bytes.clone());
 
-        let mut mutator = StdScheduledMutator::new(havoc_mutations());
+        let mut mutator = HavocScheduledMutator::new(havoc_mutations());
         let _ = mutator.mutate(&mut self.state, &mut input);
 
         bytes.clear();

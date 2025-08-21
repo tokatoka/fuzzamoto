@@ -1,23 +1,16 @@
 use std::{cell::RefCell, fs::OpenOptions, io::Write, rc::Rc};
 
 use clap::Parser;
-#[cfg(feature = "simplemgr")]
-use libafl::events::SimpleEventManager;
 use libafl::{
     Error,
-    events::{
-        ClientDescription, EventConfig, Launcher, LlmpEventManagerBuilder, MonitorTypedEventManager,
-    },
+    events::{ClientDescription, EventConfig, Launcher, SimpleEventManager},
     monitors::{Monitor, tui::TuiMonitor},
 };
 
 use libafl_bolts::{
     core_affinity::CoreId,
     current_time,
-    llmp::LlmpBroker,
     shmem::{ShMemProvider, StdShMemProvider},
-    staterestore::StateRestorer,
-    tuples::tuple_list,
 };
 
 use crate::{
@@ -86,7 +79,7 @@ impl Fuzzer {
         M: Monitor + Clone,
     {
         // The shared memory allocator
-        let mut shmem_provider = StdShMemProvider::new()?;
+        let shmem_provider = StdShMemProvider::new()?;
 
         // If we are running in verbose, don't provide a replacement stdout, otherwise, use
         // /dev/null
@@ -100,33 +93,11 @@ impl Fuzzer {
 
         #[cfg(not(feature = "simplemgr"))]
         if self.options.rerun_input.is_some() || self.options.minimize_input.is_some() {
-            // If we want to rerun a single input but we use a restarting mgr, we'll have to create
-            // a fake restarting mgr that doesn't actually restart. It's not pretty but better than
-            // recompiling with simplemgr.
-
-            // Just a random number, let's hope it's free :)
-            let broker_port = 13120;
-            let _fake_broker = LlmpBroker::create_attach_to_tcp(
-                shmem_provider.clone(),
-                tuple_list!(),
-                broker_port,
-            )
-            .unwrap();
-
             // To rerun an input, instead of using a launcher, we create dummy parameters and run
             // the client directly.
             return client.run(
                 None,
-                MonitorTypedEventManager::<_, M>::new(
-                    LlmpEventManagerBuilder::builder().build_on_port(
-                        shmem_provider.clone(),
-                        broker_port,
-                        EventConfig::AlwaysUnique,
-                        Some(StateRestorer::new(
-                            shmem_provider.new_shmem(0x1000).unwrap(),
-                        )),
-                    )?,
-                ),
+                SimpleEventManager::new(monitor.clone()),
                 ClientDescription::new(0, 0, CoreId(0)),
             );
         }
@@ -149,7 +120,7 @@ impl Fuzzer {
             // clients mitigate the issue.
             .launch_delay(self.options.launch_delay)
             .monitor(monitor)
-            .run_client(|s, m, c| client.run(s, MonitorTypedEventManager::<_, M>::new(m), c))
+            .run_client(|s, m, c| client.run(s, m, c))
             .cores(&self.options.cores)
             .stdout_file(stdout)
             .stderr_file(stdout)

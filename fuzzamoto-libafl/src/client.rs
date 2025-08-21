@@ -1,17 +1,14 @@
 use libafl::{
     Error,
     corpus::{CachedOnDiskCorpus, OnDiskCorpus},
-    events::ClientDescription,
-    monitors::Monitor,
+    events::{
+        ClientDescription, EventFirer, EventReceiver, EventRestarter, ProgressReporter, SendExiting,
+    },
     state::StdState,
 };
 use libafl_bolts::rands::StdRand;
 
-use crate::{
-    input::IrInput,
-    instance::{ClientMgr, Instance},
-    options::FuzzerOptions,
-};
+use crate::{input::IrInput, instance::Instance, options::FuzzerOptions};
 
 #[allow(clippy::module_name_repetitions)]
 pub type ClientState =
@@ -26,12 +23,19 @@ impl<'a> Client<'a> {
         Self { options }
     }
 
-    pub fn run<M: Monitor>(
+    pub fn run<EM>(
         &self,
         state: Option<ClientState>,
-        mgr: ClientMgr<M>,
+        mgr: EM,
         client_description: ClientDescription,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        EM: EventFirer<IrInput, ClientState>
+            + EventRestarter<ClientState>
+            + ProgressReporter<ClientState>
+            + SendExiting
+            + EventReceiver<IrInput, ClientState>,
+    {
         let instance = Instance::builder()
             .options(self.options)
             .mgr(mgr)
