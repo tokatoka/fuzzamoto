@@ -81,7 +81,7 @@ Once it's running you'll see output similar to the following:
 ...
 ```
 
-📊 inidcates that a new intersting input has been discovered and 💗 indicates a
+📊 indicates that a new intersting input has been discovered and 💗 indicates a
 heart-beat event from one of the fuzzers instances. Insect emojis such as 🪲
 indicate that a new bug has been found.
 
