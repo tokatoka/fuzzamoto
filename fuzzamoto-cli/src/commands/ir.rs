@@ -152,7 +152,7 @@ pub fn generate_ir(
                 .unwrap();
 
             program = builder.finalize().unwrap();
-            insertion_index = builder
+            insertion_index = program
                 .get_random_instruction_index(&mut rng, InstructionContext::Global)
                 .unwrap()
                 .max(1);

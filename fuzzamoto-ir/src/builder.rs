@@ -409,24 +409,6 @@ impl ProgramBuilder {
             .last()
     }
 
-    pub fn get_random_instruction_index<R: RngCore>(
-        &self,
-        rng: &mut R,
-        context: InstructionContext,
-    ) -> Option<usize> {
-        if self.contexts.is_empty() && matches!(context, InstructionContext::Global) {
-            // Empty program
-            return Some(0);
-        }
-
-        self.contexts
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| **c == context)
-            .map(|(i, _)| i)
-            .choose(rng)
-    }
-
     pub fn get_or_create_random_connection<R: RngCore>(&mut self, rng: &mut R) -> IndexedVariable {
         match self.get_random_variable(rng, Variable::Connection) {
             Some(v) => v,
