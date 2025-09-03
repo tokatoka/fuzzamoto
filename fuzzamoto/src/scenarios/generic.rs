@@ -1,7 +1,7 @@
 use crate::{
     connections::{Connection, ConnectionType, HandshakeOpts, Transport},
     dictionaries::{Dictionary, FileDictionary},
-    scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
+    scenarios::{Scenario, ScenarioInput, ScenarioResult},
     targets::Target,
     test_utils,
 };
@@ -213,15 +213,13 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
     }
 }
 
-impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacterization>
-    for GenericScenario<TX, T>
-{
+impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase> for GenericScenario<TX, T> {
     fn new(args: &[String]) -> Result<Self, String> {
         let target = T::from_path(&args[1])?;
         Self::from_target(target)
     }
 
-    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, testcase: TestCase) -> ScenarioResult {
         for action in testcase.actions {
             match action {
                 Action::Connect { connection_type: _ } => {
@@ -263,7 +261,7 @@ impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase, IgnoredCharacteriz
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
-        ScenarioResult::Ok(IgnoredCharacterization)
+        ScenarioResult::Ok
     }
 }
 

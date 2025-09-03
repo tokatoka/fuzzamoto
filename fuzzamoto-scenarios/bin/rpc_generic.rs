@@ -1,6 +1,6 @@
 use fuzzamoto::{
     fuzzamoto_main,
-    scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
+    scenarios::{Scenario, ScenarioInput, ScenarioResult},
     targets::{BitcoinCoreTarget, Target},
 };
 
@@ -198,7 +198,7 @@ struct RpcScenario {
     available_rpcs: Vec<String>,
 }
 
-impl<'a> Scenario<'a, TestCase, IgnoredCharacterization> for RpcScenario {
+impl<'a> Scenario<'a, TestCase> for RpcScenario {
     fn new(args: &[String]) -> Result<Self, String> {
         let target = BitcoinCoreTarget::from_path(&args[1])?;
         // Remove the default wallet, so the test may create it
@@ -395,7 +395,7 @@ impl<'a> Scenario<'a, TestCase, IgnoredCharacterization> for RpcScenario {
         })
     }
 
-    fn run(&mut self, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, input: TestCase) -> ScenarioResult {
         for rpc_call in input.rpc_calls {
             // Convert the rpc parameters given by the fuzzer into `serde_json::Value`s. This may
             // either result in params interpreted from the fuzz input or taken from the
@@ -427,7 +427,7 @@ impl<'a> Scenario<'a, TestCase, IgnoredCharacterization> for RpcScenario {
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
-        ScenarioResult::Ok(IgnoredCharacterization)
+        ScenarioResult::Ok
     }
 }
 fuzzamoto_main!(RpcScenario, TestCase);

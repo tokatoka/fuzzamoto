@@ -1,9 +1,7 @@
 use fuzzamoto::{
     connections::{Transport, V1Transport},
     fuzzamoto_main,
-    scenarios::{
-        IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
-    },
+    scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, Target},
 };
 
@@ -27,7 +25,7 @@ struct WalletMigrationScenario<TX: Transport, T: Target<TX>> {
     wallet_path: PathBuf,
 }
 
-impl<'a> Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization>
+impl<'a> Scenario<'a, WalletDotDatBytes<'a>>
     for WalletMigrationScenario<V1Transport, BitcoinCoreTarget>
 {
     fn new(args: &[String]) -> Result<Self, String> {
@@ -53,7 +51,7 @@ impl<'a> Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization>
         })
     }
 
-    fn run(&mut self, input: WalletDotDatBytes) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, input: WalletDotDatBytes) -> ScenarioResult {
         let _ = std::fs::create_dir_all(self.wallet_path.parent().unwrap());
 
         if let Ok(mut wallet_file) = std::fs::File::create(&self.wallet_path) {
@@ -72,7 +70,7 @@ impl<'a> Scenario<'a, WalletDotDatBytes<'a>, IgnoredCharacterization>
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
-        ScenarioResult::Ok(IgnoredCharacterization)
+        ScenarioResult::Ok
     }
 }
 

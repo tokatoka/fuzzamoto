@@ -9,9 +9,7 @@ use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
     oracles::{CrashOracle, Oracle, OracleResult},
-    scenarios::{
-        IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
-    },
+    scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, Target},
 };
 
@@ -225,7 +223,7 @@ where
         }
     }
 
-    fn evaluate_oracles(&self) -> ScenarioResult<IgnoredCharacterization> {
+    fn evaluate_oracles(&self) -> ScenarioResult {
         let crash_oracle = CrashOracle::<TX>::default();
         if let OracleResult::Fail(e) = crash_oracle.evaluate(&self.inner.target) {
             return ScenarioResult::Fail(format!("{}", e));
@@ -242,11 +240,11 @@ where
             }
         }
 
-        ScenarioResult::Ok(IgnoredCharacterization)
+        ScenarioResult::Ok
     }
 }
 
-impl<TX, T> Scenario<'_, TestCase, IgnoredCharacterization> for IrScenario<TX, T>
+impl<TX, T> Scenario<'_, TestCase> for IrScenario<TX, T>
 where
     TX: Transport,
     T: Target<TX> + HasTipHash + ConnectableTarget,
@@ -272,7 +270,7 @@ where
         })
     }
 
-    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, testcase: TestCase) -> ScenarioResult {
         self.process_actions(testcase.program.actions);
         self.ping_connections();
         self.evaluate_oracles()

@@ -1,46 +1,30 @@
 pub mod generic;
 
-/// `ScenarioCharacterization` is a trait for characterizing the behavior of a scenario.
-pub trait ScenarioCharacterization {
-    /// Reduce the result to a 32 byte array (e.g. a hash of the result).
-    fn reduce(&self) -> [u8; 32];
-}
-
-/// `IgnoredCharacterization` is a type of scenario characterization that is ignored by the fuzzer.
-/// Used for scenarios that are not meant to characterize behavior.
-pub struct IgnoredCharacterization;
-impl ScenarioCharacterization for IgnoredCharacterization {
-    fn reduce(&self) -> [u8; 32] {
-        [0u8; 32]
-    }
-}
-
-/// `ScenarioInput` is a trait for scenario input types.
+/// `ScenarioInput` is a trait for scenario input types
 pub trait ScenarioInput<'a>: Sized {
-    /// Decode the input from a byte slice.
+    /// Decode the input from a byte slice
     fn decode(bytes: &'a [u8]) -> Result<Self, String>;
 }
 
-/// `ScenarioResult` describes the various outcomes of running a scenario.
-pub enum ScenarioResult<SC: ScenarioCharacterization> {
-    /// Scenario ran successfully and the behavior characterization is returned.
-    Ok(SC),
-    /// Scenario indicated that the test case should be skipped.
+/// `ScenarioResult` describes the various outcomes of running a scenario
+pub enum ScenarioResult {
+    /// Scenario ran successfully
+    Ok,
+    /// Scenario indicated that the test case should be skipped
     Skip,
-    /// Scenario indicated that the test case failed (i.e. the target node crashed).
+    /// Scenario indicated that the test case failed (i.e. the target node crashed)
     Fail(String),
 }
 
-/// `Scenario` is the interface for test scenarios that can be run against a target node.
-pub trait Scenario<'a, I, SC>: Sized
+/// `Scenario` is the interface for test scenarios that can be run against a target node
+pub trait Scenario<'a, I>: Sized
 where
     I: ScenarioInput<'a>,
-    SC: ScenarioCharacterization,
 {
     // Create a new instance of the scenario, preparing the initial state of the test
     fn new(args: &[String]) -> Result<Self, String>;
     // Run the test
-    fn run(&mut self, testcase: I) -> ScenarioResult<SC>;
+    fn run(&mut self, testcase: I) -> ScenarioResult;
 }
 
 #[macro_export]
@@ -85,7 +69,7 @@ macro_rules! fuzzamoto_main {
             };
 
             match scenario.run(testcase) {
-                ScenarioResult::Ok(_) => {}
+                ScenarioResult::Ok => {}
                 ScenarioResult::Skip => {
                     // TODO drop(target);
                     runner.skip();

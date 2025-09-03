@@ -1,9 +1,7 @@
 use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
-    scenarios::{
-        IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario,
-    },
+    scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, Target},
     test_utils,
 };
@@ -200,9 +198,7 @@ impl<TX: Transport, T: Target<TX>> CompactBlocksScenario<TX, T> {
     }
 }
 
-impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterization>
-    for CompactBlocksScenario<TX, T>
-{
+impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase> for CompactBlocksScenario<TX, T> {
     fn new(args: &[String]) -> Result<Self, String> {
         let inner = GenericScenario::new(args)?;
 
@@ -212,7 +208,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
         })
     }
 
-    fn run(&mut self, testcase: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, testcase: TestCase) -> ScenarioResult {
         let mut prevs: Vec<(u32, BlockHash, bitcoin::OutPoint)> = self
             .inner
             .block_tree
@@ -323,7 +319,7 @@ impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase, IgnoredCharacterizatio
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
-        ScenarioResult::Ok(IgnoredCharacterization)
+        ScenarioResult::Ok
     }
 }
 

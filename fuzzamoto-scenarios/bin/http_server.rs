@@ -1,7 +1,7 @@
 use fuzzamoto::{
     connections::V1Transport,
     fuzzamoto_main,
-    scenarios::{IgnoredCharacterization, Scenario, ScenarioInput, ScenarioResult},
+    scenarios::{Scenario, ScenarioInput, ScenarioResult},
     targets::{BitcoinCoreTarget, Target},
 };
 
@@ -49,9 +49,7 @@ struct HttpServerScenario<TX, T> {
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
-impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization>
-    for HttpServerScenario<V1Transport, BitcoinCoreTarget>
-{
+impl<'a> Scenario<'a, TestCase<'a>> for HttpServerScenario<V1Transport, BitcoinCoreTarget> {
     fn new(args: &[String]) -> Result<Self, String> {
         Ok(Self {
             target: BitcoinCoreTarget::from_path(&args[1])?,
@@ -59,7 +57,7 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization>
         })
     }
 
-    fn run(&mut self, input: TestCase) -> ScenarioResult<IgnoredCharacterization> {
+    fn run(&mut self, input: TestCase) -> ScenarioResult {
         let mut connections = HashMap::new();
         let mut next_connection_id = 1u64;
 
@@ -97,7 +95,7 @@ impl<'a> Scenario<'a, TestCase<'a>, IgnoredCharacterization>
             return ScenarioResult::Fail(format!("Target is not alive: {}", e));
         }
 
-        ScenarioResult::Ok(IgnoredCharacterization)
+        ScenarioResult::Ok
     }
 }
 
