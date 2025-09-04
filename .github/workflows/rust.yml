@@ -24,10 +24,12 @@ jobs:
       run: sudo apt update && sudo apt install -y libgtk-3-dev pax-utils python3-msgpack python3-jinja2 libcapstone-dev
     - name: Build
       run: cargo build --verbose
-    - name: Build nyx
-      run: cargo build --verbose --features nyx
-    - name: Build misc features
-      run: cargo build --verbose --features reduced_pow,inherit_stdout
+    - name: Build for fuzzing
+      run: cargo build --verbose --features fuzz
+    - name: Build for fuzzing with benchmarking
+      run: cargo build --verbose --features fuzz,bench
+    - name: Build for reproducing
+      run: cargo build --verbose --features reproduce
     - name: Run tests
       run: cargo test --verbose
     - name: Check formatting for all crates
