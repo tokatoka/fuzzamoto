@@ -117,12 +117,9 @@ where
         #[cfg(not(feature = "bench"))]
         let bench_stats_stage = NopStage::new();
 
-        // let stdout_observer = StdOutObserver::new("hprintf_output");
-
         // Feedback to rate the interestingness of an input
-        // This one is composed by two Feedbacks in OR
         let mut feedback = feedback_or!(
-            // New maximization map feedback linked to the edges observer and the feedback state
+            // New maximization map feedback
             feedback_and_fast!(
                 // Disable coverage feedback if the corpus is static
                 ConstFeedback::new(!self.options.static_corpus),
@@ -130,10 +127,8 @@ where
                 ConstFeedback::new(!self.options.minimize_input.is_some()),
                 map_feedback
             ),
-            // Time feedback, this one does not need a feedback state
+            // Time feedback
             TimeFeedback::new(&time_observer),
-            // Append stdout to metadata
-            // StdOutToMetadataFeedback::new(&stdout_observer)
         );
 
         // A feedback to choose if an input is a solution or not
