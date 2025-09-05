@@ -74,6 +74,14 @@ pub struct FuzzerOptions {
     )]
     pub pushover_user: Option<String>,
 
+    #[arg(
+        long,
+        help = "Number of corpus entries cached in memory",
+        env = "FUZZAMOTO_CORPUS_CACHE",
+        default_value_t = 100
+    )]
+    pub corpus_cache: usize,
+
     #[clap(short, long, help = "Enable output from the fuzzer clients")]
     pub verbose: bool,
 

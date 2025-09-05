@@ -149,7 +149,7 @@ where
                     // Corpus that will be evolved
                     CachedOnDiskCorpus::new(
                         self.options.queue_dir(self.client_description.core_id()),
-                        100,
+                        self.options.corpus_cache,
                     )?,
                     // Corpus in which we store solutions
                     OnDiskCorpus::new(self.options.crashes_dir(self.client_description.core_id()))?,
