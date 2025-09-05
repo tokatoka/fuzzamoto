@@ -31,6 +31,16 @@ pub struct FuzzerOptions {
     #[arg(long, help = "Timeout in milli-seconds", default_value = "1000")]
     pub timeout: u32,
 
+    #[arg(long, help = "Don't report hangs as bugs", default_value_t = false)]
+    pub ignore_hangs: bool,
+
+    #[arg(
+        long,
+        help = "Multiplier applied to timeout value to determine hang detection threshold (hang_timeout = hang_multiple * timeout)",
+        default_value_t = 5
+    )]
+    pub hang_multiple: u32,
+
     #[arg(
         long,
         help = "Client launch delay in milli-seconds",

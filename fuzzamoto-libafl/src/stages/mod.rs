@@ -3,6 +3,10 @@ pub mod bench_stats;
 #[cfg(feature = "bench")]
 pub use bench_stats::*;
 
+pub mod verify_timeouts;
+
+pub use verify_timeouts::*;
+
 use std::{borrow::Borrow, cell::RefCell, marker::PhantomData};
 
 use fuzzamoto_ir::Minimizer;

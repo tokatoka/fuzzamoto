@@ -1,6 +1,8 @@
 #[cfg(target_os = "linux")]
 mod client;
 #[cfg(target_os = "linux")]
+mod feedbacks;
+#[cfg(target_os = "linux")]
 mod fuzzer;
 #[cfg(target_os = "linux")]
 mod input;

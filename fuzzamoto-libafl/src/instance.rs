@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, time::Duration};
+use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, rc::Rc, time::Duration};
 
 use fuzzamoto_ir::{
     AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, CombineMutator,
@@ -17,7 +17,7 @@ use libafl::{
         ProgressReporter, SendExiting,
     },
     executors::Executor,
-    feedback_and_fast, feedback_or,
+    feedback_and, feedback_and_fast, feedback_or, feedback_or_fast,
     feedbacks::{ConstFeedback, CrashFeedback, HasObserverHandle, MaxMapFeedback, TimeFeedback},
     fuzzer::{Evaluator, Fuzzer, StdFuzzer},
     mutators::{ComposedByMutations, TuneableScheduledMutator},
@@ -39,11 +39,12 @@ use rand::{SeedableRng, rngs::SmallRng};
 use typed_builder::TypedBuilder;
 
 use crate::{
+    feedbacks::CaptureTimeoutFeedback,
     input::IrInput,
     mutators::{IrGenerator, IrMutator, IrSpliceMutator, LibAflByteMutator},
     options::FuzzerOptions,
     schedulers::SupportedSchedulers,
-    stages::IrMinimizerStage,
+    stages::{IrMinimizerStage, VerifyTimeoutsStage},
 };
 
 #[cfg(feature = "bench")]
@@ -131,11 +132,28 @@ where
             TimeFeedback::new(&time_observer),
         );
 
+        let enable_capture_timeouts = Rc::new(RefCell::new(true));
+        let capture_timeout_feedback =
+            CaptureTimeoutFeedback::new(Rc::clone(&enable_capture_timeouts));
+        let timeout_verify_stage = IfStage::new(
+            |_, _, _, _| Ok(!self.options.ignore_hangs),
+            tuple_list!(VerifyTimeoutsStage::new(
+                enable_capture_timeouts,
+                Duration::from_millis(self.options.timeout as u64),
+                self.options.hang_multiple,
+            )),
+        );
+
         // A feedback to choose if an input is a solution or not
-        let mut objective = feedback_and_fast!(
-            CrashFeedback::new(),
-            // Take it only if trigger new coverage over crashes
-            // For deduplication
+        let mut objective = feedback_and!(
+            feedback_or_fast!(
+                CrashFeedback::new(),
+                feedback_and!(
+                    ConstFeedback::new(!self.options.ignore_hangs),
+                    capture_timeout_feedback,
+                )
+            ),
+            // Only store objective if it triggers new coverage (compared to other solutions)
             MaxMapFeedback::with_name("mapfeedback_metadata_objective", &trace_observer)
         );
 
@@ -319,6 +337,7 @@ where
                 |_, _, _, _| Ok(!self.options.minimize_input.is_some()),
                 tuple_list!(TuneableMutationalStage::new(&mut state, mutator))
             ),
+            timeout_verify_stage,
             bench_stats_stage,
         );
         self.fuzz(&mut state, &mut fuzzer, &mut executor, &mut stages)
