@@ -1,4 +1,4 @@
-#[cfg(feature = "netsplit")]
+#[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "nyx")]
@@ -13,8 +13,12 @@ use fuzzamoto::{
     targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, Target},
 };
 
-#[cfg(feature = "netsplit")]
+#[cfg(feature = "oracle_netsplit")]
 use fuzzamoto::oracles::{NetSplitContext, NetSplitOracle};
+
+#[cfg(feature = "oracle_consensus")]
+use fuzzamoto::oracles::{ConsensusContext, ConsensusOracle};
+
 use fuzzamoto_ir::{
     Program, ProgramContext,
     compiler::{CompiledAction, CompiledProgram, Compiler},
@@ -33,7 +37,7 @@ const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
 /// `fuzzamoto_ir::CompiledProgram`s as input.
 struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
-    #[cfg(feature = "netsplit")]
+    #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
 }
 
@@ -149,7 +153,7 @@ where
         Ok(())
     }
 
-    #[cfg(feature = "netsplit")]
+    #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     fn create_and_sync_second_target(args: &[String], primary: &T) -> Result<T, String> {
         let mut second = if args.len() > 2 {
             T::from_path(&args[2])?
@@ -161,7 +165,7 @@ where
         Ok(second)
     }
 
-    #[cfg(feature = "netsplit")]
+    #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     fn sync_nodes(primary: &T, reference: &mut T) -> Result<(), String> {
         const SYNC_TIMEOUT: Duration = Duration::from_secs(10);
         const POLL_INTERVAL: Duration = Duration::from_millis(10);
@@ -209,7 +213,7 @@ where
                 }
                 CompiledAction::SetTime(time) => {
                     let _ = self.inner.target.set_mocktime(time);
-                    #[cfg(feature = "netsplit")]
+                    #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
                     let _ = self.second.set_mocktime(time);
                 }
                 _ => {}
@@ -229,12 +233,33 @@ where
             return ScenarioResult::Fail(format!("{}", e));
         }
 
-        #[cfg(feature = "netsplit")]
+        #[cfg(feature = "oracle_netsplit")]
         {
             let net_split_oracle = NetSplitOracle::<TX, TX>::default();
             if let OracleResult::Fail(e) = net_split_oracle.evaluate(&NetSplitContext {
                 primary: &self.inner.target,
                 reference: &self.second,
+            }) {
+                return ScenarioResult::Fail(format!("{}", e));
+            }
+        }
+
+        #[cfg(feature = "oracle_consensus")]
+        {
+            // Ensure the nodes are connected and eventually consistent (i.e. reach consensus
+            // on the chain tip).
+            if !self.second.is_connected_to(&self.inner.primary) {
+                self.second.connect(&self.inner.primary);
+            }
+
+            let consensus_oracle = ConsensusOracle::<TX, TX>::default();
+            if let OracleResult::Fail(e) = consensus_oracle.evaluate(&ConsensusContext {
+                primary: &self.inner.target,
+                reference: &self.second,
+                // Poll every 10 milliseconds and timeout after 60 seconds. This way hang detection
+                // will fĺag consensus bugs as hangs.
+                consensus_timeout: Duration::from_secs(60),
+                poll_interval: Duration::from_millis(10),
             }) {
                 return ScenarioResult::Fail(format!("{}", e));
             }
@@ -260,12 +285,12 @@ where
 
         Self::dump_context(context, txos, headers)?;
 
-        #[cfg(feature = "netsplit")]
+        #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
         let second = Self::create_and_sync_second_target(args, &inner.target)?;
 
         Ok(Self {
             inner,
-            #[cfg(feature = "netsplit")]
+            #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
             second,
         })
     }

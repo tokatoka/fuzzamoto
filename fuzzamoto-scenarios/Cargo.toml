@@ -15,7 +15,11 @@ compile_in_vm = []
 # Force every sent message to be followed by two ping/pong roundtrips
 force_send_and_ping = []
 
-netsplit = []
+# Compile for netsplit bug detection
+oracle_netsplit = []
+# Compile for consensus bug detection. Note: this relies on fuzzamoto-libafl's
+# hang detection.
+oracle_consensus = []
 
 [dependencies]
 fuzzamoto = { path = "../fuzzamoto" }
