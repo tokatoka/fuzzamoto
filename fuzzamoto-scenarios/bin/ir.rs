@@ -227,7 +227,7 @@ where
         }
     }
 
-    fn evaluate_oracles(&self) -> ScenarioResult {
+    fn evaluate_oracles(&mut self) -> ScenarioResult {
         let crash_oracle = CrashOracle::<TX>::default();
         if let OracleResult::Fail(e) = crash_oracle.evaluate(&self.inner.target) {
             return ScenarioResult::Fail(format!("{}", e));
@@ -248,8 +248,8 @@ where
         {
             // Ensure the nodes are connected and eventually consistent (i.e. reach consensus
             // on the chain tip).
-            if !self.second.is_connected_to(&self.inner.primary) {
-                self.second.connect(&self.inner.primary);
+            if !self.second.is_connected_to(&self.inner.target) {
+                let _ = self.second.connect_to(&self.inner.target);
             }
 
             let consensus_oracle = ConsensusOracle::<TX, TX>::default();
