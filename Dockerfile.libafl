@@ -84,7 +84,7 @@ RUN cd bitcoin/ && \
 
 RUN cd bitcoin/ && cmake -B build_fuzz \
       --toolchain ./depends/$(./depends/config.guess)/toolchain.cmake \
-      -DSANTIZERS="address" \
+      -DSANITIZERS="address" \
       -DAPPEND_CPPFLAGS="-DFUZZAMOTO_FUZZING -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION -DABORT_ON_FAILED_ASSUME" \
       -DAPPEND_LDFLAGS="-fuse-ld=lld-${LLVM_V}"
 
