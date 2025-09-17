@@ -2,7 +2,7 @@ FROM debian:bookworm
 
 # ------ Build and install dependencies ------
 
-RUN apt-get update
+RUN apt-get update -y
 
 ARG LLVM_V=19
 
