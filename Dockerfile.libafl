@@ -2,12 +2,10 @@ FROM debian:bookworm
 
 # ------ Build and install dependencies ------
 
-RUN apt-get update -y
-
 ARG LLVM_V=19
 
 # Make sure we can install the llvm toolchain
-RUN apt-get install -y software-properties-common
+RUN apt-get update && apt-get install -y software-properties-common
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 15CF4D18AF4F7421
 RUN apt-add-repository "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${LLVM_V} main"
 RUN apt-add-repository "deb-src http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-${LLVM_V} main"
