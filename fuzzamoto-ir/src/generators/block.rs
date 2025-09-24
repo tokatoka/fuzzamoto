@@ -1,12 +1,17 @@
 use bitcoin::hashes::Hash;
 use rand::{Rng, RngCore, seq::SliceRandom};
 
-use crate::{Generator, GeneratorResult, InstructionContext, Operation, ProgramBuilder, Variable};
+use crate::{
+    CoinbaseTxGenerator, Generator, GeneratorResult, InstructionContext, Operation, ProgramBuilder,
+    Variable,
+};
 
 use super::GeneratorError;
 
 /// `BlockGenerator` generates instructions for creating a new block and sending it to a node
-pub struct BlockGenerator;
+pub struct BlockGenerator {
+    coinbase_generator: CoinbaseTxGenerator,
+}
 
 impl<R: RngCore> Generator<R> for BlockGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
@@ -36,8 +41,19 @@ impl<R: RngCore> Generator<R> for BlockGenerator {
         let block_version_var =
             builder.force_append_expect_output(vec![], Operation::LoadBlockVersion(5));
 
+        let coinbase_tx_var =
+            if let Some(coinbase_var) = builder.get_random_variable(rng, Variable::CoinbaseTx) {
+                coinbase_var
+            } else {
+                self.coinbase_generator.generate(builder, rng)?;
+                builder
+                    .get_random_variable(rng, Variable::CoinbaseTx)
+                    .unwrap()
+            };
+
         let block_and_header_var = builder.force_append(
             vec![
+                coinbase_tx_var.index,
                 header_var.index,
                 time_var.index,
                 block_version_var.index,
@@ -55,6 +71,7 @@ impl<R: RngCore> Generator<R> for BlockGenerator {
             vec![conn_var.index, block_and_header_var[1].index],
             Operation::SendBlock,
         );
+        builder.force_append(vec![block_and_header_var[2].index], Operation::TakeTxo);
 
         Ok(())
     }
@@ -66,7 +83,9 @@ impl<R: RngCore> Generator<R> for BlockGenerator {
 
 impl Default for BlockGenerator {
     fn default() -> Self {
-        Self {}
+        Self {
+            coinbase_generator: CoinbaseTxGenerator::default(),
+        }
     }
 }
 
