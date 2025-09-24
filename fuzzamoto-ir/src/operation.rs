@@ -102,6 +102,14 @@ pub enum Operation {
     AddTxInput,
     TakeTxo,
 
+    /// Coinbase-specific building operations
+    BeginBuildCoinbaseTx,
+    EndBuildCoinbaseTx,
+    BuildCoinbaseTxInput,
+    BeginBuildCoinbaseTxOutputs,
+    EndBuildCoinbaseTxOutputs,
+    AddCoinbaseTxOutput,
+
     /// Block building
     BeginBlockTransactions,
     EndBlockTransactions,
@@ -263,6 +271,13 @@ impl fmt::Display for Operation {
             Operation::EndWitnessStack => write!(f, "EndWitnessStack"),
             Operation::AddWitness => write!(f, "AddWitness"),
 
+            Operation::BeginBuildCoinbaseTx => write!(f, "BeginBuildCoinbaseTx"),
+            Operation::EndBuildCoinbaseTx => write!(f, "EndBuildCoinbaseTx"),
+            Operation::BuildCoinbaseTxInput => write!(f, "BuildCoinbaseTxInput"),
+            Operation::BeginBuildCoinbaseTxOutputs => write!(f, "BeginBuildCoinbaseTxOutputs"),
+            Operation::EndBuildCoinbaseTxOutputs => write!(f, "EndBuildCoinbaseTxOutputs"),
+            Operation::AddCoinbaseTxOutput => write!(f, "AddCoinbaseTxOutput"),
+
             Operation::BeginBuildInventory => write!(f, "BeginBuildInventory"),
             Operation::EndBuildInventory => write!(f, "EndBuildInventory"),
             Operation::AddCompactBlockInv => write!(f, "AddCompactBlockInv"),
@@ -311,6 +326,7 @@ impl Operation {
         match self {
             Operation::AddTxInput if index == 0 => true,
             Operation::AddTxOutput if index == 0 => true,
+            Operation::AddCoinbaseTxOutput if index == 0 => true,
             Operation::TakeTxo if index == 0 => true,
             Operation::AddWitness if index == 0 => true,
             Operation::AddTxidInv if index == 0 => true,
@@ -329,7 +345,9 @@ impl Operation {
             | Operation::BeginBuildTxOutputs
             | Operation::BeginWitnessStack
             | Operation::BeginBlockTransactions
-            | Operation::BeginBuildFilterLoad => true,
+            | Operation::BeginBuildFilterLoad
+            | Operation::BeginBuildCoinbaseTx
+            | Operation::BeginBuildCoinbaseTxOutputs => true,
             // Exhaustive match to fail when new ops are added
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -400,7 +418,11 @@ impl Operation {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::SendBlockNoWit => false,
+            | Operation::SendBlockNoWit
+            | Operation::EndBuildCoinbaseTx
+            | Operation::EndBuildCoinbaseTxOutputs
+            | Operation::BuildCoinbaseTxInput
+            | Operation::AddCoinbaseTxOutput => false,
         }
     }
 
@@ -419,7 +441,11 @@ impl Operation {
             | (Operation::BeginBuildInventory, Operation::EndBuildInventory)
             | (Operation::BeginWitnessStack, Operation::EndWitnessStack)
             | (Operation::BeginBlockTransactions, Operation::EndBlockTransactions)
-            | (Operation::BeginBuildFilterLoad, Operation::EndBuildFilterLoad) => true,
+            | (Operation::BeginBuildFilterLoad, Operation::EndBuildFilterLoad)
+            | (Operation::BeginBuildCoinbaseTx, Operation::EndBuildCoinbaseTx)
+            | (Operation::BeginBuildCoinbaseTxOutputs, Operation::EndBuildCoinbaseTxOutputs) => {
+                true
+            }
             _ => false,
         }
     }
@@ -432,7 +458,9 @@ impl Operation {
             | Operation::EndBuildInventory
             | Operation::EndWitnessStack
             | Operation::EndBlockTransactions
-            | Operation::EndBuildFilterLoad => true,
+            | Operation::EndBuildFilterLoad
+            | Operation::EndBuildCoinbaseTx
+            | Operation::EndBuildCoinbaseTxOutputs => true,
             // Exhaustive match to fail when new ops are added
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -503,7 +531,11 @@ impl Operation {
             | Operation::BuildFilterAddFromTxo
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
-            | Operation::SendFilterClear => false,
+            | Operation::SendFilterClear
+            | Operation::BeginBuildCoinbaseTx
+            | Operation::BeginBuildCoinbaseTxOutputs
+            | Operation::BuildCoinbaseTxInput
+            | Operation::AddCoinbaseTxOutput => false,
         }
     }
 
@@ -599,6 +631,13 @@ impl Operation {
             Operation::BuildFilterAddFromTx => vec![Variable::FilterAdd],
             Operation::BuildFilterAddFromTxo => vec![Variable::FilterAdd],
 
+            Operation::BeginBuildCoinbaseTx => vec![],
+            Operation::EndBuildCoinbaseTx => vec![Variable::CoinbaseTx],
+            Operation::BuildCoinbaseTxInput => vec![Variable::CoinbaseInput],
+            Operation::BeginBuildCoinbaseTxOutputs => vec![],
+            Operation::EndBuildCoinbaseTxOutputs => vec![Variable::ConstTxOutputs],
+            Operation::AddCoinbaseTxOutput => vec![],
+
             Operation::BeginBuildInventory => vec![],
             Operation::EndBuildInventory => vec![Variable::ConstInventory],
             Operation::AddCompactBlockInv => vec![],
@@ -613,7 +652,7 @@ impl Operation {
             Operation::EndWitnessStack => vec![Variable::ConstWitnessStack],
             Operation::AddWitness => vec![],
 
-            Operation::BuildBlock => vec![Variable::Header, Variable::Block],
+            Operation::BuildBlock => vec![Variable::Header, Variable::Block, Variable::ConstTx],
             Operation::AddTx => vec![],
             Operation::EndBlockTransactions => vec![Variable::ConstBlockTransactions],
             Operation::BeginBlockTransactions => vec![],
@@ -671,6 +710,20 @@ impl Operation {
                 Variable::ConstAmount,
             ],
             Operation::BeginBuildTxOutputs => vec![Variable::ConstTxInputs],
+            Operation::BeginBuildCoinbaseTx => vec![Variable::TxVersion, Variable::LockTime],
+            Operation::EndBuildCoinbaseTx => vec![
+                Variable::MutTx,
+                Variable::CoinbaseInput,
+                Variable::ConstTxOutputs,
+            ],
+            Operation::BuildCoinbaseTxInput => vec![Variable::Sequence],
+            Operation::BeginBuildCoinbaseTxOutputs => vec![Variable::CoinbaseInput],
+            Operation::EndBuildCoinbaseTxOutputs => vec![Variable::MutTxOutputs],
+            Operation::AddCoinbaseTxOutput => vec![
+                Variable::MutTxOutputs,
+                Variable::Scripts,
+                Variable::ConstAmount,
+            ],
             Operation::TakeTxo => vec![Variable::ConstTx],
             Operation::AddWitness => vec![Variable::MutWitnessStack, Variable::Bytes],
             Operation::EndWitnessStack => vec![Variable::MutWitnessStack],
@@ -688,6 +741,7 @@ impl Operation {
                 vec![Variable::MutInventory, Variable::Block]
             }
             Operation::BuildBlock => vec![
+                Variable::CoinbaseTx,
                 Variable::Header,
                 Variable::Time,
                 Variable::BlockVersion,
@@ -770,6 +824,8 @@ impl Operation {
             Operation::BeginBuildInventory => vec![Variable::MutInventory],
             Operation::BeginBlockTransactions => vec![Variable::MutBlockTransactions],
             Operation::BeginBuildFilterLoad => vec![Variable::MutFilterLoad],
+            Operation::BeginBuildCoinbaseTx => vec![Variable::MutTx],
+            Operation::BeginBuildCoinbaseTxOutputs => vec![Variable::MutTxOutputs],
             Operation::Nop {
                 outputs: _,
                 inner_outputs,
@@ -843,7 +899,11 @@ impl Operation {
             | Operation::SendGetCFCheckpt
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
-            | Operation::SendFilterClear => vec![],
+            | Operation::SendFilterClear
+            | Operation::EndBuildCoinbaseTx
+            | Operation::BuildCoinbaseTxInput
+            | Operation::EndBuildCoinbaseTxOutputs
+            | Operation::AddCoinbaseTxOutput => vec![],
         }
     }
 }

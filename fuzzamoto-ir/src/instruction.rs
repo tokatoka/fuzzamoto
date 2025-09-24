@@ -20,7 +20,11 @@ impl Instruction {
             | Operation::EndBuildInventory
             | Operation::BeginBlockTransactions
             | Operation::EndBlockTransactions
-            | Operation::TakeTxo => false,
+            | Operation::TakeTxo
+            | Operation::BeginBuildCoinbaseTx
+            | Operation::EndBuildCoinbaseTx
+            | Operation::BeginBuildCoinbaseTxOutputs
+            | Operation::EndBuildCoinbaseTxOutputs => false,
             _ => self.inputs.len() > 0,
         }
     }
@@ -111,6 +115,8 @@ impl Instruction {
             | Operation::AddFilteredBlockInv
             | Operation::BuildBlock
             | Operation::AddTx
+            | Operation::BuildCoinbaseTxInput
+            | Operation::AddCoinbaseTxOutput
             | Operation::SendGetData
             | Operation::SendInv
             | Operation::SendHeader
@@ -138,7 +144,11 @@ impl Instruction {
             | Operation::EndBlockTransactions
             | Operation::BeginBlockTransactions
             | Operation::BeginBuildFilterLoad
-            | Operation::EndBuildFilterLoad => false,
+            | Operation::EndBuildFilterLoad
+            | Operation::BeginBuildCoinbaseTx
+            | Operation::EndBuildCoinbaseTx
+            | Operation::BeginBuildCoinbaseTxOutputs
+            | Operation::EndBuildCoinbaseTxOutputs => false,
         }
     }
 
@@ -154,6 +164,10 @@ impl Instruction {
                 Operation::BeginBuildInventory => Some(InstructionContext::Inventory),
                 Operation::BeginBlockTransactions => Some(InstructionContext::BlockTransactions),
                 Operation::BeginBuildFilterLoad => Some(InstructionContext::BuildFilter),
+                Operation::BeginBuildCoinbaseTx => Some(InstructionContext::BuildCoinbaseTx),
+                Operation::BeginBuildCoinbaseTxOutputs => {
+                    Some(InstructionContext::BuildCoinbaseTxOutputs)
+                }
                 _ => unimplemented!("Every block begin enters a context"),
             };
         }
@@ -182,4 +196,6 @@ pub enum InstructionContext {
     Inventory,
     BlockTransactions,
     BuildFilter,
+    BuildCoinbaseTx,
+    BuildCoinbaseTxOutputs,
 }
