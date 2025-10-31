@@ -88,6 +88,21 @@ struct Txo {
     value: u64,
 }
 
+impl Txo {
+    pub fn new() -> Self {
+        Self {
+            prev_out: ([0u8; 32], 0),
+            scripts: Scripts {
+                script_pubkey: Vec::new(),
+                script_sig: Vec::new(),
+                witness: Witness { stack: Vec::new() },
+                requires_signing: None,
+            },
+            value: 0,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct TxOutputs {
     outputs: Vec<(Scripts, u64)>,
@@ -508,11 +523,13 @@ impl Compiler {
                 mut_tx_outputs_var.fees -= amount;
             }
             Operation::TakeTxo => {
-                let txo = {
-                    let tx_var = self.get_input_mut::<Tx>(&instruction.inputs, 0)?;
-                    tx_var.output_selector += 1; // TODO: wrap around?
-                    tx_var.txos[tx_var.output_selector - 1].clone()
-                };
+                let tx_var = self.get_input_mut::<Tx>(&instruction.inputs, 0)?;
+                let num_txos = tx_var.txos.len();
+                let mut txo = Txo::new();
+                if num_txos != 0 {
+                    txo = tx_var.txos[tx_var.output_selector % num_txos].clone();
+                    tx_var.output_selector += 1;
+                }
 
                 self.append_variable(txo);
             }
