@@ -56,6 +56,10 @@ name = "scenario-wallet-migration"
 path = "bin/wallet_migration.rs"
 
 [[bin]]
+name = "scenario-import-mempool"
+path = "bin/import_mempool.rs"
+
+[[bin]]
 name = "scenario-rpc-generic"
 path = "bin/rpc_generic.rs"
 
