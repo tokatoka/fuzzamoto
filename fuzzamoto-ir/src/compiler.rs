@@ -11,6 +11,7 @@ use bitcoin::{
     opcodes::{OP_0, OP_TRUE, all::OP_RETURN},
     p2p::{
         message_blockdata::Inventory,
+        message_bloom::{BloomFlags, FilterAdd, FilterLoad},
         message_filter::{GetCFCheckpt, GetCFHeaders, GetCFilters},
     },
     script::PushBytesBuf,
@@ -138,7 +139,9 @@ impl Compiler {
                 | Operation::LoadPrivateKey(..)
                 | Operation::LoadSigHashFlags(..)
                 | Operation::LoadHeader { .. }
-                | Operation::LoadTxo { .. } => {
+                | Operation::LoadTxo { .. }
+                | Operation::LoadFilterLoad { .. }
+                | Operation::LoadFilterAdd { .. } => {
                     self.handle_load_operations(&instruction)?;
                 }
 
@@ -204,7 +207,10 @@ impl Compiler {
                 | Operation::SendBlockNoWit
                 | Operation::SendGetCFilters
                 | Operation::SendGetCFHeaders
-                | Operation::SendGetCFCheckpt => {
+                | Operation::SendGetCFCheckpt
+                | Operation::SendFilterLoad
+                | Operation::SendFilterAdd
+                | Operation::SendFilterClear => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
             }
@@ -636,6 +642,38 @@ impl Compiler {
                     },
                 );
             }
+            Operation::SendFilterLoad => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let filter_load = self.get_input::<FilterLoad>(&instruction.inputs, 1)?;
+
+                self.emit_send_message(
+                    *connection_var,
+                    "filterload",
+                    &FilterLoad {
+                        filter: filter_load.filter.clone(),
+                        hash_funcs: filter_load.hash_funcs,
+                        tweak: filter_load.tweak,
+                        flags: filter_load.flags,
+                    },
+                );
+            }
+            Operation::SendFilterAdd => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let filteradd = self.get_input::<FilterAdd>(&instruction.inputs, 1)?;
+
+                self.emit_send_message(
+                    *connection_var,
+                    "filteradd",
+                    &FilterAdd {
+                        data: filteradd.data.clone(),
+                    },
+                );
+            }
+            Operation::SendFilterClear => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let empty: Vec<u8> = Vec::new();
+                self.emit_send_message(*connection_var, "filterclear", &empty);
+            }
             _ => unreachable!(
                 "Non-message-sending operation passed to handle_message_sending_operations"
             ),
@@ -717,6 +755,30 @@ impl Compiler {
                         requires_signing: None,
                     },
                 });
+            }
+            Operation::LoadFilterLoad {
+                filter,
+                hash_funcs,
+                tweak,
+                flags,
+            } => {
+                // because BloomFilter doesn't implement `Hash` and `Deserialize` so I can't use it inside `Operation`
+                // thus here transform it on the fly.
+                let flags = match flags {
+                    0 => BloomFlags::None,
+                    1 => BloomFlags::All,
+                    2 => BloomFlags::PubkeyOnly,
+                    _ => unreachable!("Invalid BloomFlags"),
+                };
+                self.handle_load_operation(FilterLoad {
+                    filter: filter.clone(),
+                    hash_funcs: *hash_funcs,
+                    tweak: *tweak,
+                    flags: flags,
+                });
+            }
+            Operation::LoadFilterAdd { data } => {
+                self.handle_load_operation(FilterAdd { data: data.clone() });
             }
             _ => unreachable!("Non-load operation passed to handle_load_operations"),
         }
