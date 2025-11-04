@@ -419,6 +419,23 @@ impl ProgramBuilder {
         }
     }
 
+    /// Get all available variable of a given type
+    pub fn get_all_variable(&self, find: Variable) -> Vec<IndexedVariable> {
+        self.variables
+            .iter()
+            .enumerate()
+            .filter(|(_, ScopedVariable { var, scope_id })| {
+                self.is_scope_active(*scope_id) && *var == find
+            })
+            .map(
+                |(index, ScopedVariable { var, scope_id: _ })| IndexedVariable {
+                    var: var.clone(),
+                    index,
+                },
+            )
+            .collect()
+    }
+
     /// Get a random available (in the current scope) variable of a given type
     pub fn get_random_variable<R: RngCore>(
         &self,
