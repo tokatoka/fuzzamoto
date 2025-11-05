@@ -46,6 +46,9 @@ pub enum Operation {
         height: u32,
     },
 
+    LoadFilterLoad {},
+    LoadFilterAdd {},
+
     /// Send a message given a connection, message type and bytes
     SendRawMessage,
     /// Advance a time variable by a given duration
@@ -200,7 +203,9 @@ impl fmt::Display for Operation {
             Operation::LoadSigHashFlags(sig_hash_flags) => {
                 write!(f, "LoadSigHashFlags({})", sig_hash_flags)
             }
-
+            Operation::LoadFilterLoad {  } | Operation::LoadFilterAdd {  } => {
+                write!(f, "loadfilters")
+            }
             Operation::BeginBuildTx => write!(f, "BeginBuildTx"),
             Operation::EndBuildTx => write!(f, "EndBuildTx"),
             Operation::BeginBuildTxInputs => write!(f, "BeginBuildTxInputs"),
@@ -309,6 +314,8 @@ impl Operation {
             | Operation::LoadSequence(..)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
+            | Operation::LoadFilterLoad {  }
+            | Operation::LoadFilterAdd {  }
             | Operation::EndBuildTx
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
@@ -400,6 +407,8 @@ impl Operation {
             | Operation::LoadSequence(..)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
+            | Operation::LoadFilterLoad {  }
+            | Operation::LoadFilterAdd {  }
             | Operation::BeginBuildTx
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildTxOutputs
@@ -500,6 +509,8 @@ impl Operation {
             Operation::LoadLockTime(..) => vec![Variable::LockTime],
             Operation::LoadSequence(..) => vec![Variable::Sequence],
             Operation::LoadSize(..) => vec![Variable::Size],
+            Operation::LoadFilterAdd {  } => vec![],
+            Operation::LoadFilterLoad {  } => vec![],
             Operation::TakeTxo => vec![Variable::Txo],
             Operation::LoadHeader { .. } => vec![Variable::Header],
             Operation::LoadPrivateKey(..) => vec![Variable::PrivateKey],
@@ -651,6 +662,8 @@ impl Operation {
             | Operation::LoadSize(_)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
+            | Operation::LoadFilterAdd {  }
+            | Operation::LoadFilterLoad {  }
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildInventory
             | Operation::BeginBlockTransactions
@@ -680,6 +693,8 @@ impl Operation {
             | Operation::LoadDuration(_)
             | Operation::LoadBlockHeight(_)
             | Operation::LoadCompactFilterType(_)
+            | Operation::LoadFilterAdd {  }
+            | Operation::LoadFilterLoad {  }
             | Operation::SendRawMessage
             | Operation::AdvanceTime
             | Operation::LoadTime(_)

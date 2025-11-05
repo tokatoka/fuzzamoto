@@ -207,6 +207,7 @@ impl Compiler {
                 | Operation::SendGetCFCheckpt => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
+                _ => unreachable!("No!")
             }
         }
 
