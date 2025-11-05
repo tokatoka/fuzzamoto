@@ -46,6 +46,6 @@ pub enum Variable {
 
     BlockVersion,
 
-    FilterLoad,
-    FilterAdd,
+    // FilterLoad,
+    // FilterAdd,
 }

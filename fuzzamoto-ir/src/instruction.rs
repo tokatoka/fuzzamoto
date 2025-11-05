@@ -91,8 +91,8 @@ impl Instruction {
             | Operation::LoadLockTime(..)
             | Operation::LoadSequence(..)
             | Operation::LoadSize(..)
-            | Operation::LoadFilterLoad { .. }
-            | Operation::LoadFilterAdd { .. }
+            // | Operation::LoadFilterLoad { .. }
+            // | Operation::LoadFilterAdd { .. }
             | Operation::AddWitness
             | Operation::SendTx
             | Operation::SendTxNoWit
@@ -115,9 +115,9 @@ impl Instruction {
             | Operation::SendGetCFilters
             | Operation::SendGetCFHeaders
             | Operation::SendGetCFCheckpt
-            | Operation::SendFilterLoad
-            | Operation::SendFilterAdd
-            | Operation::SendFilterClear
+            // | Operation::SendFilterLoad
+            // | Operation::SendFilterAdd
+            // | Operation::SendFilterClear
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }
