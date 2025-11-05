@@ -139,11 +139,11 @@ impl Compiler {
                 | Operation::LoadPrivateKey(..)
                 | Operation::LoadSigHashFlags(..)
                 | Operation::LoadHeader { .. }
-                | Operation::LoadTxo { .. } 
-                | Operation::LoadFilterLoad { .. }
-                | Operation::LoadFilterAdd { .. } => {
+                | Operation::LoadTxo { .. } => {
                     self.handle_load_operations(&instruction)?;
                 }
+                // | Operation::LoadFilterLoad { .. }
+                // | Operation::LoadFilterAdd { .. } 
 
 
                 Operation::BeginBlockTransactions
