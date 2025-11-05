@@ -207,12 +207,12 @@ impl Compiler {
                 | Operation::SendBlockNoWit
                 | Operation::SendGetCFilters
                 | Operation::SendGetCFHeaders
-                | Operation::SendGetCFCheckpt => {
+                | Operation::SendGetCFCheckpt
+                | Operation::SendFilterLoad
+                | Operation::SendFilterAdd
+                | Operation::SendFilterClear  => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
-                // | Operation::SendFilterLoad
-                // | Operation::SendFilterAdd
-                // | Operation::SendFilterClear => 
                 _ => unreachable!("CUZ NOT USED!"),
 
             }
@@ -644,7 +644,6 @@ impl Compiler {
                     },
                 );
             }
-            /*
             Operation::SendFilterLoad => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
                 let filter_load = self.get_input::<FilterLoad>(&instruction.inputs, 1)?;
@@ -677,7 +676,6 @@ impl Compiler {
                 let empty: Vec<u8> = Vec::new();
                 self.emit_send_message(*connection_var, "filterclear", &empty);
             }
-            */
             _ => unreachable!(
                 "Non-message-sending operation passed to handle_message_sending_operations"
             ),

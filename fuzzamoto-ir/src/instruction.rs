@@ -115,9 +115,9 @@ impl Instruction {
             | Operation::SendGetCFilters
             | Operation::SendGetCFHeaders
             | Operation::SendGetCFCheckpt
-            // | Operation::SendFilterLoad
-            // | Operation::SendFilterAdd
-            // | Operation::SendFilterClear
+            | Operation::SendFilterLoad
+            | Operation::SendFilterAdd
+            | Operation::SendFilterClear
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }

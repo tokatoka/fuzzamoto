@@ -122,9 +122,9 @@ pub enum Operation {
     SendGetCFilters,
     SendGetCFHeaders,
     SendGetCFCheckpt,
-    // SendFilterLoad,
-    // SendFilterAdd,
-    // SendFilterClear,
+    SendFilterLoad,
+    SendFilterAdd,
+    SendFilterClear,
     // TODO: SendCompactBlock
     // TODO: SendGetBlockTxn
     // TODO: SendBlockTxn
@@ -277,9 +277,9 @@ impl fmt::Display for Operation {
             Operation::SendGetCFilters => write!(f, "SendGetCFilters"),
             Operation::SendGetCFHeaders => write!(f, "SendGetCFHeaders"),
             Operation::SendGetCFCheckpt => write!(f, "SendGetCFCheckpt"),
-            // Operation::SendFilterLoad => write!(f, "SendFilterLoad"),
-            // Operation::SendFilterAdd => write!(f, "SendFilterAdd"),
-            // Operation::SendFilterClear => write!(f, "SendFilterClear"),
+            Operation::SendFilterLoad => write!(f, "SendFilterLoad"),
+            Operation::SendFilterAdd => write!(f, "SendFilterAdd"),
+            Operation::SendFilterClear => write!(f, "SendFilterClear"),
         }
     }
 }
@@ -380,9 +380,9 @@ impl Operation {
             | Operation::SendGetCFilters
             | Operation::SendGetCFHeaders
             | Operation::SendGetCFCheckpt
-            // | Operation::SendFilterLoad
-            // | Operation::SendFilterAdd
-            // | Operation::SendFilterClear
+            | Operation::SendFilterLoad
+            | Operation::SendFilterAdd
+            | Operation::SendFilterClear
             | Operation::SendBlockNoWit => false,
         }
     }
@@ -477,9 +477,9 @@ impl Operation {
             | Operation::SendGetCFilters
             | Operation::SendGetCFHeaders
             | Operation::SendGetCFCheckpt => false,
-            // | Operation::SendFilterLoad
-            // | Operation::SendFilterAdd
-            // | Operation::SendFilterClear => false,
+            | Operation::SendFilterLoad
+            | Operation::SendFilterAdd
+            | Operation::SendFilterClear => false,
         }
     }
 
@@ -595,9 +595,9 @@ impl Operation {
             Operation::SendGetCFilters => vec![],
             Operation::SendGetCFHeaders => vec![],
             Operation::SendGetCFCheckpt => vec![],
-            // Operation::SendFilterLoad => vec![],
-            // Operation::SendFilterAdd => vec![],
-            // Operation::SendFilterClear => vec![],
+            Operation::SendFilterLoad => vec![],
+            Operation::SendFilterAdd => vec![],
+            Operation::SendFilterClear => vec![],
         }
     }
 
@@ -686,9 +686,9 @@ impl Operation {
                 Variable::CompactFilterType,
                 Variable::Header,
             ],
-            // Operation::SendFilterLoad => vec![Variable::Connection, Variable::FilterLoad],
-            // Operation::SendFilterAdd => vec![Variable::Connection, Variable::FilterAdd],
-            // Operation::SendFilterClear => vec![],
+            Operation::SendFilterLoad => vec![Variable::Connection, Variable::FilterLoad],
+            Operation::SendFilterAdd => vec![Variable::Connection, Variable::FilterAdd],
+            Operation::SendFilterClear => vec![],
             // Operations with no inputs
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -794,9 +794,9 @@ impl Operation {
             | Operation::SendGetCFilters
             | Operation::SendGetCFHeaders
             | Operation::SendGetCFCheckpt => vec![],
-            // | Operation::SendFilterLoad
-            // | Operation::SendFilterAdd
-            // | Operation::SendFilterClear => vec![],
+            | Operation::SendFilterLoad
+            | Operation::SendFilterAdd
+            | Operation::SendFilterClear => vec![],
         }
     }
 }
