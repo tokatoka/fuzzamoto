@@ -91,8 +91,8 @@ impl Instruction {
             | Operation::LoadLockTime(..)
             | Operation::LoadSequence(..)
             | Operation::LoadSize(..)
-            // | Operation::LoadFilterLoad { .. }
-            // | Operation::LoadFilterAdd { .. }
+            | Operation::LoadFilterLoad { .. }
+            | Operation::LoadFilterAdd { .. }
             | Operation::AddWitness
             | Operation::SendTx
             | Operation::SendTxNoWit

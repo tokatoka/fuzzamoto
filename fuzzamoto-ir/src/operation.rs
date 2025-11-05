@@ -46,7 +46,6 @@ pub enum Operation {
         height: u32,
     },
 
-    /*
     /// Content for `filterload` message
     LoadFilterLoad {
         filter: Vec<u8>,
@@ -59,7 +58,6 @@ pub enum Operation {
     LoadFilterAdd {
         data: Vec<u8>,
     },
-    */
 
     /// Send a message given a connection, message type and bytes
     SendRawMessage,
@@ -218,7 +216,6 @@ impl fmt::Display for Operation {
             Operation::LoadSigHashFlags(sig_hash_flags) => {
                 write!(f, "LoadSigHashFlags({})", sig_hash_flags)
             }
-            /*
             Operation::LoadFilterLoad {
                 filter,
                 hash_funcs,
@@ -237,7 +234,6 @@ impl fmt::Display for Operation {
             Operation::LoadFilterAdd { data } => {
                 write!(f, "LoadFilterAdd({})", hex_string(data))
             }
-            */
 
             Operation::BeginBuildTx => write!(f, "BeginBuildTx"),
             Operation::EndBuildTx => write!(f, "EndBuildTx"),
@@ -350,8 +346,8 @@ impl Operation {
             | Operation::LoadSequence(..)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
-            // | Operation::LoadFilterLoad { .. }
-            // | Operation::LoadFilterAdd { .. }
+            | Operation::LoadFilterLoad { .. }
+            | Operation::LoadFilterAdd { .. }
             | Operation::EndBuildTx
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
@@ -446,8 +442,8 @@ impl Operation {
             | Operation::LoadSequence(..)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
-            // | Operation::LoadFilterLoad { .. }
-            // | Operation::LoadFilterAdd { .. }
+            | Operation::LoadFilterLoad { .. }
+            | Operation::LoadFilterAdd { .. }
             | Operation::BeginBuildTx
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildTxOutputs
@@ -553,8 +549,8 @@ impl Operation {
             Operation::LoadSize(..) => vec![Variable::Size],
             Operation::TakeTxo => vec![Variable::Txo],
             Operation::LoadHeader { .. } => vec![Variable::Header],
-            // Operation::LoadFilterLoad { .. } => vec![Variable::FilterLoad],
-            // Operation::LoadFilterAdd { .. } => vec![Variable::FilterAdd],
+            Operation::LoadFilterLoad { .. } => vec![Variable::FilterLoad],
+            Operation::LoadFilterAdd { .. } => vec![Variable::FilterAdd],
             Operation::LoadPrivateKey(..) => vec![Variable::PrivateKey],
             Operation::LoadSigHashFlags(..) => vec![Variable::SigHashFlags],
             Operation::BeginBuildTx => vec![],
@@ -710,8 +706,8 @@ impl Operation {
             | Operation::LoadSize(_)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
-            // | Operation::LoadFilterLoad { .. }
-            // | Operation::LoadFilterAdd { .. }
+            | Operation::LoadFilterLoad { .. }
+            | Operation::LoadFilterAdd { .. }
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildInventory
             | Operation::BeginBlockTransactions
@@ -763,8 +759,8 @@ impl Operation {
             | Operation::LoadSize(..)
             | Operation::LoadPrivateKey(..)
             | Operation::LoadSigHashFlags(..)
-            // | Operation::LoadFilterLoad { .. }
-            // | Operation::LoadFilterAdd { .. }
+            | Operation::LoadFilterLoad { .. }
+            | Operation::LoadFilterAdd { .. }
             | Operation::EndBuildTx
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
