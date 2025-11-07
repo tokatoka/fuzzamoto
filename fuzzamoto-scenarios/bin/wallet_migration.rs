@@ -55,7 +55,7 @@ impl<'a> Scenario<'a, WalletDotDatBytes<'a>>
         let _ = std::fs::create_dir_all(self.wallet_path.parent().unwrap());
 
         if let Ok(mut wallet_file) = std::fs::File::create(&self.wallet_path) {
-            let _ = wallet_file.write_all(&input.0);
+            let _ = wallet_file.write_all(input.0);
             let _ = wallet_file.flush();
 
             let _ = self

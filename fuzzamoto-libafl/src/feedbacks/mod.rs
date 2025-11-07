@@ -51,7 +51,7 @@ where
         exit_kind: &ExitKind,
     ) -> Result<bool, Error> {
         if *self.enabled.borrow() && matches!(exit_kind, ExitKind::Timeout) {
-            let timeouts = state.metadata_or_insert_with(|| TimeoutsToVerify::new());
+            let timeouts = state.metadata_or_insert_with(TimeoutsToVerify::new);
             log::info!("Timeout detected, adding to verification queue!");
             timeouts.push(input.clone());
             return Ok(false);

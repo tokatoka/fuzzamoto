@@ -24,7 +24,7 @@ pub fn create_consolidation_tx(
     p2wsh_optrue_spk.extend(op_true_hash.as_byte_array().as_slice());
 
     let mut p2wsh_optrue_witness = Witness::new();
-    p2wsh_optrue_witness.push(&[OP_TRUE.to_u8()]);
+    p2wsh_optrue_witness.push([OP_TRUE.to_u8()]);
 
     let input = inputs
         .iter()

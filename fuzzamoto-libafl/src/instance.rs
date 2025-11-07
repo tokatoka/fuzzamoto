@@ -85,7 +85,7 @@ where
             .parent_cpu_id(Some(parent_cpu_id.0))
             .input_buffer_size(self.options.buffer_size)
             .timeout_secs(timeout.as_secs() as u8)
-            .timeout_micro_secs(timeout.subsec_micros() as u32)
+            .timeout_micro_secs(timeout.subsec_micros())
             .workdir_path(Cow::from(
                 self.options.work_dir().to_str().unwrap().to_string(),
             ))
@@ -125,7 +125,7 @@ where
                 // Disable coverage feedback if the corpus is static
                 ConstFeedback::new(!self.options.static_corpus),
                 // Disable coverage feedback if we're minimizing an input
-                ConstFeedback::new(!self.options.minimize_input.is_some()),
+                ConstFeedback::new(self.options.minimize_input.is_none()),
                 map_feedback
             ),
             // Time feedback
@@ -179,7 +179,7 @@ where
 
         let scheduler = if self.options.minimize_input.is_some() {
             // Avoid scheduler metatdata dependency
-            SupportedSchedulers::Queue(QueueScheduler::new(), PhantomData::default())
+            SupportedSchedulers::Queue(QueueScheduler::new(), PhantomData)
         } else {
             // A minimization+queue policy to get testcasess from the corpus
             SupportedSchedulers::LenTimeMinimizer(
@@ -191,7 +191,7 @@ where
                         Some(PowerSchedule::explore()),
                     ),
                 ),
-                PhantomData::default(),
+                PhantomData,
             )
         };
 
@@ -256,25 +256,25 @@ where
                 IrSpliceMutator::new(CombineMutator::new(), rng.clone()),
                 IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone()),
                 IrGenerator::new(SendMessageGenerator::default(), rng.clone()),
-                IrGenerator::new(SingleTxGenerator::default(), rng.clone()),
-                IrGenerator::new(LongChainGenerator::default(), rng.clone()),
-                IrGenerator::new(LargeTxGenerator::default(), rng.clone()),
-                IrGenerator::new(OneParentOneChildGenerator::default(), rng.clone()),
+                IrGenerator::new(SingleTxGenerator, rng.clone()),
+                IrGenerator::new(LongChainGenerator, rng.clone()),
+                IrGenerator::new(LargeTxGenerator, rng.clone()),
+                IrGenerator::new(OneParentOneChildGenerator, rng.clone()),
                 IrGenerator::new(
                     TxoGenerator::new(full_program_context.txos.clone()),
                     rng.clone()
                 ),
                 IrGenerator::new(WitnessGenerator::new(), rng.clone()),
-                IrGenerator::new(InventoryGenerator::default(), rng.clone()),
-                IrGenerator::new(GetDataGenerator::default(), rng.clone()),
-                IrGenerator::new(BlockGenerator::default(), rng.clone()),
+                IrGenerator::new(InventoryGenerator, rng.clone()),
+                IrGenerator::new(GetDataGenerator, rng.clone()),
+                IrGenerator::new(BlockGenerator, rng.clone()),
                 IrGenerator::new(
                     HeaderGenerator::new(full_program_context.headers.clone()),
                     rng.clone()
                 ),
-                IrGenerator::new(SendBlockGenerator::default(), rng.clone()),
-                IrGenerator::new(AddTxToBlockGenerator::default(), rng.clone()),
-                IrGenerator::new(CompactFilterQueryGenerator::default(), rng.clone()),
+                IrGenerator::new(SendBlockGenerator, rng.clone()),
+                IrGenerator::new(AddTxToBlockGenerator, rng.clone()),
+                IrGenerator::new(CompactFilterQueryGenerator, rng.clone()),
             ),
         );
 
@@ -334,7 +334,7 @@ where
                 )
             ),
             IfStage::new(
-                |_, _, _, _| Ok(!self.options.minimize_input.is_some()),
+                |_, _, _, _| Ok(self.options.minimize_input.is_none()),
                 tuple_list!(TuneableMutationalStage::new(&mut state, mutator))
             ),
             timeout_verify_stage,

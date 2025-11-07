@@ -5,6 +5,7 @@ pub trait Dictionary {
     fn add(&mut self, value: &[u8]);
 }
 
+#[derive(Default)]
 pub struct FileDictionary {
     words: BTreeSet<Vec<u8>>,
 }

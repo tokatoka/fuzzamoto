@@ -51,7 +51,7 @@ where
             max_consecutive_failures,
             minimizing_crash,
             keep_minimizing,
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }

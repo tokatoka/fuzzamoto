@@ -197,7 +197,7 @@ Can you-"#
 
 impl ConnectableTarget for BitcoinCoreTarget {
     fn get_addr(&self) -> Option<SocketAddrV4> {
-        self.node.params.p2p_socket.clone()
+        self.node.params.p2p_socket
     }
 
     fn is_connected_to<O: ConnectableTarget>(&self, other: &O) -> bool {
@@ -231,7 +231,7 @@ impl HasTipHash for BitcoinCoreTarget {
             Ok(result) => result
                 .block_hash()
                 .ok()
-                .map(|h| h.as_raw_hash().as_byte_array().clone()),
+                .map(|h| *h.as_raw_hash().as_byte_array()),
             Err(_) => None,
         }
     }
