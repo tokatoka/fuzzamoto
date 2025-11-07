@@ -120,7 +120,9 @@ pub struct BloomFilterAddGenerator;
 impl<R: RngCore> Generator<R> for BloomFilterAddGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
         let connection_var = builder.get_or_create_random_connection(rng);
-        let filter_loaded = builder.get_nearest_variable(Variable::FilterLoad).is_some();
+        let filter_loaded = builder
+            .get_nearest_variable(Variable::ConstFilterLoad)
+            .is_some();
 
         if !filter_loaded && rng.gen_bool(0.95) {
             // `filteradd` messages are expected to be sent after a prior `filterload`. If there is

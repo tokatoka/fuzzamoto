@@ -46,11 +46,7 @@ pub enum Variable {
 
     BlockVersion,
 
-    FilterLoad,
+    MutFilterLoad, // Mutable filter (under construction)
+    ConstFilterLoad,
     FilterAdd,
-    MutFilter, // mutable filter, it is in the course of getting built
-
-    NHashFunc, // number of hash funcs used for filterload
-    Tweak,     // tweak used for filterload
-    Flags,     // flags for filterload
 }

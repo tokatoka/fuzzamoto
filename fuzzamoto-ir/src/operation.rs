@@ -578,7 +578,7 @@ impl Operation {
             Operation::LoadSize(..) => vec![Variable::Size],
             Operation::TakeTxo => vec![Variable::Txo],
             Operation::LoadHeader { .. } => vec![Variable::Header],
-            Operation::LoadFilterLoad { .. } => vec![Variable::FilterLoad],
+            Operation::LoadFilterLoad { .. } => vec![Variable::ConstFilterLoad],
             Operation::LoadFilterAdd { .. } => vec![Variable::FilterAdd],
             Operation::LoadPrivateKey(..) => vec![Variable::PrivateKey],
             Operation::LoadSigHashFlags(..) => vec![Variable::SigHashFlags],
@@ -594,7 +594,7 @@ impl Operation {
             Operation::BeginBuildFilterLoad => vec![],
             Operation::AddTxToFilter => vec![],
             Operation::AddTxoToFilter => vec![],
-            Operation::EndBuildFilterLoad => vec![Variable::FilterLoad],
+            Operation::EndBuildFilterLoad => vec![Variable::ConstFilterLoad],
 
             Operation::BuildFilterAddFromTx => vec![Variable::FilterAdd],
             Operation::BuildFilterAddFromTxo => vec![Variable::FilterAdd],
@@ -720,14 +720,14 @@ impl Operation {
                 Variable::Header,
             ],
 
-            Operation::BeginBuildFilterLoad => vec![Variable::FilterLoad],
-            Operation::AddTxToFilter => vec![Variable::MutFilter, Variable::ConstTx],
-            Operation::AddTxoToFilter => vec![Variable::MutFilter, Variable::Txo],
-            Operation::EndBuildFilterLoad => vec![Variable::MutFilter],
+            Operation::BeginBuildFilterLoad => vec![Variable::ConstFilterLoad],
+            Operation::AddTxToFilter => vec![Variable::MutFilterLoad, Variable::ConstTx],
+            Operation::AddTxoToFilter => vec![Variable::MutFilterLoad, Variable::Txo],
+            Operation::EndBuildFilterLoad => vec![Variable::MutFilterLoad],
             Operation::BuildFilterAddFromTx => vec![Variable::ConstTx],
             Operation::BuildFilterAddFromTxo => vec![Variable::Txo],
 
-            Operation::SendFilterLoad => vec![Variable::Connection, Variable::FilterLoad],
+            Operation::SendFilterLoad => vec![Variable::Connection, Variable::ConstFilterLoad],
             Operation::SendFilterAdd => vec![Variable::Connection, Variable::FilterAdd],
             Operation::SendFilterClear => vec![Variable::Connection],
             // Operations with no inputs
@@ -769,7 +769,7 @@ impl Operation {
             Operation::BeginWitnessStack => vec![Variable::MutWitnessStack],
             Operation::BeginBuildInventory => vec![Variable::MutInventory],
             Operation::BeginBlockTransactions => vec![Variable::MutBlockTransactions],
-            Operation::BeginBuildFilterLoad => vec![Variable::MutFilter],
+            Operation::BeginBuildFilterLoad => vec![Variable::MutFilterLoad],
             Operation::Nop {
                 outputs: _,
                 inner_outputs,
