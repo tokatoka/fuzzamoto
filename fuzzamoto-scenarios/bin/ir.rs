@@ -230,7 +230,7 @@ where
     fn evaluate_oracles(&mut self) -> ScenarioResult {
         let crash_oracle = CrashOracle::<TX>::default();
         if let OracleResult::Fail(e) = crash_oracle.evaluate(&self.inner.target) {
-            return ScenarioResult::Fail(format!("{}", e));
+            return ScenarioResult::Fail(e.to_string());
         }
 
         #[cfg(feature = "oracle_netsplit")]

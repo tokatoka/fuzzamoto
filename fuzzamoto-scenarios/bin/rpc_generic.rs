@@ -77,7 +77,7 @@ impl RpcParamPool {
     }
 
     fn add(&mut self, key: &'static str, param: serde_json::Value) {
-        self.params.entry(key).or_insert_with(Vec::new).push(param);
+        self.params.entry(key).or_default().push(param);
     }
 
     fn add_rpc_result(&mut self, result: serde_json::Value) {
@@ -104,16 +104,14 @@ impl RpcParamPool {
     }
 
     fn get(&self, param: &RpcParam, index: u16) -> Option<serde_json::Value> {
-        let Some(pool_params) = self.params.get(Self::param_key(param)) else {
-            return None;
-        };
+        let pool_params = self.params.get(Self::param_key(param))?;
 
         let pool_size = pool_params.len();
         if pool_size == 0 {
             return None;
         }
 
-        Some(pool_params[index as usize % pool_size].clone().into())
+        Some(pool_params[index as usize % pool_size].clone())
     }
 
     fn get_json_params_from_pool(
@@ -172,7 +170,7 @@ impl RpcParamPool {
                 }
                 RpcParam::String(ParamSource::Fuzzer(s)) => json_params.push(s.clone().into()),
                 RpcParam::Array(ParamSource::Fuzzer(a)) => {
-                    self.get_json_params_inner(&a, json_params)
+                    self.get_json_params_inner(a, json_params)
                 }
                 param => self.get_json_params_from_pool(param, json_params),
             }
@@ -182,7 +180,7 @@ impl RpcParamPool {
     fn get_json_params(&mut self, params: &[RpcParam]) -> Vec<serde_json::Value> {
         let mut json_params = Vec::<serde_json::Value>::new();
         self.get_json_params_inner(params, &mut json_params);
-        return json_params;
+        json_params
     }
 }
 

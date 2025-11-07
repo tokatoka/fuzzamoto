@@ -69,7 +69,7 @@ pub struct GenericScenario<TX: Transport, T: Target<TX>> {
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
-impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
+impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
     fn from_target(mut target: T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
 
@@ -162,7 +162,7 @@ impl<'a, TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         for height in 1..=200 {
             time += INTERVAL;
 
-            let block = test_utils::mining::mine_block(prev_hash, height as u32, time as u32)?;
+            let block = test_utils::mining::mine_block(prev_hash, height, time as u32)?;
 
             // Send block to the first connection
             connections[0]

@@ -39,7 +39,7 @@ pub fn find_witness_commitment_output(coinbase: &Transaction) -> Option<usize> {
 
 pub fn fixup_commitments(block: &mut Block) {
     if let Some(output_index) =
-        find_witness_commitment_output(block.txdata.get(0).expect("block should not be empty"))
+        find_witness_commitment_output(block.txdata.first().expect("block should not be empty"))
     {
         let witness_merkle_root = Block::witness_root(block).unwrap();
         let coinbase = block.txdata.get_mut(0).unwrap();

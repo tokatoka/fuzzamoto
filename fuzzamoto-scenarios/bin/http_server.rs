@@ -70,7 +70,7 @@ impl<'a> Scenario<'a, TestCase<'a>> for HttpServerScenario<V1Transport, BitcoinC
                     }
 
                     let Ok(stream) = TcpStream::connect(self.target.node.params.rpc_socket) else {
-                        return ScenarioResult::Fail(format!("Failed to connect to the target"));
+                        return ScenarioResult::Fail("Failed to connect to the target".to_string());
                     };
                     let _ = stream.set_nodelay(true);
                     connections.insert(next_connection_id, stream);
@@ -81,7 +81,7 @@ impl<'a> Scenario<'a, TestCase<'a>> for HttpServerScenario<V1Transport, BitcoinC
                     message,
                 } => {
                     if let Some(connection) = connections.get_mut(&connection_id) {
-                        let _ = connection.write_all(&message);
+                        let _ = connection.write_all(message);
                         let _ = connection.flush();
                     };
                 }

@@ -58,7 +58,7 @@ impl HasTargetBytes for IrInput {
                 bytes = Vec::new();
             }
 
-            return OwnedSlice::from(bytes);
+            OwnedSlice::from(bytes)
         }
 
         #[cfg(feature = "compile_in_vm")]

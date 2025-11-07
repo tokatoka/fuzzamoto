@@ -98,10 +98,10 @@ where
         let id = random_corpus_id!(state.corpus(), state.rand_mut());
 
         // We don't want to use the testcase we're already using for splicing
-        if let Some(cur) = state.corpus().current() {
-            if id == *cur {
-                return Ok(MutationResult::Skipped);
-            }
+        if let Some(cur) = state.corpus().current()
+            && id == *cur
+        {
+            return Ok(MutationResult::Skipped);
         }
 
         let mut other_testcase = state.corpus().get_from_all(id)?.borrow_mut();
@@ -113,9 +113,10 @@ where
         let other = other_testcase.load_input(state.corpus())?;
 
         let mut input_clone = input.clone();
-        if let Err(_) = self
+        if self
             .mutator
             .splice(input_clone.ir_mut(), other.ir(), &mut self.rng)
+            .is_err()
         {
             return Ok(MutationResult::Skipped);
         }
@@ -184,7 +185,11 @@ where
 
         let prev_var_count = builder.variable_count();
 
-        if let Err(_) = self.generator.generate(&mut builder, &mut self.rng) {
+        if self
+            .generator
+            .generate(&mut builder, &mut self.rng)
+            .is_err()
+        {
             return Ok(MutationResult::Skipped);
         }
 

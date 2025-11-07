@@ -44,7 +44,7 @@ impl Transport for V1Transport {
         header.extend_from_slice(&command_bytes);
 
         let mut hasher = bitcoin_hashes::sha256d::HashEngine::default();
-        hasher.write(&message.1).unwrap();
+        hasher.write_all(&message.1).unwrap();
         let checksum = bitcoin_hashes::Sha256d::from_engine(hasher);
 
         header.extend_from_slice(&(message.1.len() as u32).to_le_bytes());

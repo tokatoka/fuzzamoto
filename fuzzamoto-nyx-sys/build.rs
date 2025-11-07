@@ -6,13 +6,13 @@ fn get_map_size(binary: PathBuf) -> Option<String> {
         &Command::new(&binary)
             .env("AFL_DUMP_MAP_SIZE", "1")
             .output()
-            .expect(&format!("Failed to execute {:?}", &binary))
+            .unwrap_or_else(|_| panic!("Failed to execute {:?}", &binary))
             .stdout,
     )
     .trim()
     .to_string();
 
-    (!output.is_empty()).then(|| output)
+    (!output.is_empty()).then_some(output)
 }
 
 fn main() {
