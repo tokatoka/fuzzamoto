@@ -390,9 +390,8 @@ impl Compiler {
             Operation::BuildFilterAddFromTxo => {
                 let txo = self.get_input::<Txo>(&instruction.inputs, 0)?;
 
-                let prev = txo.prev_out.0;
                 let filteradd = FilterAdd {
-                    data: prev.to_vec(),
+                    data: txo.scripts.script_pubkey.clone(),
                 };
 
                 self.append_variable(filteradd);
