@@ -1,6 +1,7 @@
-/// `BloomFilterLoadGenerator` generates a new `FilterLoad`, `FilterAdd` or `FilterClear` instruction into a global context.
+/// `BloomFilterLoadGenerator` generates a new `FilterLoad`, `FilterAdd` or `FilterClear`
+/// instruction into a global context.
 use crate::{
-    CBloomFilter, GeneratorError, IndexedVariable, Instruction, Operation, Variable,
+    IndexedVariable, Instruction, Operation, Variable,
     bloom::{MAX_BLOOM_FILTER_SIZE, MAX_HASH_FUNCS},
     generators::{Generator, ProgramBuilder},
 };
@@ -11,47 +12,22 @@ use rand::{Rng, RngCore};
 use super::GeneratorResult;
 
 #[derive(Debug, Default)]
-pub struct BloomFilterLoadGenerator {
-    initial_filter: Option<CBloomFilter>,
-}
+pub struct BloomFilterLoadGenerator;
 
-impl BloomFilterLoadGenerator {
-    pub fn new() -> Self {
-        Self {
-            initial_filter: None,
-        }
-    }
-
-    pub fn with_filter(filter: CBloomFilter) -> Self {
-        Self {
-            initial_filter: Some(filter),
-        }
-    }
-}
-
-fn init_filter<R: RngCore>(
-    builder: &mut ProgramBuilder,
-    initial_filter: &Option<CBloomFilter>,
-    rng: &mut R,
-) -> Result<IndexedVariable, GeneratorError> {
+fn init_filter<R: RngCore>(builder: &mut ProgramBuilder, rng: &mut R) -> IndexedVariable {
     let ntweak = rng.gen_range(0..=u32::MAX);
     let nflags = rng.gen_range(0..=2);
 
-    let (bytes, nhash_funcs) = if let Some(x) = &initial_filter {
-        let bytes = x.data().to_vec();
-        let nhash_funcs = x.n_hash_funcs();
-
-        (bytes, nhash_funcs)
-    } else {
-        // let size = 0; triggers CVE-2013-5700
-        let size = rng.gen_range(0..MAX_BLOOM_FILTER_SIZE) as usize;
-        let bytes = vec![0; size];
-        let nhash_funcs = rng.gen_range(1..MAX_HASH_FUNCS) as u32;
-
-        (bytes, nhash_funcs)
+    // let size = 0; triggers CVE-2013-5700
+    let size = rng.gen_range(0..MAX_BLOOM_FILTER_SIZE) as usize;
+    // Empty filter or random bytes
+    let mut bytes = vec![0; size];
+    if rng.gen_bool(0.5) {
+        rng.fill_bytes(bytes.as_mut_slice());
     };
+    let nhash_funcs = rng.gen_range(1..MAX_HASH_FUNCS) as u32;
 
-    let filter_var: crate::IndexedVariable = builder
+    builder
         .append(Instruction {
             inputs: vec![],
             operation: Operation::LoadFilterLoad {
@@ -63,9 +39,7 @@ fn init_filter<R: RngCore>(
         })
         .expect("Inserting LoadFilterLoad should always succeed")
         .pop()
-        .expect("LoadFilterLoad should always produce a var");
-
-    Ok(filter_var)
+        .expect("LoadFilterLoad should always produce a var")
 }
 
 fn populate_filter_from_txdata(
@@ -73,8 +47,7 @@ fn populate_filter_from_txdata(
     filter_var: IndexedVariable,
     txs: &[IndexedVariable],
     txos: &[IndexedVariable],
-) -> Result<IndexedVariable, GeneratorError> {
-    // load it first
+) -> IndexedVariable {
     let mut_filter_var = builder
         .append(Instruction {
             inputs: vec![filter_var.index],
@@ -84,7 +57,6 @@ fn populate_filter_from_txdata(
         .pop()
         .expect("BeginBuildFilterLoad should always produce a var");
 
-    // now populate it
     for tx in txs {
         builder
             .append(Instruction {
@@ -93,7 +65,6 @@ fn populate_filter_from_txdata(
             })
             .expect("Inserting AddTxToFilter should always succeed");
     }
-
     for txo in txos {
         builder
             .append(Instruction {
@@ -103,48 +74,37 @@ fn populate_filter_from_txdata(
             .expect("Inserting AddTxoToFilter should always succeed");
     }
 
-    let populated_filter = builder
+    builder
         .append(Instruction {
             inputs: vec![mut_filter_var.index],
             operation: Operation::EndBuildFilterLoad,
         })
         .expect("Inserting EndBuildFilterLoad should always succeed")
         .pop()
-        .expect("EndBuildFilterLoad should always produce a var");
-
-    Ok(populated_filter)
+        .expect("EndBuildFilterLoad should always produce a var")
 }
 
 impl<R: RngCore> Generator<R> for BloomFilterLoadGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
         let connection_var = builder.get_or_create_random_connection(rng);
 
-        // we build the filter first.
-        // either make a empty filter (but with randomized parameters) or with user-supplied filter
-        let filter_var = init_filter(builder, &self.initial_filter, rng)?;
+        // Generate initial `LoadFilterLoad` operation
+        let mut filter_var = init_filter(builder, rng);
 
-        // next we decide if we put data from existing txdata
         if rng.gen_bool(0.2) {
-            let available_txs = builder.get_all_variable(Variable::ConstTx);
-            let avaibale_txos = builder.get_all_variable(Variable::Txo);
-            let populated =
-                populate_filter_from_txdata(builder, filter_var, &available_txs, &avaibale_txos)?;
-            // send it because we finished populating
-            builder
-                .append(Instruction {
-                    inputs: vec![connection_var.index, populated.index],
-                    operation: Operation::SendFilterLoad,
-                })
-                .expect("Inserting SendFilterLoad should always succeed");
-        } else {
-            // just send it off without doing anything
-            builder
-                .append(Instruction {
-                    inputs: vec![connection_var.index, filter_var.index],
-                    operation: Operation::SendFilterLoad,
-                })
-                .expect("Inserting SendFilterLoad should always succeed");
+            // Populate the filter with transactions or output data present in the program
+            let available_txs = builder.get_random_variables(rng, Variable::ConstTx);
+            let avaibale_txos = builder.get_random_variables(rng, Variable::Txo);
+            filter_var =
+                populate_filter_from_txdata(builder, filter_var, &available_txs, &avaibale_txos);
         }
+
+        builder
+            .append(Instruction {
+                inputs: vec![connection_var.index, filter_var.index],
+                operation: Operation::SendFilterLoad,
+            })
+            .expect("Inserting SendFilterLoad should always succeed");
 
         Ok(())
     }
@@ -155,7 +115,7 @@ impl<R: RngCore> Generator<R> for BloomFilterLoadGenerator {
 }
 
 #[derive(Debug, Default)]
-pub struct BloomFilterAddGenerator {}
+pub struct BloomFilterAddGenerator;
 
 impl<R: RngCore> Generator<R> for BloomFilterAddGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
@@ -250,7 +210,7 @@ impl<R: RngCore> Generator<R> for BloomFilterAddGenerator {
 }
 
 #[derive(Debug, Default)]
-pub struct BloomFilterClearGenerator {}
+pub struct BloomFilterClearGenerator;
 
 impl<R: RngCore> Generator<R> for BloomFilterClearGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
