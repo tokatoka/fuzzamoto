@@ -163,75 +163,82 @@ impl<R: RngCore> Generator<R> for BloomFilterAddGenerator {
         let filter_loaded = builder.get_nearest_variable(Variable::FilterLoad).is_some();
 
         if !filter_loaded && rng.gen_bool(0.95) {
-            // if we haven't sent filterload message before then early return
-            // because if filteradd precedes filterload then it violates the protocol
+            // `filteradd` messages are expected to be sent after a prior `filterload`. If there is
+            // no previous `FilterLoad` variable, then we bail out of generating `FilterAdd`
+            // operations (most of the time).
+            //
+            // Note: The presence of the `FilterLoad` variable doesn't gurantee that we actually
+            // sent the load as well. E.g. we might be generating right in between the
+            // `LoadFilterLoad` and `SendFilterLoad` operation:
+            //
+            // ```
+            // vX <- LoadFilterLoad(...)
+            // SendFilterLoad(..., vX)
+            // ```
+            //
+            // This is fine for, as it is just another small posibility of violating the protocol.
             return Ok(());
         }
 
-        let choice = rng.gen_range(0..2);
-        match choice {
+        let choice = rng.gen_range(0..=2);
+        let filter_add_var = match choice {
+            // Generate a single `LoadFilterAdd` operation populated with random bytes
             0 => {
-                // send random stuff
                 let size = rng.gen_range(0..=MAX_SCRIPT_ELEMENT_SIZE);
                 let mut random_bytes = Vec::with_capacity(size);
                 rng.fill_bytes(&mut random_bytes);
-                // Create the variable for the data first.
-                let data_var = builder
-                    .append(Instruction {
-                        inputs: vec![],
-                        operation: Operation::LoadFilterAdd { data: random_bytes },
-                    })
-                    .expect("Inserting LoadFilterAdd should always succeed")
-                    .pop()
-                    .expect("LoadFilterAdd should always produce a var");
-                // send it off
-                builder
-                    .append(Instruction {
-                        inputs: vec![connection_var.index, data_var.index],
-                        operation: Operation::SendFilterAdd,
-                    })
-                    .expect("Inserting SendFilterAdd should always succeed");
-            }
-            1 => {
-                // use tx
-                if let Some(tx) = builder.get_random_variable(rng, Variable::ConstTx) {
-                    let filteradd = builder
+
+                Some(
+                    builder
                         .append(Instruction {
-                            inputs: vec![tx.index],
+                            inputs: vec![],
+                            operation: Operation::LoadFilterAdd { data: random_bytes },
+                        })
+                        .expect("Inserting LoadFilterAdd should always succeed")
+                        .pop()
+                        .expect("LoadFilterAdd should always produce a var"),
+                )
+            }
+            // Generate `BuildFilterAddFromTx` operation (picking a random existing `ConstTx`
+            // variable)
+            1 => builder
+                .get_random_variable(rng, Variable::ConstTx)
+                .map(|tx_var| {
+                    builder
+                        .append(Instruction {
+                            inputs: vec![tx_var.index],
                             operation: Operation::BuildFilterAddFromTx,
                         })
                         .expect("Inserting BuildFilterAddFromTx should always succeed")
                         .pop()
-                        .expect("BuildFilterAddFromTx should always produce a var");
-
+                        .expect("BuildFilterAddFromTx should always produce a var")
+                }),
+            // Generate `BuildFilterAddFromTxo` operation (picking a random existing `Txo`
+            // variable)
+            2 => builder
+                .get_random_variable(rng, Variable::Txo)
+                .map(|txo_var| {
                     builder
                         .append(Instruction {
-                            inputs: vec![connection_var.index, filteradd.index],
-                            operation: Operation::SendFilterAdd,
-                        })
-                        .expect("Inserting SendFilterAdd should always succeed");
-                }
-            }
-            _ => {
-                // use txo
-                if let Some(txo) = builder.get_random_variable(rng, Variable::Txo) {
-                    let filteradd = builder
-                        .append(Instruction {
-                            inputs: vec![txo.index],
+                            inputs: vec![txo_var.index],
                             operation: Operation::BuildFilterAddFromTxo,
                         })
                         .expect("Inserting BuildFilterAddFromTx should always succeed")
                         .pop()
-                        .expect("BuildFilterAddFromTx should always produce a var");
+                        .expect("BuildFilterAddFromTx should always produce a var")
+                }),
+            _ => unreachable!("Only three choices available in [0, 1, 2]"),
+        };
 
-                    builder
-                        .append(Instruction {
-                            inputs: vec![connection_var.index, filteradd.index],
-                            operation: Operation::SendFilterAdd,
-                        })
-                        .expect("Inserting SendFilterAdd should always succeed");
-                }
-            }
+        if let Some(filter_add_var) = filter_add_var {
+            // Generate `SendFilterAdd` operation taking the previously generated `FilterAdd`
+            // variable as input
+            builder
+                .append(Instruction {
+                    inputs: vec![connection_var.index, filter_add_var.index],
+                    operation: Operation::SendFilterAdd,
+                })
+                .expect("Inserting SendFilterAdd should always succeed");
         }
 
         Ok(())
