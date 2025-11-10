@@ -81,6 +81,10 @@ impl Instruction {
             | Operation::BuildPayToPubKey
             | Operation::BuildPayToPubKeyHash
             | Operation::BuildPayToWitnessPubKeyHash
+            | Operation::AddTxToFilter
+            | Operation::AddTxoToFilter
+            | Operation::BuildFilterAddFromTx
+            | Operation::BuildFilterAddFromTxo
             | Operation::LoadPrivateKey(_)
             | Operation::LoadSigHashFlags(_)
             | Operation::LoadTxo { .. }
@@ -91,6 +95,8 @@ impl Instruction {
             | Operation::LoadLockTime(..)
             | Operation::LoadSequence(..)
             | Operation::LoadSize(..)
+            | Operation::LoadFilterLoad { .. }
+            | Operation::LoadFilterAdd { .. }
             | Operation::AddWitness
             | Operation::SendTx
             | Operation::SendTxNoWit
@@ -113,6 +119,9 @@ impl Instruction {
             | Operation::SendGetCFilters
             | Operation::SendGetCFHeaders
             | Operation::SendGetCFCheckpt
+            | Operation::SendFilterLoad
+            | Operation::SendFilterAdd
+            | Operation::SendFilterClear
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }
@@ -127,7 +136,9 @@ impl Instruction {
             | Operation::EndBuildInventory
             | Operation::EndWitnessStack
             | Operation::EndBlockTransactions
-            | Operation::BeginBlockTransactions => false,
+            | Operation::BeginBlockTransactions
+            | Operation::BeginBuildFilterLoad
+            | Operation::EndBuildFilterLoad => false,
         }
     }
 
@@ -142,6 +153,7 @@ impl Instruction {
                 Operation::BeginWitnessStack => Some(InstructionContext::WitnessStack),
                 Operation::BeginBuildInventory => Some(InstructionContext::Inventory),
                 Operation::BeginBlockTransactions => Some(InstructionContext::BlockTransactions),
+                Operation::BeginBuildFilterLoad => Some(InstructionContext::BuildFilter),
                 _ => unimplemented!("Every block begin enters a context"),
             };
         }
@@ -169,4 +181,5 @@ pub enum InstructionContext {
     WitnessStack,
     Inventory,
     BlockTransactions,
+    BuildFilter,
 }

@@ -1072,6 +1072,7 @@ dependencies = [
  "bitcoin",
  "fuzzamoto",
  "log",
+ "murmurs",
  "postcard",
  "rand 0.8.5",
  "serde",
@@ -1906,6 +1907,12 @@ dependencies = [
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "murmurs"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ea0b737f98d2c1e90f6f86e0a906f9e1d59aeb6846b8663bc21cafb14602d47"
 
 [[package]]
 name = "native-tls"
