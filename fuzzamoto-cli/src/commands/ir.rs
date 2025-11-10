@@ -3,8 +3,12 @@ use std::path::PathBuf;
 
 use fuzzamoto_ir::compiler::Compiler;
 use fuzzamoto_ir::{
-    AdvanceTimeGenerator, BlockGenerator, FullProgramContext, Generator, HeaderGenerator,
-    InstructionContext, Program, ProgramBuilder,
+    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BloomFilterAddGenerator,
+    BloomFilterClearGenerator, BloomFilterLoadGenerator, CompactFilterQueryGenerator,
+    FullProgramContext, Generator, GetDataGenerator, HeaderGenerator, InstructionContext,
+    InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator, Program,
+    ProgramBuilder, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator, TxoGenerator,
+    WitnessGenerator,
 };
 
 use rand::Rng;
@@ -23,7 +27,8 @@ impl IrCommand {
                 iterations,
                 programs,
                 context,
-            } => generate_ir(output, *iterations, *programs, context),
+                generators,
+            } => generate_ir(output, *iterations, *programs, context, generators),
             IRCommands::Compile { input, output } => compile_ir(input, output),
             IRCommands::Print { input, json } => print_ir(input, *json),
             IRCommands::Convert {
@@ -52,6 +57,13 @@ pub enum IRCommands {
         programs: usize,
         #[arg(long, help = "Path to the program context file")]
         context: PathBuf,
+        #[arg(
+            long,
+            value_delimiter = ',',
+            num_args = 1..,
+            help = "Optional comma-separated list of generator names (defaults to all)"
+        )]
+        generators: Option<Vec<String>>,
     },
     /// Compile fuzzamoto IR
     Compile {
@@ -100,19 +112,31 @@ pub fn generate_ir(
     iterations: usize,
     programs: usize,
     context: &PathBuf,
+    generator_names: &Option<Vec<String>>,
 ) -> Result<()> {
     let context = std::fs::read(context.clone())?;
     let context: FullProgramContext = postcard::from_bytes(&context)?;
 
     let mut rng = rand::thread_rng();
-    let generators: Vec<Box<dyn Generator<ThreadRng>>> = vec![
-        //Box::new(SendMessageGenerator::default()),
-        Box::new(AdvanceTimeGenerator::default()),
-        //Box::new(TxoGenerator::new(context.txos.clone())),
-        //Box::new(SingleTxGenerator),
-        Box::new(HeaderGenerator::new(context.headers.clone())),
-        Box::new(BlockGenerator::default()),
-    ];
+    let mut generators = all_generators(&context);
+    if let Some(names) = generator_names {
+        let requested: Vec<_> = names.iter().map(|s| s.to_lowercase()).collect();
+        generators.retain(|g| {
+            let name = g.name().to_lowercase();
+            requested.iter().any(|want| want == &name)
+        });
+        if generators.is_empty() {
+            return Err(CliError::InvalidInput(
+                "No generators matched the names provided".to_string(),
+            ));
+        }
+    }
+
+    if generators.is_empty() {
+        return Err(CliError::InvalidInput(
+            "No generators selected; pass at least one or omit --generators".to_string(),
+        ));
+    }
 
     for _ in 0..programs {
         let mut program = Program::unchecked_new(context.context.clone(), vec![]);
@@ -166,6 +190,29 @@ pub fn generate_ir(
     }
 
     Ok(())
+}
+
+fn all_generators(context: &FullProgramContext) -> Vec<Box<dyn Generator<ThreadRng>>> {
+    vec![
+        Box::new(AdvanceTimeGenerator::default()),
+        Box::new(HeaderGenerator::new(context.headers.clone())),
+        Box::new(BlockGenerator::default()),
+        Box::new(BloomFilterLoadGenerator::default()),
+        Box::new(BloomFilterAddGenerator::default()),
+        Box::new(BloomFilterClearGenerator::default()),
+        Box::new(CompactFilterQueryGenerator::default()),
+        Box::new(GetDataGenerator::default()),
+        Box::new(InventoryGenerator::default()),
+        Box::new(SendBlockGenerator::default()),
+        Box::new(AddTxToBlockGenerator::default()),
+        Box::new(SendMessageGenerator::default()),
+        Box::new(WitnessGenerator::new()),
+        Box::new(SingleTxGenerator::default()),
+        Box::new(OneParentOneChildGenerator::default()),
+        Box::new(LongChainGenerator::default()),
+        Box::new(LargeTxGenerator::default()),
+        Box::new(TxoGenerator::new(context.txos.clone())),
+    ]
 }
 
 fn compile_ir_file(input: &PathBuf, output: &PathBuf) -> Result<()> {
