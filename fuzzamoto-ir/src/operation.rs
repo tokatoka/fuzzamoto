@@ -625,7 +625,7 @@ impl Operation {
             Operation::AddTxoToFilter => vec![],
             Operation::EndBuildFilterLoad => vec![Variable::ConstFilterLoad],
 
-            Operation::BeginBuildCmpctBlock => vec![Variable::MutCmpctBlock],
+            Operation::BeginBuildCmpctBlock => vec![],
             Operation::EndBuildCmpctBlock => vec![Variable::ConstCmpctBlock],
 
             Operation::BuildFilterAddFromTx => vec![Variable::FilterAdd],

@@ -90,11 +90,9 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
         builder
             .append(Instruction {
                 inputs: vec![connection_var.index, cmpct_block.index],
-                operation: Operation::EndBuildCmpctBlock,
+                operation: Operation::SendCompactBlock,
             })
-            .expect("Inserting EndBuildCmpctBlock should always succeed")
-            .pop()
-            .expect("EndBuildCmpctBlock should always produce a var");
+            .expect("Inserting SendCompactBlock should always succeed");
 
         Ok(())
     }

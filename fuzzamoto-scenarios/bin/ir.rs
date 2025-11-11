@@ -9,6 +9,7 @@ use fuzzamoto::{
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, Target},
 };
+
 #[cfg(feature = "nyx")]
 use fuzzamoto_nyx_sys::*;
 #[cfg(feature = "nyx")]
@@ -38,14 +39,14 @@ const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
 /// `fuzzamoto_ir::CompiledProgram`s as input.
 struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
+    received: Vec<(String, Vec<u8>)>,
     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
 }
 
 #[cfg(feature = "nyx")]
-pub fn nyx_print_base64(bytes: &[u8]) {
-    let encoded = base64::encode(bytes);
-    let message = CString::new(encoded).expect("CString::new failed");
+pub fn nyx_print(bytes: &[u8]) {
+    let message = CString::new(bytes).expect("CString::new failed");
     unsafe {
         nyx_println(message.as_ptr(), 10);
     }
@@ -224,12 +225,8 @@ where
                     // try to receive message after send
                     #[cfg(feature = "nyx")]
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
-                        loop {
-                            if let Ok((command, _)) = connection.receive() {
-                                nyx_print_base64(command.as_bytes());
-                            } else {
-                                break;
-                            }
+                        while let Ok((command, data)) = connection.receive() {
+                            self.received.push((command, data))
                         }
                     }
                 }
@@ -241,6 +238,16 @@ where
                 _ => {}
             }
         }
+    }
+
+    #[cfg(feature = "nyx")]
+    fn print_received(&mut self) {
+        for message in &self.received {
+            if let Ok(bytes) = serde_json::to_vec(message) {
+                nyx_print(&bytes);
+            }
+        }
+        self.received.clear();
     }
 
     fn ping_connections(&mut self) {
@@ -310,8 +317,10 @@ where
         #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
         let second = Self::create_and_sync_second_target(args, &inner.target)?;
 
+        let received = vec![];
         Ok(Self {
             inner,
+            received,
             #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
             second,
         })
@@ -320,6 +329,8 @@ where
     fn run(&mut self, testcase: TestCase) -> ScenarioResult {
         self.process_actions(testcase.program.actions);
         self.ping_connections();
+        #[cfg(feature = "nyx")]
+        self.print_received();
         self.evaluate_oracles()
     }
 }

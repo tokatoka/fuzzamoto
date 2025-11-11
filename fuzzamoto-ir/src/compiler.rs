@@ -421,9 +421,12 @@ impl Compiler {
                 let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 0)?;
                 let nonce = self.get_input::<u64>(&instruction.inputs, 1)?;
                 let version = self.get_input::<u32>(&instruction.inputs, 2)?;
-                let prefill = self.get_input::<Vec<usize>>(&instruction.inputs, 3)?;
+                let mut prefill = self
+                    .get_input::<Vec<usize>>(&instruction.inputs, 3)?
+                    .clone();
+                prefill.truncate(block.txdata.len() - 1);
                 let header_and_shortids =
-                    HeaderAndShortIds::from_block(block, *nonce, *version, prefill)
+                    HeaderAndShortIds::from_block(block, *nonce, *version, &prefill)
                         .expect("HeaderAndShortIDs construction should always succeed");
                 self.append_variable(CmpctBlock {
                     compact_block: header_and_shortids,
