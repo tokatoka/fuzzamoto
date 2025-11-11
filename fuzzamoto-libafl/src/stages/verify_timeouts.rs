@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use libafl::{
     Evaluator, HasMetadata,
-    executors::{Executor, HasObservers, HasTimeout},
+    executors::{Executor, HasObservers, HasTimeout, SetTimeout},
     observers::ObserversTuple,
     stages::{Restartable, Stage},
 };
@@ -76,7 +76,7 @@ impl TimeoutsToVerify {
 impl<E, EM, S, Z> Stage<E, EM, S, Z> for VerifyTimeoutsStage<E, S>
 where
     E::Observers: ObserversTuple<IrInput, S>,
-    E: Executor<EM, IrInput, S, Z> + HasObservers + HasTimeout,
+    E: Executor<EM, IrInput, S, Z> + HasObservers + HasTimeout + SetTimeout,
     Z: Evaluator<E, EM, IrInput, S>,
     S: HasMetadata,
 {

@@ -53,6 +53,15 @@ use crate::stages::BenchStatsStage;
 #[cfg(not(feature = "bench"))]
 use libafl::stages::nop::NopStage;
 
+macro_rules! weighted_mutations {
+    ($(($weight:expr, $mutation:expr)),+ $(,)?) => {{
+        (
+            tuple_list!($($mutation),+),
+            [$(($weight) as f32),+],
+        )
+    }};
+}
+
 pub type ClientState =
     StdState<CachedOnDiskCorpus<IrInput>, IrInput, StdRand, OnDiskCorpus<IrInput>>;
 
@@ -255,49 +264,86 @@ where
 
         let rng = SmallRng::seed_from_u64(state.rand_mut().next());
 
-        let mutator = TuneableScheduledMutator::new(
-            &mut state,
-            tuple_list!(
-                IrMutator::new(InputMutator::new(), rng.clone()),
-                IrMutator::new(OperationMutator::new(LibAflByteMutator::new()), rng.clone()),
-                //IrSpliceMutator::new(ConcatMutator::new(), rng.clone()),
-                IrSpliceMutator::new(CombineMutator::new(), rng.clone()),
-                IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone()),
-                IrGenerator::new(SendMessageGenerator::default(), rng.clone()),
-                IrGenerator::new(SingleTxGenerator, rng.clone()),
-                IrGenerator::new(LongChainGenerator, rng.clone()),
-                IrGenerator::new(LargeTxGenerator, rng.clone()),
-                IrGenerator::new(OneParentOneChildGenerator, rng.clone()),
+        //IrSpliceMutator::new(ConcatMutator::new(), rng.clone()),
+        let (mutations, weights) = weighted_mutations![
+            (2000.0, IrMutator::new(InputMutator::new(), rng.clone())),
+            (
+                1000.0,
+                IrMutator::new(OperationMutator::new(LibAflByteMutator::new()), rng.clone())
+            ),
+            (
+                100.0,
+                IrSpliceMutator::new(CombineMutator::new(), rng.clone())
+            ),
+            (
+                10.0,
+                IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone())
+            ),
+            (
+                40.0,
+                IrGenerator::new(SendMessageGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(SingleTxGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(LongChainGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(LargeTxGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(OneParentOneChildGenerator::default(), rng.clone())
+            ),
+            (
+                20.0,
                 IrGenerator::new(
                     TxoGenerator::new(full_program_context.txos.clone()),
                     rng.clone()
-                ),
-                IrGenerator::new(WitnessGenerator::new(), rng.clone()),
-                IrGenerator::new(InventoryGenerator, rng.clone()),
-                IrGenerator::new(GetDataGenerator, rng.clone()),
-                IrGenerator::new(BlockGenerator, rng.clone()),
+                )
+            ),
+            (20.0, IrGenerator::new(WitnessGenerator::new(), rng.clone())),
+            (20.0, IrGenerator::new(InventoryGenerator, rng.clone())),
+            (20.0, IrGenerator::new(GetDataGenerator, rng.clone())),
+            (50.0, IrGenerator::new(BlockGenerator, rng.clone())),
+            (
+                50.0,
                 IrGenerator::new(
                     HeaderGenerator::new(full_program_context.headers.clone()),
                     rng.clone()
-                ),
-                IrGenerator::new(SendBlockGenerator, rng.clone()),
-                IrGenerator::new(AddTxToBlockGenerator, rng.clone()),
-                IrGenerator::new(CompactFilterQueryGenerator, rng.clone()),
-                IrGenerator::new(BloomFilterLoadGenerator, rng.clone()),
-                IrGenerator::new(BloomFilterAddGenerator, rng.clone()),
-                IrGenerator::new(BloomFilterClearGenerator, rng.clone()),
+                )
             ),
-        );
-
-        let weights = &[
-            2000f32, 1000.0, 100.0, 10.0, 40.0, 50.0, 50.0, 50.0, 50.0, 20.0, 20.0, 20.0, 20.0,
-            50.0, 50.0, 50.0, 50.0, 10.0, 20.0, 20.0, 20.0,
+            (50.0, IrGenerator::new(SendBlockGenerator, rng.clone())),
+            (50.0, IrGenerator::new(AddTxToBlockGenerator, rng.clone())),
+            (
+                10.0,
+                IrGenerator::new(CompactFilterQueryGenerator, rng.clone())
+            ),
+            (
+                20.0,
+                IrGenerator::new(BloomFilterLoadGenerator, rng.clone())
+            ),
+            (20.0, IrGenerator::new(BloomFilterAddGenerator, rng.clone())),
+            (
+                20.0,
+                IrGenerator::new(BloomFilterClearGenerator, rng.clone())
+            ),
         ];
+
+        let mutator = TuneableScheduledMutator::new(&mut state, mutations);
+
         let sum = weights.iter().sum::<f32>();
-        assert_eq!(mutator.mutations().len(), weights.len());
+        debug_assert_eq!(mutator.mutations().len(), weights.len());
 
         mutator
-            .set_mutation_probabilities(&mut state, weights.iter().map(|w| *w / sum).collect())
+            .set_mutation_probabilities(
+                &mut state,
+                weights.iter().map(|w| w / sum).collect::<Vec<f32>>(),
+            )
             .unwrap();
 
         mutator
