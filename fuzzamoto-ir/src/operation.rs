@@ -591,7 +591,7 @@ impl Operation {
             Operation::AddTxInput => vec![],
             Operation::AddTxOutput => vec![],
 
-            Operation::BeginBuildFilterLoad => vec![],
+            Operation::BeginBuildFilterLoad => vec![Variable::MutFilterLoad],
             Operation::AddTxToFilter => vec![],
             Operation::AddTxoToFilter => vec![],
             Operation::EndBuildFilterLoad => vec![Variable::ConstFilterLoad],
