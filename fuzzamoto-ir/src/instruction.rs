@@ -95,6 +95,8 @@ impl Instruction {
             | Operation::LoadLockTime(..)
             | Operation::LoadSequence(..)
             | Operation::LoadSize(..)
+            | Operation::LoadNonce(..)
+            | Operation::LoadPrefill { .. }
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
             | Operation::AddWitness
@@ -122,10 +124,8 @@ impl Instruction {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::TakeTxo 
-            | Operation::AddPrefilledTxToCmpctBlock
-            | Operation::AddNonceToCmpctBlock
-            | Operation::AddShortIDsToCmpctBlock => true,
+            | Operation::SendCompactBlock
+            | Operation::TakeTxo => true,
 
             Operation::Nop { .. }
             | Operation::BeginBuildTx
@@ -141,7 +141,7 @@ impl Instruction {
             | Operation::EndBlockTransactions
             | Operation::BeginBlockTransactions
             | Operation::BeginBuildFilterLoad
-            | Operation::EndBuildFilterLoad 
+            | Operation::EndBuildFilterLoad
             | Operation::BeginBuildCmpctBlock
             | Operation::EndBuildCmpctBlock => false,
         }

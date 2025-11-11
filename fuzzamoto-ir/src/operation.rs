@@ -28,6 +28,10 @@ pub enum Operation {
     LoadCompactFilterType(u8),
     LoadPrivateKey([u8; 32]),
     LoadSigHashFlags(u8),
+    LoadNonce(u64),
+    LoadPrefill {
+        prefill: Vec<usize>,
+    },
     LoadTxo {
         outpoint: ([u8; 32], u32),
         value: u64,
@@ -80,9 +84,6 @@ pub enum Operation {
 
     // cmpctblock building operati
     BeginBuildCmpctBlock,
-    AddNonceToCmpctBlock,
-    AddPrefilledTxToCmpctBlock,
-    AddShortIDsToCmpctBlock,
     EndBuildCmpctBlock,
 
     // filterload building operations
@@ -140,11 +141,10 @@ pub enum Operation {
     SendFilterLoad,
     SendFilterAdd,
     SendFilterClear,
-    // TODO: SendCompactBlock
-    // TODO: SendGetBlockTxn
-    // TODO: SendBlockTxn
-    // TODO: SendGetBlocks
-    // TODO: SendGetHeaders
+    SendCompactBlock, // TODO: SendGetBlockTxn
+                      // TODO: SendBlockTxn
+                      // TODO: SendGetBlocks
+                      // TODO: SendGetHeaders
 }
 
 impl fmt::Display for Operation {
@@ -251,6 +251,12 @@ impl fmt::Display for Operation {
             Operation::LoadFilterAdd { data } => {
                 write!(f, "LoadFilterAdd({})", hex_string(data))
             }
+            Operation::LoadNonce(nonce) => {
+                write!(f, "LoadNonce({})", nonce)
+            }
+            Operation::LoadPrefill { prefill } => {
+                write!(f, "LoadPrefill({:?})", prefill)
+            }
             Operation::BeginBuildFilterLoad => write!(f, "BeginBuildFilterLoad"),
             Operation::EndBuildFilterLoad => write!(f, "EndBuildFilterLoad"),
             Operation::AddTxToFilter => write!(f, "AddTxToFilter"),
@@ -271,9 +277,6 @@ impl fmt::Display for Operation {
             Operation::AddWitness => write!(f, "AddWitness"),
             Operation::BeginBuildCmpctBlock => write!(f, "BeginBuildCmpctBlock"),
             Operation::EndBuildCmpctBlock => write!(f, "EndBuildCmpctBlock"),
-            Operation::AddNonceToCmpctBlock => write!(f, "AddNonceToCmpctBlock"),
-            Operation::AddShortIDsToCmpctBlock => write!(f, "AddShortIDsToCmpctBlock"),
-            Operation::AddPrefilledTxToCmpctBlock => write!(f, "AddPrefilledTxToCmpctBlock"),
 
             Operation::BeginBuildInventory => write!(f, "BeginBuildInventory"),
             Operation::EndBuildInventory => write!(f, "EndBuildInventory"),
@@ -303,6 +306,7 @@ impl fmt::Display for Operation {
             Operation::SendFilterLoad => write!(f, "SendFilterLoad"),
             Operation::SendFilterAdd => write!(f, "SendFilterAdd"),
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
+            Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
         }
     }
 }
@@ -341,7 +345,7 @@ impl Operation {
             | Operation::BeginBuildTxOutputs
             | Operation::BeginWitnessStack
             | Operation::BeginBlockTransactions
-            | Operation::BeginBuildFilterLoad 
+            | Operation::BeginBuildFilterLoad
             | Operation::BeginBuildCmpctBlock => true,
             // Exhaustive match to fail when new ops are added
             Operation::Nop { .. }
@@ -382,6 +386,9 @@ impl Operation {
             | Operation::AddTxoToFilter
             | Operation::BuildFilterAddFromTx
             | Operation::BuildFilterAddFromTxo
+            | Operation::LoadNonce(..)
+            | Operation::LoadPrefill { .. }
+            | Operation::EndBuildCmpctBlock
             | Operation::EndBuildTx
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
@@ -413,11 +420,8 @@ impl Operation {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::SendBlockNoWit 
-            | Operation::EndBuildCmpctBlock
-            | Operation::AddNonceToCmpctBlock
-            | Operation::AddPrefilledTxToCmpctBlock
-            | Operation::AddShortIDsToCmpctBlock => false,
+            | Operation::SendBlockNoWit
+            | Operation::SendCompactBlock => false,
         }
     }
 
@@ -436,7 +440,7 @@ impl Operation {
             | (Operation::BeginBuildInventory, Operation::EndBuildInventory)
             | (Operation::BeginWitnessStack, Operation::EndWitnessStack)
             | (Operation::BeginBlockTransactions, Operation::EndBlockTransactions)
-            | (Operation::BeginBuildFilterLoad, Operation::EndBuildFilterLoad) 
+            | (Operation::BeginBuildFilterLoad, Operation::EndBuildFilterLoad)
             | (Operation::BeginBuildCmpctBlock, Operation::EndBuildCmpctBlock) => true,
             _ => false,
         }
@@ -450,7 +454,7 @@ impl Operation {
             | Operation::EndBuildInventory
             | Operation::EndWitnessStack
             | Operation::EndBlockTransactions
-            | Operation::EndBuildFilterLoad 
+            | Operation::EndBuildFilterLoad
             | Operation::EndBuildCmpctBlock => true,
             // Exhaustive match to fail when new ops are added
             Operation::Nop { .. }
@@ -486,6 +490,8 @@ impl Operation {
             | Operation::LoadSigHashFlags(..)
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
+            | Operation::LoadNonce(..)
+            | Operation::LoadPrefill { .. }
             | Operation::BeginBuildTx
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildTxOutputs
@@ -521,12 +527,10 @@ impl Operation {
             | Operation::BuildFilterAddFromTx
             | Operation::BuildFilterAddFromTxo
             | Operation::BeginBuildCmpctBlock
-            | Operation::AddNonceToCmpctBlock
-            | Operation::AddShortIDsToCmpctBlock
-            | Operation::AddPrefilledTxToCmpctBlock
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
-            | Operation::SendFilterClear => false,
+            | Operation::SendFilterClear
+            | Operation::SendCompactBlock => false,
         }
     }
 
@@ -605,6 +609,8 @@ impl Operation {
             Operation::LoadFilterAdd { .. } => vec![Variable::FilterAdd],
             Operation::LoadPrivateKey(..) => vec![Variable::PrivateKey],
             Operation::LoadSigHashFlags(..) => vec![Variable::SigHashFlags],
+            Operation::LoadNonce(..) => vec![Variable::Nonce],
+            Operation::LoadPrefill { .. } => vec![Variable::Prefill],
             Operation::BeginBuildTx => vec![],
             Operation::EndBuildTx => vec![Variable::ConstTx],
             Operation::BeginBuildTxInputs => vec![],
@@ -620,10 +626,7 @@ impl Operation {
             Operation::EndBuildFilterLoad => vec![Variable::ConstFilterLoad],
 
             Operation::BeginBuildCmpctBlock => vec![Variable::MutCmpctBlock],
-            Operation::AddNonceToCmpctBlock => vec![],
-            Operation::AddPrefilledTxToCmpctBlock => vec![],
-            Operation::AddShortIDsToCmpctBlock => vec![],
-            Operation::EndBuildCmpctBlock => vec![Variable::ConstCmpctBlock],            
+            Operation::EndBuildCmpctBlock => vec![Variable::ConstCmpctBlock],
 
             Operation::BuildFilterAddFromTx => vec![Variable::FilterAdd],
             Operation::BuildFilterAddFromTxo => vec![Variable::FilterAdd],
@@ -660,6 +663,7 @@ impl Operation {
             Operation::SendFilterLoad => vec![],
             Operation::SendFilterAdd => vec![],
             Operation::SendFilterClear => vec![],
+            Operation::SendCompactBlock => vec![],
         }
     }
 
@@ -756,15 +760,18 @@ impl Operation {
             Operation::BuildFilterAddFromTx => vec![Variable::ConstTx],
             Operation::BuildFilterAddFromTxo => vec![Variable::Txo],
 
-            Operation::BeginBuildCmpctBlock => vec![Variable::Block],
-            Operation::AddPrefilledTxToCmpctBlock => vec![Variable::MutCmpctBlock, Variable::ConstTx],
-            Operation::AddNonceToCmpctBlock => vec![Variable::MutCmpctBlock, Variable::Nonce],
-            Operation::AddShortIDsToCmpctBlock => vec![Variable::MutCmpctBlock, Variable::ShortIDs],
+            Operation::BeginBuildCmpctBlock => vec![
+                Variable::Block,
+                Variable::Nonce,
+                Variable::TxVersion,
+                Variable::Prefill,
+            ],
             Operation::EndBuildCmpctBlock => vec![Variable::MutCmpctBlock],
 
             Operation::SendFilterLoad => vec![Variable::Connection, Variable::ConstFilterLoad],
             Operation::SendFilterAdd => vec![Variable::Connection, Variable::FilterAdd],
             Operation::SendFilterClear => vec![Variable::Connection],
+            Operation::SendCompactBlock => vec![Variable::Connection, Variable::ConstCmpctBlock],
             // Operations with no inputs
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -788,6 +795,8 @@ impl Operation {
             | Operation::LoadSigHashFlags(..)
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
+            | Operation::LoadNonce(..)
+            | Operation::LoadPrefill { .. }
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildInventory
             | Operation::BeginBlockTransactions
@@ -848,6 +857,9 @@ impl Operation {
             | Operation::LoadSigHashFlags(..)
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
+            | Operation::LoadNonce(..)
+            | Operation::LoadPrefill { .. }
+            | Operation::EndBuildCmpctBlock
             | Operation::EndBuildTx
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
@@ -880,10 +892,7 @@ impl Operation {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::EndBuildCmpctBlock
-            | Operation::AddNonceToCmpctBlock
-            | Operation::AddShortIDsToCmpctBlock
-            | Operation::AddPrefilledTxToCmpctBlock => vec![],
+            | Operation::SendCompactBlock => vec![],
         }
     }
 }

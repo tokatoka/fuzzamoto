@@ -159,15 +159,13 @@ impl Compiler {
                 | Operation::LoadHeader { .. }
                 | Operation::LoadTxo { .. }
                 | Operation::LoadFilterLoad { .. }
-                | Operation::LoadFilterAdd { .. } => {
+                | Operation::LoadFilterAdd { .. }
+                | Operation::LoadNonce(..)
+                | Operation::LoadPrefill { .. } => {
                     self.handle_load_operations(&instruction)?;
                 }
 
-                Operation::BeginBuildCmpctBlock
-                | Operation::AddNonceToCmpctBlock
-                | Operation::AddPrefilledTxToCmpctBlock
-                | Operation::AddShortIDsToCmpctBlock
-                | Operation::EndBuildCmpctBlock => {
+                Operation::BeginBuildCmpctBlock | Operation::EndBuildCmpctBlock => {
                     self.handle_cmpct_block_building_operations(&instruction)?;
                 }
 
@@ -245,7 +243,8 @@ impl Compiler {
                 | Operation::SendGetCFCheckpt
                 | Operation::SendFilterLoad
                 | Operation::SendFilterAdd
-                | Operation::SendFilterClear => {
+                | Operation::SendFilterClear
+                | Operation::SendCompactBlock => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
             }
@@ -420,34 +419,15 @@ impl Compiler {
         match &instruction.operation {
             Operation::BeginBuildCmpctBlock => {
                 let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 0)?;
-                let header_and_shortids = HeaderAndShortIds {
-                    header: block.header,
-                    nonce: 0,
-                    short_ids: Vec::new(),
-                    prefilled_txs: Vec::new(),
-                };
+                let nonce = self.get_input::<u64>(&instruction.inputs, 1)?;
+                let version = self.get_input::<u32>(&instruction.inputs, 2)?;
+                let prefill = self.get_input::<Vec<usize>>(&instruction.inputs, 3)?;
+                let header_and_shortids =
+                    HeaderAndShortIds::from_block(block, *nonce, *version, prefill)
+                        .expect("HeaderAndShortIDs construction should always succeed");
                 self.append_variable(CmpctBlock {
                     compact_block: header_and_shortids,
                 });
-            }
-            Operation::AddNonceToCmpctBlock => {
-                let nonce = *self.get_input::<u64>(&instruction.inputs, 1)?;
-                let mut_cmpct_block = self.get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?;
-                mut_cmpct_block.compact_block.nonce = nonce;
-            }
-            Operation::AddPrefilledTxToCmpctBlock => {
-                let prefilled = self
-                    .get_input::<Vec<PrefilledTransaction>>(&instruction.inputs, 1)?
-                    .to_vec();
-                let mut_cmpct_block = self.get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?;
-                mut_cmpct_block.compact_block.prefilled_txs = prefilled;
-            }
-            Operation::AddShortIDsToCmpctBlock => {
-                let shortids = self
-                    .get_input::<Vec<ShortId>>(&instruction.inputs, 1)?
-                    .to_vec();
-                let mut_cmpct_block = self.get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?;
-                mut_cmpct_block.compact_block.short_ids = shortids;
             }
             Operation::EndBuildCmpctBlock => {
                 let cmpct_block = self
@@ -819,6 +799,17 @@ impl Compiler {
                 let empty: Vec<u8> = Vec::new();
                 self.emit_send_message(*connection_var, "filterclear", &empty);
             }
+            Operation::SendCompactBlock => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let compact_block = self.get_input::<CmpctBlock>(&instruction.inputs, 1)?;
+                self.emit_send_message(
+                    *connection_var,
+                    "cmpctblock",
+                    &CmpctBlock {
+                        compact_block: compact_block.compact_block.clone(),
+                    },
+                );
+            }
             _ => unreachable!(
                 "Non-message-sending operation passed to handle_message_sending_operations"
             ),
@@ -924,6 +915,10 @@ impl Compiler {
             }
             Operation::LoadFilterAdd { data } => {
                 self.handle_load_operation(FilterAdd { data: data.clone() });
+            }
+            Operation::LoadNonce(nonce) => self.handle_load_operation(*nonce),
+            Operation::LoadPrefill { prefill } => {
+                self.handle_load_operation(prefill.clone());
             }
             _ => unreachable!("Non-load operation passed to handle_load_operations"),
         }

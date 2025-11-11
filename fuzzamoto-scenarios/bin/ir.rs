@@ -207,20 +207,13 @@ where
         for action in actions {
             match action {
                 CompiledAction::SendRawMessage(from, command, message) => {
-                    #[cfg(feature = "nyx")]
-                    {
-                        let text = "hello world!";
-                        nyx_print_base64(text.as_bytes())
-                    }
-
                     if self.inner.connections.is_empty() {
                         return;
                     }
 
                     let num_connections = self.inner.connections.len();
                     let dst = from % num_connections;
-                    if let Some(connection) = self.inner.connections.get_mut(dst)
-                    {
+                    if let Some(connection) = self.inner.connections.get_mut(dst) {
                         if cfg!(feature = "force_send_and_ping") {
                             let _ = connection.send_and_ping(&(command, message));
                         } else {
@@ -228,14 +221,13 @@ where
                         }
                     }
 
-                    // try to receive message after send 
+                    // try to receive message after send
                     #[cfg(feature = "nyx")]
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
                         loop {
                             if let Ok((command, _)) = connection.receive() {
                                 nyx_print_base64(command.as_bytes());
-                            }
-                            else {
+                            } else {
                                 break;
                             }
                         }
