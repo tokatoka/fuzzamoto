@@ -34,6 +34,8 @@ pub enum Variable {
 
     MutCmpctBlock, // compact block still being built
     ConstCmpctBlock, // compact block that we finished building.
+    Nonce,
+    ShortIDs,
 
     TxVersion,
     LockTime,

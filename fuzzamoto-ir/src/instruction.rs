@@ -122,7 +122,10 @@ impl Instruction {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::TakeTxo => true,
+            | Operation::TakeTxo 
+            | Operation::AddPrefilledTxToCmpctBlock
+            | Operation::AddNonceToCmpctBlock
+            | Operation::AddShortIDsToCmpctBlock => true,
 
             Operation::Nop { .. }
             | Operation::BeginBuildTx
@@ -138,7 +141,9 @@ impl Instruction {
             | Operation::EndBlockTransactions
             | Operation::BeginBlockTransactions
             | Operation::BeginBuildFilterLoad
-            | Operation::EndBuildFilterLoad => false,
+            | Operation::EndBuildFilterLoad 
+            | Operation::BeginBuildCmpctBlock
+            | Operation::EndBuildCmpctBlock => false,
         }
     }
 
@@ -154,6 +159,7 @@ impl Instruction {
                 Operation::BeginBuildInventory => Some(InstructionContext::Inventory),
                 Operation::BeginBlockTransactions => Some(InstructionContext::BlockTransactions),
                 Operation::BeginBuildFilterLoad => Some(InstructionContext::BuildFilter),
+                Operation::BeginBuildCmpctBlock => Some(InstructionContext::BuildCmpctBlock),
                 _ => unimplemented!("Every block begin enters a context"),
             };
         }
@@ -182,4 +188,5 @@ pub enum InstructionContext {
     Inventory,
     BlockTransactions,
     BuildFilter,
+    BuildCmpctBlock,
 }

@@ -4,6 +4,7 @@ use bitcoin::{
     Amount, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script, ScriptBuf,
     Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
     absolute::LockTime,
+    bip152::{HeaderAndShortIds, PrefilledTransaction, ShortId},
     consensus::Encodable,
     ecdsa,
     hashes::{Hash, serde_macros::serde_details::SerdeHash, sha256},
@@ -12,6 +13,7 @@ use bitcoin::{
     p2p::{
         message_blockdata::Inventory,
         message_bloom::{BloomFlags, FilterAdd, FilterLoad},
+        message_compact_blocks::CmpctBlock,
         message_filter::{GetCFCheckpt, GetCFHeaders, GetCFilters},
     },
     script::PushBytesBuf,
@@ -159,6 +161,14 @@ impl Compiler {
                 | Operation::LoadFilterLoad { .. }
                 | Operation::LoadFilterAdd { .. } => {
                     self.handle_load_operations(&instruction)?;
+                }
+
+                Operation::BeginBuildCmpctBlock
+                | Operation::AddNonceToCmpctBlock
+                | Operation::AddPrefilledTxToCmpctBlock
+                | Operation::AddShortIDsToCmpctBlock
+                | Operation::EndBuildCmpctBlock => {
+                    self.handle_cmpct_block_building_operations(&instruction)?;
                 }
 
                 Operation::BeginBlockTransactions
@@ -398,6 +408,55 @@ impl Compiler {
             }
             _ => unreachable!(
                 "Non-filter-building operation passed to handle_filter_building_operations"
+            ),
+        }
+        Ok(())
+    }
+
+    fn handle_cmpct_block_building_operations(
+        &mut self,
+        instruction: &Instruction,
+    ) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::BeginBuildCmpctBlock => {
+                let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 0)?;
+                let header_and_shortids = HeaderAndShortIds {
+                    header: block.header,
+                    nonce: 0,
+                    short_ids: Vec::new(),
+                    prefilled_txs: Vec::new(),
+                };
+                self.append_variable(CmpctBlock {
+                    compact_block: header_and_shortids,
+                });
+            }
+            Operation::AddNonceToCmpctBlock => {
+                let nonce = *self.get_input::<u64>(&instruction.inputs, 1)?;
+                let mut_cmpct_block = self.get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?;
+                mut_cmpct_block.compact_block.nonce = nonce;
+            }
+            Operation::AddPrefilledTxToCmpctBlock => {
+                let prefilled = self
+                    .get_input::<Vec<PrefilledTransaction>>(&instruction.inputs, 1)?
+                    .to_vec();
+                let mut_cmpct_block = self.get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?;
+                mut_cmpct_block.compact_block.prefilled_txs = prefilled;
+            }
+            Operation::AddShortIDsToCmpctBlock => {
+                let shortids = self
+                    .get_input::<Vec<ShortId>>(&instruction.inputs, 1)?
+                    .to_vec();
+                let mut_cmpct_block = self.get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?;
+                mut_cmpct_block.compact_block.short_ids = shortids;
+            }
+            Operation::EndBuildCmpctBlock => {
+                let cmpct_block = self
+                    .get_input_mut::<CmpctBlock>(&instruction.inputs, 0)?
+                    .clone();
+                self.append_variable(cmpct_block);
+            }
+            _ => unreachable!(
+                "Non-cmpctblock-building operation passed to handle_cmpct_block_building_operations"
             ),
         }
         Ok(())
