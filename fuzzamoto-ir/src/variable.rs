@@ -45,4 +45,8 @@ pub enum Variable {
     Header,
 
     BlockVersion,
+
+    MutFilterLoad, // Mutable filter (under construction)
+    ConstFilterLoad,
+    FilterAdd,
 }

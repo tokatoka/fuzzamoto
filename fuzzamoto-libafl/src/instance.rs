@@ -1,7 +1,8 @@
 use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, rc::Rc, time::Duration};
 
 use fuzzamoto_ir::{
-    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, CombineMutator,
+    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BloomFilterAddGenerator,
+    BloomFilterClearGenerator, BloomFilterLoadGenerator, CombineMutator,
     CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator, InputMutator,
     InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator,
     OperationMutator, Program, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator,
@@ -282,12 +283,15 @@ where
                 IrGenerator::new(SendBlockGenerator, rng.clone()),
                 IrGenerator::new(AddTxToBlockGenerator, rng.clone()),
                 IrGenerator::new(CompactFilterQueryGenerator, rng.clone()),
+                IrGenerator::new(BloomFilterLoadGenerator, rng.clone()),
+                IrGenerator::new(BloomFilterAddGenerator, rng.clone()),
+                IrGenerator::new(BloomFilterClearGenerator, rng.clone()),
             ),
         );
 
         let weights = &[
             2000f32, 1000.0, 100.0, 10.0, 40.0, 50.0, 50.0, 50.0, 50.0, 20.0, 20.0, 20.0, 20.0,
-            50.0, 50.0, 50.0, 50.0, 10.0,
+            50.0, 50.0, 50.0, 50.0, 10.0, 20.0, 20.0, 20.0,
         ];
         let sum = weights.iter().sum::<f32>();
         assert_eq!(mutator.mutations().len(), weights.len());

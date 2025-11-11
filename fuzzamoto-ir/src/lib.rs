@@ -1,3 +1,4 @@
+pub mod bloom;
 pub mod builder;
 pub mod compiler;
 pub mod errors;
@@ -9,6 +10,7 @@ pub mod operation;
 pub mod variable;
 
 use crate::errors::*;
+pub use bloom::*;
 pub use builder::*;
 pub use generators::*;
 pub use instruction::*;

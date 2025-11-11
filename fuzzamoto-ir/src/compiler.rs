@@ -11,6 +11,7 @@ use bitcoin::{
     opcodes::{OP_0, OP_TRUE, all::OP_RETURN},
     p2p::{
         message_blockdata::Inventory,
+        message_bloom::{BloomFlags, FilterAdd, FilterLoad},
         message_filter::{GetCFCheckpt, GetCFHeaders, GetCFilters},
     },
     script::PushBytesBuf,
@@ -19,7 +20,7 @@ use bitcoin::{
     transaction,
 };
 
-use crate::{Instruction, Operation, Program, generators::block::Header};
+use crate::{Instruction, Operation, Program, bloom::filter_insert, generators::block::Header};
 
 /// `Compiler` is responsible for compiling IR into a sequence of low-level actions to be performed
 /// on a node (i.e. mapping `fuzzamoto_ir::Program` -> `CompiledProgram`).
@@ -126,6 +127,7 @@ struct Tx {
     tx: Transaction,
     txos: Vec<Txo>,
     output_selector: usize,
+    id: Txid,
 }
 
 struct Nop;
@@ -153,7 +155,9 @@ impl Compiler {
                 | Operation::LoadPrivateKey(..)
                 | Operation::LoadSigHashFlags(..)
                 | Operation::LoadHeader { .. }
-                | Operation::LoadTxo { .. } => {
+                | Operation::LoadTxo { .. }
+                | Operation::LoadFilterLoad { .. }
+                | Operation::LoadFilterAdd { .. } => {
                     self.handle_load_operations(&instruction)?;
                 }
 
@@ -193,6 +197,15 @@ impl Compiler {
                     self.handle_script_building_operations(&instruction)?;
                 }
 
+                Operation::BuildFilterAddFromTx
+                | Operation::BuildFilterAddFromTxo
+                | Operation::AddTxToFilter
+                | Operation::AddTxoToFilter
+                | Operation::BeginBuildFilterLoad
+                | Operation::EndBuildFilterLoad => {
+                    self.handle_filter_building_operations(&instruction)?;
+                }
+
                 Operation::BeginBuildTx
                 | Operation::EndBuildTx
                 | Operation::BeginBuildTxInputs
@@ -219,7 +232,10 @@ impl Compiler {
                 | Operation::SendBlockNoWit
                 | Operation::SendGetCFilters
                 | Operation::SendGetCFHeaders
-                | Operation::SendGetCFCheckpt => {
+                | Operation::SendGetCFCheckpt
+                | Operation::SendFilterLoad
+                | Operation::SendFilterAdd
+                | Operation::SendFilterClear => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
             }
@@ -325,6 +341,64 @@ impl Compiler {
                 self.append_variable(witness_var.clone());
             }
             _ => unreachable!("Non-witness operation passed to handle_witness_operations"),
+        }
+        Ok(())
+    }
+
+    fn handle_filter_building_operations(
+        &mut self,
+        instruction: &Instruction,
+    ) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::BeginBuildFilterLoad => {
+                let filter = self
+                    .get_input::<FilterLoad>(&instruction.inputs, 0)?
+                    .clone();
+                self.append_variable(filter);
+            }
+            Operation::AddTxToFilter => {
+                let tx_as_array = self
+                    .get_input::<Tx>(&instruction.inputs, 1)?
+                    .id
+                    .as_raw_hash()
+                    .as_byte_array()
+                    .to_vec();
+                let mut_filter = self.get_input_mut::<FilterLoad>(&instruction.inputs, 0)?;
+                let n_hash_funcs = mut_filter.hash_funcs;
+                filter_insert(&mut mut_filter.filter, n_hash_funcs, &tx_as_array);
+            }
+            Operation::AddTxoToFilter => {
+                let txo = self.get_input::<Txo>(&instruction.inputs, 1)?.prev_out.0;
+                let mut_filter = self.get_input_mut::<FilterLoad>(&instruction.inputs, 0)?;
+                let n_hash_funcs = mut_filter.hash_funcs;
+                filter_insert(&mut mut_filter.filter, n_hash_funcs, &txo);
+            }
+            Operation::EndBuildFilterLoad => {
+                let filter = self
+                    .get_input::<FilterLoad>(&instruction.inputs, 0)?
+                    .clone();
+                self.append_variable(filter);
+            }
+            Operation::BuildFilterAddFromTx => {
+                let tx = self.get_input::<Tx>(&instruction.inputs, 0)?;
+
+                let filteradd = FilterAdd {
+                    data: tx.id.as_raw_hash().as_byte_array().to_vec(),
+                };
+                self.append_variable(filteradd);
+            }
+            Operation::BuildFilterAddFromTxo => {
+                let txo = self.get_input::<Txo>(&instruction.inputs, 0)?;
+
+                let filteradd = FilterAdd {
+                    data: txo.scripts.script_pubkey.clone(),
+                };
+
+                self.append_variable(filteradd);
+            }
+            _ => unreachable!(
+                "Non-filter-building operation passed to handle_filter_building_operations"
+            ),
         }
         Ok(())
     }
@@ -480,6 +554,7 @@ impl Compiler {
                     },
                     txos: Vec::new(),
                     output_selector: 0,
+                    id: Txid::all_zeros(),
                 });
             }
             Operation::EndBuildTx => {
@@ -653,6 +728,38 @@ impl Compiler {
                     },
                 );
             }
+            Operation::SendFilterLoad => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let filter_load = self.get_input::<FilterLoad>(&instruction.inputs, 1)?;
+
+                self.emit_send_message(
+                    *connection_var,
+                    "filterload",
+                    &FilterLoad {
+                        filter: filter_load.filter.clone(),
+                        hash_funcs: filter_load.hash_funcs,
+                        tweak: filter_load.tweak,
+                        flags: filter_load.flags,
+                    },
+                );
+            }
+            Operation::SendFilterAdd => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let filteradd = self.get_input::<FilterAdd>(&instruction.inputs, 1)?;
+
+                self.emit_send_message(
+                    *connection_var,
+                    "filteradd",
+                    &FilterAdd {
+                        data: filteradd.data.clone(),
+                    },
+                );
+            }
+            Operation::SendFilterClear => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let empty: Vec<u8> = Vec::new();
+                self.emit_send_message(*connection_var, "filterclear", &empty);
+            }
             _ => unreachable!(
                 "Non-message-sending operation passed to handle_message_sending_operations"
             ),
@@ -734,6 +841,30 @@ impl Compiler {
                         requires_signing: None,
                     },
                 });
+            }
+            Operation::LoadFilterLoad {
+                filter,
+                hash_funcs,
+                tweak,
+                flags,
+            } => {
+                // because BloomFilter doesn't implement `Hash` and `Deserialize` so I can't use it inside `Operation`
+                // thus here transform it on the fly.
+                let flags = match flags {
+                    0 => BloomFlags::None,
+                    1 => BloomFlags::All,
+                    2 => BloomFlags::PubkeyOnly,
+                    _ => unreachable!("Invalid BloomFlags"),
+                };
+                self.handle_load_operation(FilterLoad {
+                    filter: filter.clone(),
+                    hash_funcs: *hash_funcs,
+                    tweak: *tweak,
+                    flags: flags,
+                });
+            }
+            Operation::LoadFilterAdd { data } => {
+                self.handle_load_operation(FilterAdd { data: data.clone() });
             }
             _ => unreachable!("Non-load operation passed to handle_load_operations"),
         }
@@ -1026,7 +1157,8 @@ impl Compiler {
             }
         }
 
-        let txid = *tx_var.tx.compute_txid().as_raw_hash().as_byte_array();
+        let txid = tx_var.tx.compute_txid();
+        let id_bytes = *txid.as_raw_hash().as_byte_array();
 
         // Create all `Txo`s for this transaction and store them on the new finalized tx var
         tx_var.txos = tx_outputs_var
@@ -1034,12 +1166,13 @@ impl Compiler {
             .iter()
             .enumerate()
             .map(|(index, (scripts, amount))| Txo {
-                prev_out: (txid, index as u32),
+                prev_out: (id_bytes, index as u32),
                 scripts: scripts.clone(),
                 value: *amount,
             })
             .collect();
 
+        tx_var.id = txid;
         self.append_variable(tx_var);
 
         Ok(())
