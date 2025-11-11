@@ -1,9 +1,6 @@
 #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "nyx")]
-use fuzzamoto_nyx_sys::*;
-
 use bitcoin::hashes::Hash;
 use fuzzamoto::{
     connections::Transport,
@@ -12,6 +9,10 @@ use fuzzamoto::{
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, Target},
 };
+#[cfg(feature = "nyx")]
+use fuzzamoto_nyx_sys::*;
+#[cfg(feature = "nyx")]
+use std::ffi::CString;
 
 #[cfg(feature = "oracle_netsplit")]
 use fuzzamoto::oracles::{NetSplitContext, NetSplitOracle};
@@ -39,6 +40,15 @@ struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
+}
+
+#[cfg(feature = "nyx")]
+pub fn nyx_print_base64(bytes: &[u8]) {
+    let encoded = base64::encode(bytes);
+    let message = CString::new(encoded).expect("CString::new failed");
+    unsafe {
+        nyx_println(message.as_ptr(), 10);
+    }
 }
 
 pub struct TestCase {
@@ -197,17 +207,37 @@ where
         for action in actions {
             match action {
                 CompiledAction::SendRawMessage(from, command, message) => {
+                    #[cfg(feature = "nyx")]
+                    {
+                        let text = "hello world!";
+                        nyx_print_base64(text.as_bytes())
+                    }
+
                     if self.inner.connections.is_empty() {
                         return;
                     }
 
                     let num_connections = self.inner.connections.len();
-                    if let Some(connection) = self.inner.connections.get_mut(from % num_connections)
+                    let dst = from % num_connections;
+                    if let Some(connection) = self.inner.connections.get_mut(dst)
                     {
                         if cfg!(feature = "force_send_and_ping") {
                             let _ = connection.send_and_ping(&(command, message));
                         } else {
                             let _ = connection.send(&(command, message));
+                        }
+                    }
+
+                    // try to receive message after send 
+                    #[cfg(feature = "nyx")]
+                    if let Some(connection) = self.inner.connections.get_mut(dst) {
+                        loop {
+                            if let Ok((command, _)) = connection.receive() {
+                                nyx_print_base64(command.as_bytes());
+                            }
+                            else {
+                                break;
+                            }
                         }
                     }
                 }

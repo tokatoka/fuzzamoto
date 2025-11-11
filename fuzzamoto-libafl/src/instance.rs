@@ -21,7 +21,7 @@ use libafl::{
     feedbacks::{ConstFeedback, CrashFeedback, HasObserverHandle, MaxMapFeedback, TimeFeedback},
     fuzzer::{Evaluator, Fuzzer, StdFuzzer},
     mutators::{ComposedByMutations, TuneableScheduledMutator},
-    observers::{CanTrack, HitcountsMapObserver, StdMapObserver, TimeObserver},
+    observers::{CanTrack, HitcountsMapObserver, StdMapObserver, StdOutObserver, TimeObserver},
     schedulers::{
         IndexesLenTimeMinimizerScheduler, QueueScheduler, StdWeightedScheduler,
         powersched::PowerSchedule,
@@ -32,14 +32,14 @@ use libafl::{
 use libafl_bolts::{
     HasLen, current_nanos,
     rands::{Rand, StdRand},
-    tuples::tuple_list,
+    tuples::{Handled, tuple_list},
 };
 use libafl_nyx::{executor::NyxExecutor, helper::NyxHelper, settings::NyxSettings};
 use rand::{SeedableRng, rngs::SmallRng};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    feedbacks::CaptureTimeoutFeedback,
+    feedbacks::{CaptureTimeoutFeedback, RecvFeedback},
     input::IrInput,
     mutators::{IrGenerator, IrMutator, IrSpliceMutator, LibAflByteMutator},
     options::FuzzerOptions,
@@ -102,6 +102,8 @@ where
         // Create an observation channel to keep track of the execution time
         let time_observer = TimeObserver::new("time");
 
+        let stdout_observer = StdOutObserver::new(Cow::Borrowed("hprintf_output")).unwrap();
+
         let map_feedback = MaxMapFeedback::new(&trace_observer);
 
         let trace_handle = map_feedback.observer_handle().clone();
@@ -118,9 +120,13 @@ where
         #[cfg(not(feature = "bench"))]
         let bench_stats_stage = NopStage::new();
 
+        let stdout_observer_handle = stdout_observer.handle();
+        let recv_feedback = RecvFeedback::new(&stdout_observer);
+
         // Feedback to rate the interestingness of an input
         let mut feedback = feedback_or!(
             // New maximization map feedback
+            recv_feedback,
             feedback_and_fast!(
                 // Disable coverage feedback if the corpus is static
                 ConstFeedback::new(!self.options.static_corpus),
@@ -195,7 +201,7 @@ where
             )
         };
 
-        let observers = tuple_list!(trace_observer, time_observer); // stdout_observer);
+        let observers = tuple_list!(trace_observer, time_observer, stdout_observer);
 
         state.set_max_size(self.options.buffer_size);
 
@@ -220,8 +226,9 @@ where
             process::exit(0);
         }
 
-        let mut executor = NyxExecutor::builder().build(helper, observers);
-
+        let mut executor = NyxExecutor::builder()
+            .stdout(stdout_observer_handle)
+            .build(helper, observers);
         let ir_context_dump = self.options.work_dir().join("dump/ir.context");
         let bytes = std::fs::read(ir_context_dump).expect("Could not read ir context file");
         let full_program_context: fuzzamoto_ir::FullProgramContext =
