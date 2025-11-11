@@ -161,7 +161,12 @@ fn build_tx(
 pub struct SingleTxGenerator;
 
 impl<R: RngCore> Generator<R> for SingleTxGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
             return Err(GeneratorError::MissingVariables);
@@ -220,7 +225,12 @@ impl Default for SingleTxGenerator {
 pub struct OneParentOneChildGenerator;
 
 impl<R: RngCore> Generator<R> for OneParentOneChildGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
             return Err(GeneratorError::MissingVariables);
@@ -286,7 +296,12 @@ impl Default for OneParentOneChildGenerator {
 pub struct LongChainGenerator;
 
 impl<R: RngCore> Generator<R> for LongChainGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let mut funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
             return Err(GeneratorError::MissingVariables);
@@ -350,7 +365,12 @@ impl Default for LongChainGenerator {
 pub struct LargeTxGenerator;
 
 impl<R: RngCore> Generator<R> for LargeTxGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
             return Err(GeneratorError::MissingVariables);

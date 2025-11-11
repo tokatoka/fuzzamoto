@@ -9,7 +9,12 @@ use super::GeneratorError;
 pub struct BlockGenerator;
 
 impl<R: RngCore> Generator<R> for BlockGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let header_var = if rng.gen_bool(0.5) {
             builder.get_random_variable(rng, Variable::Header)
         } else {
@@ -105,7 +110,12 @@ impl HeaderGenerator {
 }
 
 impl<R: RngCore> Generator<R> for HeaderGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let header = self.headers.choose(rng).unwrap().clone();
 
         builder.force_append(
@@ -132,7 +142,12 @@ impl<R: RngCore> Generator<R> for HeaderGenerator {
 pub struct SendBlockGenerator;
 
 impl<R: RngCore> Generator<R> for SendBlockGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let block_var = builder
             .get_random_variable(rng, Variable::Block)
             .ok_or(GeneratorError::MissingVariables)?;
@@ -159,7 +174,12 @@ impl<R: RngCore> Generator<R> for SendBlockGenerator {
 pub struct AddTxToBlockGenerator;
 
 impl<R: RngCore> Generator<R> for AddTxToBlockGenerator {
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        _rt_data: &fuzzamoto::RuntimeMetadata,
+    ) -> GeneratorResult {
         let block_var = builder
             .get_nearest_variable(Variable::MutBlockTransactions)
             .ok_or(GeneratorError::MissingVariables)?;
