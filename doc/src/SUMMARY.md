@@ -16,6 +16,7 @@
 - [Custom Target Patches](./usage/target-patches.md)
 - [Coverage Reports](./usage/coverage.md)
 - [System Requirements](./usage/requirements.md)
+- [CLI Reference](./usage/cli.md)
 
 # Contributing
 
