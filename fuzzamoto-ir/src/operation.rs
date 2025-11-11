@@ -78,6 +78,12 @@ pub enum Operation {
     BuildOpReturnScripts,
     BuildPayToAnchor,
 
+    // cmpctblock building operati
+    BeginBuildCmpctBlock,
+    AddBlockToCmpctBlock,
+    AddPrefilledTxToCmpctBlock,
+    EndBuildCmpctBlock,
+
     // filterload building operations
     BeginBuildFilterLoad,
     AddTxToFilter,
@@ -262,6 +268,10 @@ impl fmt::Display for Operation {
             Operation::BeginWitnessStack => write!(f, "BeginWitnessStack"),
             Operation::EndWitnessStack => write!(f, "EndWitnessStack"),
             Operation::AddWitness => write!(f, "AddWitness"),
+            Operation::BeginBuildCmpctBlock => write!(f, "BeginBuildCmpctBlock"),
+            Operation::EndBuildCmpctBlock => write!(f, "EndBuildCmpctBlock"),
+            Operation::AddBlockToCmpctBlock => write!(f, "AddBlockToCmpctBlock"),
+            Operation::AddPrefilledTxToCmpctBlock => write!(f, "AddPrefilledTxToCmpctBlock"),
 
             Operation::BeginBuildInventory => write!(f, "BeginBuildInventory"),
             Operation::EndBuildInventory => write!(f, "EndBuildInventory"),
@@ -329,7 +339,8 @@ impl Operation {
             | Operation::BeginBuildTxOutputs
             | Operation::BeginWitnessStack
             | Operation::BeginBlockTransactions
-            | Operation::BeginBuildFilterLoad => true,
+            | Operation::BeginBuildFilterLoad 
+            | Operation::BeginBuildCmpctBlock => true,
             // Exhaustive match to fail when new ops are added
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -400,7 +411,10 @@ impl Operation {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::SendBlockNoWit => false,
+            | Operation::SendBlockNoWit 
+            | Operation::EndBuildCmpctBlock
+            | Operation::AddBlockToCmpctBlock
+            | Operation::AddPrefilledTxToCmpctBlock => false,
         }
     }
 
@@ -432,7 +446,8 @@ impl Operation {
             | Operation::EndBuildInventory
             | Operation::EndWitnessStack
             | Operation::EndBlockTransactions
-            | Operation::EndBuildFilterLoad => true,
+            | Operation::EndBuildFilterLoad 
+            | Operation::EndBuildCmpctBlock => true,
             // Exhaustive match to fail when new ops are added
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -501,6 +516,9 @@ impl Operation {
             | Operation::AddTxoToFilter
             | Operation::BuildFilterAddFromTx
             | Operation::BuildFilterAddFromTxo
+            | Operation::BeginBuildCmpctBlock
+            | Operation::AddBlockToCmpctBlock
+            | Operation::AddPrefilledTxToCmpctBlock
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear => false,
@@ -595,6 +613,11 @@ impl Operation {
             Operation::AddTxToFilter => vec![],
             Operation::AddTxoToFilter => vec![],
             Operation::EndBuildFilterLoad => vec![Variable::ConstFilterLoad],
+
+            Operation::BeginBuildCmpctBlock => vec![],
+            Operation::AddBlockToCmpctBlock => vec![],
+            Operation::AddPrefilledTxToCmpctBlock => vec![],
+            Operation::EndBuildCmpctBlock => vec![Variable::ConstCmpctBlock],            
 
             Operation::BuildFilterAddFromTx => vec![Variable::FilterAdd],
             Operation::BuildFilterAddFromTxo => vec![Variable::FilterAdd],
@@ -726,6 +749,8 @@ impl Operation {
             Operation::EndBuildFilterLoad => vec![Variable::MutFilterLoad],
             Operation::BuildFilterAddFromTx => vec![Variable::ConstTx],
             Operation::BuildFilterAddFromTxo => vec![Variable::Txo],
+
+            Operation::BeginBuildCmpctBlock => vec![Variable::ConstFi]
 
             Operation::SendFilterLoad => vec![Variable::Connection, Variable::ConstFilterLoad],
             Operation::SendFilterAdd => vec![Variable::Connection, Variable::FilterAdd],
