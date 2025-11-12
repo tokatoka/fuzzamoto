@@ -127,6 +127,8 @@ pub enum Operation {
     AddBlockWithWitnessInv, // Block by hash with witness
     AddFilteredBlockInv,    // SPV proof by block hash for txs matching filter
 
+    Probe,
+
     /// Message sending
     SendGetData,
     SendInv,
@@ -307,6 +309,8 @@ impl fmt::Display for Operation {
             Operation::SendFilterAdd => write!(f, "SendFilterAdd"),
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
             Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
+
+            Operation::Probe => write!(f, "Probe"),
         }
     }
 }
@@ -421,7 +425,8 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendBlockNoWit
-            | Operation::SendCompactBlock => false,
+            | Operation::SendCompactBlock
+            | Operation::Probe => false,
         }
     }
 
@@ -530,7 +535,8 @@ impl Operation {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::SendCompactBlock => false,
+            | Operation::SendCompactBlock
+            | Operation::Probe => false,
         }
     }
 
@@ -664,6 +670,8 @@ impl Operation {
             Operation::SendFilterAdd => vec![],
             Operation::SendFilterClear => vec![],
             Operation::SendCompactBlock => vec![],
+
+            Operation::Probe => vec![],
         }
     }
 
@@ -772,6 +780,8 @@ impl Operation {
             Operation::SendFilterAdd => vec![Variable::Connection, Variable::FilterAdd],
             Operation::SendFilterClear => vec![Variable::Connection],
             Operation::SendCompactBlock => vec![Variable::Connection, Variable::ConstCmpctBlock],
+
+            Operation::Probe => vec![Variable::Connection],
             // Operations with no inputs
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -892,7 +902,8 @@ impl Operation {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
-            | Operation::SendCompactBlock => vec![],
+            | Operation::SendCompactBlock
+            | Operation::Probe => vec![],
         }
     }
 }

@@ -41,6 +41,8 @@ pub enum CompiledAction {
     SendRawMessage(usize, String, Vec<u8>),
     /// Set mock time for all nodes in the test
     SetTime(u64),
+    /// Receive a message from the connections
+    RecvMessage(usize),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -246,6 +248,10 @@ impl Compiler {
                 | Operation::SendFilterClear
                 | Operation::SendCompactBlock => {
                     self.handle_message_sending_operations(&instruction)?;
+                }
+
+                Operation::Probe => {
+                    self.handle_probe_operations(&instruction)?;
                 }
             }
         }
@@ -820,6 +826,18 @@ impl Compiler {
         Ok(())
     }
 
+    fn handle_probe_operations(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::Probe => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.emit_recv_message(*connection_var);
+            }
+            _ => unreachable!("Non probing operation passed to handle_probe_operations"),
+        }
+
+        Ok(())
+    }
+
     fn handle_load_operations(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
         match &instruction.operation {
             Operation::Nop {
@@ -1022,6 +1040,12 @@ impl Compiler {
             message_type.to_string(),
             bytes,
         ));
+    }
+
+    fn emit_recv_message(&mut self, connection_var: usize) {
+        self.output
+            .actions
+            .push(CompiledAction::RecvMessage(connection_var));
     }
 
     fn emit_send_message<T: Encodable>(

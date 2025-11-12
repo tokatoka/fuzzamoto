@@ -221,12 +221,20 @@ where
                             let _ = connection.send(&(command, message));
                         }
                     }
+                }
+                CompiledAction::RecvMessage(from) => {
+                    if self.inner.connections.is_empty() {
+                        return;
+                    }
 
-                    // try to receive message after send
-                    #[cfg(feature = "nyx")]
+                    let num_connections = self.inner.connections.len();
+                    let dst = from % num_connections;
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
                         while let Ok((command, data)) = connection.receive() {
-                            self.received.push((command, data))
+                            #[cfg(feature = "nyx")]
+                            self.received.push((command, data));
+
+                            log::info!("received {}", command);
                         }
                     }
                 }

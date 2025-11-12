@@ -125,6 +125,7 @@ impl Instruction {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
+            | Operation::Probe
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }
