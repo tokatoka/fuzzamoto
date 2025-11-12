@@ -57,16 +57,16 @@ impl<'a> Scenario<'a, TestCase<'a>> for HttpServerScenario<V1Transport, BitcoinC
     }
 
     fn run(&mut self, input: TestCase) -> ScenarioResult {
-        const MAX_CONNS: usize = 128; // Avoid "too many open files"
-        let mut connections = Vec::with_capacity(MAX_CONNS);
+        // Network actions are slow; limit them
+        const MAX_ACTIONS: usize = 128;
+        if input.actions.len() > MAX_ACTIONS {
+            return ScenarioResult::Ok;
+        }
 
+        let mut connections = Vec::with_capacity(MAX_ACTIONS);
         for action in input.actions {
             match action {
                 Action::Connect => {
-                    if connections.len() >= MAX_CONNS {
-                        continue;
-                    }
-
                     let Ok(stream) = TcpStream::connect(self.target.node.params.rpc_socket) else {
                         return ScenarioResult::Fail("Failed to connect to the target".to_string());
                     };
