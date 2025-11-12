@@ -8,18 +8,17 @@ use fuzzamoto::{
 use arbitrary::{Arbitrary, Unstructured};
 use std::io::Write;
 
-use std::collections::HashMap;
 use std::net::TcpStream;
 
 #[derive(Arbitrary)]
 enum Action<'a> {
     Connect,
     SendMessage {
-        connection_id: u64,
+        connection_id: u8,
         message: &'a [u8],
     },
     Disconnect {
-        connection_id: u64,
+        connection_id: u8,
     },
 }
 
@@ -58,14 +57,13 @@ impl<'a> Scenario<'a, TestCase<'a>> for HttpServerScenario<V1Transport, BitcoinC
     }
 
     fn run(&mut self, input: TestCase) -> ScenarioResult {
-        let mut connections = HashMap::new();
-        let mut next_connection_id = 1u64;
+        const MAX_CONNS: usize = 128; // Avoid "too many open files"
+        let mut connections = Vec::with_capacity(MAX_CONNS);
 
         for action in input.actions {
             match action {
                 Action::Connect => {
-                    if connections.len() > 128 {
-                        // Avoid "too many open files"
+                    if connections.len() >= MAX_CONNS {
                         continue;
                     }
 
@@ -73,20 +71,26 @@ impl<'a> Scenario<'a, TestCase<'a>> for HttpServerScenario<V1Transport, BitcoinC
                         return ScenarioResult::Fail("Failed to connect to the target".to_string());
                     };
                     let _ = stream.set_nodelay(true);
-                    connections.insert(next_connection_id, stream);
-                    next_connection_id += 1;
+                    connections.push(stream);
                 }
                 Action::SendMessage {
                     connection_id,
                     message,
                 } => {
-                    if let Some(connection) = connections.get_mut(&connection_id) {
-                        let _ = connection.write_all(message);
-                        let _ = connection.flush();
-                    };
+                    if connections.is_empty() {
+                        continue;
+                    }
+                    let index = connection_id as usize % connections.len();
+                    let connection = connections.get_mut(index).unwrap();
+                    let _ = connection.write_all(message);
+                    let _ = connection.flush();
                 }
                 Action::Disconnect { connection_id } => {
-                    let _ = connections.remove(&connection_id);
+                    if connections.is_empty() {
+                        continue;
+                    }
+                    let index = connection_id as usize % connections.len();
+                    let _ = connections.swap_remove(index);
                 }
             }
         }
