@@ -49,4 +49,7 @@ pub enum Variable {
     MutFilterLoad, // Mutable filter (under construction)
     ConstFilterLoad,
     FilterAdd,
+
+    CoinbaseInput,
+    CoinbaseTx,
 }
