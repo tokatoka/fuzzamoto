@@ -60,7 +60,18 @@ where
             .as_ref()
             .ok_or(Error::illegal_state("StdOutObserver has no stdout"))?;
 
-        println!("we got {:#?}", buffer);
+        let chunks: Vec<Vec<u8>> = buffer
+            .split(|b| *b == b'\n')
+            .map(|slice| slice.to_vec())
+            .collect();
+
+        for chunk in chunks {
+            if let Ok((command, payload)) = serde_json::from_slice::<(String, Vec<u8>)>(&chunk) {
+                log::info!("Yay command: {:?}, payload: {:?}", command, payload);
+            } else {
+                log::info!("Failed to deserialize {:?}", chunk);
+            }
+        }
         Ok(false)
     }
 

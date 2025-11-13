@@ -27,7 +27,7 @@ use fuzzamoto_ir::{
 };
 
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
-const LATE_BLOCK_HEIGHT_LIMIT: u32 = 190;
+const LATE_BLOCK_HEIGHT_LIMIT: u32 = 199;
 const COINBASE_VALUE: u64 = 25 * 100_000_000;
 // OP_TRUE script pubkey: 0x0 0x20 sha256(OP_TRUE)
 const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
@@ -48,7 +48,7 @@ struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
 pub fn nyx_print(bytes: &[u8]) {
     let message = CString::new(bytes).expect("CString::new failed");
     unsafe {
-        nyx_println(message.as_ptr(), 10);
+        nyx_println(message.as_ptr(), message.len());
     }
 }
 
@@ -211,7 +211,6 @@ where
                     if self.inner.connections.is_empty() {
                         return;
                     }
-
                     let num_connections = self.inner.connections.len();
                     let dst = from % num_connections;
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
@@ -226,15 +225,12 @@ where
                     if self.inner.connections.is_empty() {
                         return;
                     }
-
                     let num_connections = self.inner.connections.len();
                     let dst = from % num_connections;
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
                         while let Ok((command, data)) = connection.receive() {
                             #[cfg(feature = "nyx")]
-                            self.received.push((command, data));
-
-                            log::info!("received {}", command);
+                            self.received.push((command.clone(), data));
                         }
                     }
                 }
