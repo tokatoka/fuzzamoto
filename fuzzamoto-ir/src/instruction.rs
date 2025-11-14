@@ -125,7 +125,6 @@ impl Instruction {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
-            | Operation::Probe
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }
@@ -144,7 +143,9 @@ impl Instruction {
             | Operation::BeginBuildFilterLoad
             | Operation::EndBuildFilterLoad
             | Operation::BeginBuildCmpctBlock
-            | Operation::EndBuildCmpctBlock => false,
+            | Operation::EndBuildCmpctBlock
+            | Operation::EnableProbe
+            | Operation::DisableProbe => false,
         }
     }
 

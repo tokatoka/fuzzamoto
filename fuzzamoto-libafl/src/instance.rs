@@ -1,7 +1,13 @@
 use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, rc::Rc, time::Duration};
 
 use fuzzamoto_ir::{
-    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BloomFilterAddGenerator, BloomFilterClearGenerator, BloomFilterLoadGenerator, CombineMutator, CompactBlockGenerator, CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator, InputMutator, InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator, OperationMutator, Program, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator, TxoGenerator, WitnessGenerator, cutting::CuttingMinimizer, instr_block::InstrBlockMinimizer, nopping::NoppingMinimizer
+    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BloomFilterAddGenerator,
+    BloomFilterClearGenerator, BloomFilterLoadGenerator, CombineMutator, CompactBlockGenerator,
+    CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator, InputMutator,
+    InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator,
+    OperationMutator, Program, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator,
+    TxoGenerator, WitnessGenerator, cutting::CuttingMinimizer, instr_block::InstrBlockMinimizer,
+    nopping::NoppingMinimizer,
 };
 
 use libafl::{
@@ -39,7 +45,7 @@ use crate::{
     mutators::{IrGenerator, IrMutator, IrSpliceMutator, LibAflByteMutator},
     options::FuzzerOptions,
     schedulers::SupportedSchedulers,
-    stages::{IrMinimizerStage, VerifyTimeoutsStage},
+    stages::{IrMinimizerStage, ProbingStage, VerifyTimeoutsStage},
 };
 
 #[cfg(feature = "bench")]
@@ -270,7 +276,10 @@ where
             ),
             (
                 1000.0,
-                IrGenerator::new(HeaderGenerator::new(full_program_context.headers.clone()), rng.clone())
+                IrGenerator::new(
+                    HeaderGenerator::new(full_program_context.headers.clone()),
+                    rng.clone()
+                )
             ),
             (
                 1000.0,
@@ -298,6 +307,7 @@ where
 
         // Counter holding the number of successful minimizations in the last round
         let continue_minimizing = RefCell::new(1u64);
+        let probing: ProbingStage = ProbingStage::new();
 
         let mut stages = tuple_list!(
             ClosureStage::new(|_a: &mut _, _b: &mut _, _c: &mut _, _d: &mut _| {
@@ -340,6 +350,7 @@ where
             ),
             timeout_verify_stage,
             bench_stats_stage,
+            probing,
         );
         self.fuzz(&mut state, &mut fuzzer, &mut executor, &mut stages)
     }

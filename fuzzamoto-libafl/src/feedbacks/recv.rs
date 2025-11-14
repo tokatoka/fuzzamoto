@@ -69,7 +69,8 @@ where
                 if chunk.is_empty() {
                     continue;
                 }
-                if let Ok((command, payload)) = serde_json::from_slice::<(String, Vec<u8>)>(&chunk) {
+                if let Ok((command, payload)) = serde_json::from_slice::<(String, Vec<u8>)>(&chunk)
+                {
                     log::info!("Yay command: {:?}, payload: {:?}", command, payload);
                 } else {
                     log::info!("Failed to deserialize {:?}", chunk);

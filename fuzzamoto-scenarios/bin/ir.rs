@@ -26,6 +26,7 @@ use fuzzamoto_ir::{
     compiler::{CompiledAction, CompiledProgram, Compiler},
 };
 
+use std::collections::HashMap;
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
 const LATE_BLOCK_HEIGHT_LIMIT: u32 = 199;
 const COINBASE_VALUE: u64 = 25 * 100_000_000;
@@ -39,6 +40,7 @@ const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
 /// `fuzzamoto_ir::CompiledProgram`s as input.
 struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
+    logging: bool,
     received: Vec<(String, Vec<u8>)>,
     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
@@ -213,26 +215,27 @@ where
                     }
                     let num_connections = self.inner.connections.len();
                     let dst = from % num_connections;
+
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
-                        if cfg!(feature = "force_send_and_ping") {
+                        if self.logging {
+                            if let Ok(received) = connection.send_and_recv(&(command, message)) {
+                                log::info!("We've received {:?}", received);
+                                self.received.extend(received);
+                            }
+                        } else if cfg!(feature = "force_send_and_ping") {
                             let _ = connection.send_and_ping(&(command, message));
                         } else {
                             let _ = connection.send(&(command, message));
                         }
                     }
                 }
-                CompiledAction::RecvMessage(from) => {
-                    if self.inner.connections.is_empty() {
-                        return;
-                    }
-                    let num_connections = self.inner.connections.len();
-                    let dst = from % num_connections;
-                    if let Some(connection) = self.inner.connections.get_mut(dst) {
-                        while let Ok((command, data)) = connection.receive() {
-                            #[cfg(feature = "nyx")]
-                            self.received.push((command.clone(), data));
-                        }
-                    }
+                CompiledAction::EnableLogging() => {
+                    log::info!("Enable logging for connection");
+                    self.logging = true;
+                }
+                CompiledAction::DisableLogging() => {
+                    log::info!("Disable logging for connection");
+                    self.logging = false;
                 }
                 CompiledAction::SetTime(time) => {
                     let _ = self.inner.target.set_mocktime(time);
@@ -324,6 +327,7 @@ where
         let received = vec![];
         Ok(Self {
             inner,
+            logging: false,
             received,
             #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
             second,

@@ -94,12 +94,6 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
             })
             .expect("Inserting SendCompactBlock should always succeed");
 
-        builder
-            .append(Instruction {
-                inputs: vec![connection_var.index],
-                operation: Operation::Probe,
-            })
-            .expect("Inserting Probe should always succeed");
         Ok(())
     }
 

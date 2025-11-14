@@ -41,8 +41,10 @@ pub enum CompiledAction {
     SendRawMessage(usize, String, Vec<u8>),
     /// Set mock time for all nodes in the test
     SetTime(u64),
-    /// Receive a message from the connections
-    RecvMessage(usize),
+    /// Enable message logging from a connection
+    EnableLogging(),
+    /// Disable message logging from a connection
+    DisableLogging(),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -250,7 +252,7 @@ impl Compiler {
                     self.handle_message_sending_operations(&instruction)?;
                 }
 
-                Operation::Probe => {
+                Operation::EnableProbe | Operation::DisableProbe => {
                     self.handle_probe_operations(&instruction)?;
                 }
             }
@@ -828,9 +830,11 @@ impl Compiler {
 
     fn handle_probe_operations(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
         match &instruction.operation {
-            Operation::Probe => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
-                self.emit_recv_message(*connection_var);
+            Operation::EnableProbe => {
+                self.emit_enable_logging_message();
+            }
+            Operation::DisableProbe => {
+                self.emit_disable_logging_message();
             }
             _ => unreachable!("Non probing operation passed to handle_probe_operations"),
         }
@@ -1042,10 +1046,12 @@ impl Compiler {
         ));
     }
 
-    fn emit_recv_message(&mut self, connection_var: usize) {
-        self.output
-            .actions
-            .push(CompiledAction::RecvMessage(connection_var));
+    fn emit_enable_logging_message(&mut self) {
+        self.output.actions.push(CompiledAction::EnableLogging());
+    }
+
+    fn emit_disable_logging_message(&mut self) {
+        self.output.actions.push(CompiledAction::DisableLogging());
     }
 
     fn emit_send_message<T: Encodable>(

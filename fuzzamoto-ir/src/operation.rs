@@ -127,7 +127,8 @@ pub enum Operation {
     AddBlockWithWitnessInv, // Block by hash with witness
     AddFilteredBlockInv,    // SPV proof by block hash for txs matching filter
 
-    Probe,
+    EnableProbe,
+    DisableProbe,
 
     /// Message sending
     SendGetData,
@@ -310,7 +311,8 @@ impl fmt::Display for Operation {
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
             Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
 
-            Operation::Probe => write!(f, "Probe"),
+            Operation::EnableProbe => write!(f, "EnableProbe"),
+            Operation::DisableProbe => write!(f, "DisableProbe"),
         }
     }
 }
@@ -426,7 +428,8 @@ impl Operation {
             | Operation::SendFilterClear
             | Operation::SendBlockNoWit
             | Operation::SendCompactBlock
-            | Operation::Probe => false,
+            | Operation::EnableProbe
+            | Operation::DisableProbe => false,
         }
     }
 
@@ -536,7 +539,8 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
-            | Operation::Probe => false,
+            | Operation::EnableProbe
+            | Operation::DisableProbe => false,
         }
     }
 
@@ -671,7 +675,7 @@ impl Operation {
             Operation::SendFilterClear => vec![],
             Operation::SendCompactBlock => vec![],
 
-            Operation::Probe => vec![],
+            Operation::EnableProbe | Operation::DisableProbe => vec![],
         }
     }
 
@@ -781,7 +785,8 @@ impl Operation {
             Operation::SendFilterClear => vec![Variable::Connection],
             Operation::SendCompactBlock => vec![Variable::Connection, Variable::ConstCmpctBlock],
 
-            Operation::Probe => vec![Variable::Connection],
+            Operation::EnableProbe => vec![],
+            Operation::DisableProbe => vec![],
             // Operations with no inputs
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -903,7 +908,8 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
-            | Operation::Probe => vec![],
+            | Operation::EnableProbe
+            | Operation::DisableProbe => vec![],
         }
     }
 }

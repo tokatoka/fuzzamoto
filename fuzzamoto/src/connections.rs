@@ -183,6 +183,24 @@ impl<T: Transport> Connection<T> {
         Ok(())
     }
 
+    fn wait_for_message_and_pong(&mut self, nonce: u64) -> Result<Vec<(String, Vec<u8>)>, String> {
+        let mut ret = Vec::new();
+        loop {
+            let received = self.transport.receive()?;
+            if received.0 == "pong" && received.1.len() == 8 && received.1 == nonce.to_le_bytes() {
+                // end of the message
+                break;
+            } else {
+                // this is the message that we've been waiting for!
+                // but ignore pong cuz it's not interesting
+                if received.0 != "pong" {
+                    ret.push(received);
+                }
+            }
+        }
+        Ok(ret)
+    }
+
     pub fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
         self.transport.send(message)
     }
@@ -207,6 +225,19 @@ impl<T: Transport> Connection<T> {
         self.send_ping(self.ping_counter)?;
         self.wait_for_pong(self.ping_counter)?;
         Ok(())
+    }
+
+    pub fn send_and_recv(
+        &mut self,
+        message: &(String, Vec<u8>),
+    ) -> Result<Vec<(String, Vec<u8>)>, String> {
+        self.transport.send(message)?;
+        // Sending two pings back-to-back, requires that the node calls `ProcessMessage` twice, and
+        // thus ensures `SendMessages` must have been called at least once
+        self.send_ping(0x0)?;
+        self.ping_counter += 1;
+        self.send_ping(self.ping_counter)?;
+        self.wait_for_message_and_pong(self.ping_counter)
     }
 
     pub fn set_timeout(&mut self, timeout: core::time::Duration) -> Result<(), String> {
