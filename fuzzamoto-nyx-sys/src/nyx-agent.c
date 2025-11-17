@@ -137,12 +137,16 @@ void nyx_dump_file_to_host(const char *file_name, size_t file_name_len,
 }
 
 void nyx_println(const char *message, size_t message_len) {
-  assert(message_len < HPRINTF_MAX_SIZE);
-  // Subtract one to accomodate the line ending
-  char message_copy[HPRINTF_MAX_SIZE - 1];
-  memset(message_copy, 0, sizeof(message_copy));
-  memcpy(message_copy, message, message_len);
-  hprintf("%s\n", message_copy);
+    // Clamp to HPRINTF_MAX_SIZE - 1 to leave room for '\0'
+    size_t size = message_len;
+    if (size >= HPRINTF_MAX_SIZE) {
+      // Subtract one to accomodate the line ending
+      size = HPRINTF_MAX_SIZE - 1;
+    }
+    char message_copy[HPRINTF_MAX_SIZE];
+    memset(message_copy, 0, sizeof(message_copy));
+    memcpy(message_copy, message, size);
+    hprintf("%s\n", message_copy);
 }
 
 /** Copy the next fuzz input into `data` and return the new size of the input.

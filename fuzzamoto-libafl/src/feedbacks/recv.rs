@@ -48,7 +48,7 @@ where
         _state: &mut S,
         _manager: &mut EM,
         _input: &IrInput,
-        _observers: &OT,
+        observers: &OT,
         _exit_kind: &ExitKind,
     ) -> Result<bool, Error> {
         let observer = observers
@@ -73,13 +73,15 @@ where
                     serde_json::from_slice::<(usize, String, Vec<u8>)>(&chunk)
                 {
                     log::info!(
-                        "From {:?}, command: {:?}, payload: {:?}",
+                        "Command received. From {:?}, command: {:?}, payload: {:?}",
                         conn,
                         command,
                         payload
                     );
                 } else {
-                    log::info!("Failed to deserialize {:?}", chunk);
+                    // for some reason, I cannot receive more than 2686 bytes... (limitation from nyx side?)
+                    // but the target does send us more bytes than that, in that case just print into the log
+                    log::info!("Failed to deserialize payload (size: {})", chunk.len());
                 }
             }
         }

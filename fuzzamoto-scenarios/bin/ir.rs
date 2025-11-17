@@ -47,9 +47,10 @@ struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
 
 #[cfg(feature = "nyx")]
 pub fn nyx_print(bytes: &[u8]) {
-    let message = CString::new(bytes).expect("CString::new failed");
-    unsafe {
-        nyx_println(message.as_ptr(), bytes.len());
+    if let Ok(message) = CString::new(bytes) {
+        unsafe {
+            nyx_println(message.as_ptr(), bytes.len());
+        }
     }
 }
 
