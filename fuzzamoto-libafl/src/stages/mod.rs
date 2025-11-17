@@ -20,9 +20,7 @@ use libafl::{
     feedbacks::MapNoveltiesMetadata,
     inputs::Input,
     observers::{CanTrack, MapObserver, ObserversTuple},
-    stages::{
-        Restartable, Stage,
-    },
+    stages::{Restartable, Stage},
     state::{HasCorpus, HasCurrentTestcase},
 };
 use libafl_bolts::tuples::Handle;

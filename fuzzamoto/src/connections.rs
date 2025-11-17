@@ -172,7 +172,11 @@ impl<T: Transport> Connection<T> {
         Ok(())
     }
 
-    fn wait_for_pong(&mut self, nonce: u64, logging: bool) -> Result<Vec<(String, Vec<u8>)>, String> {
+    fn wait_for_pong(
+        &mut self,
+        nonce: u64,
+        logging: bool,
+    ) -> Result<Vec<(String, Vec<u8>)>, String> {
         let mut ret = Vec::new();
         loop {
             let received = self.transport.receive()?;
@@ -203,11 +207,18 @@ impl<T: Transport> Connection<T> {
         Ok(())
     }
 
-    pub fn send_and_ping(&mut self, message: &(String, Vec<u8>)) ->  Result<Vec<(String, Vec<u8>)>, String> {
+    pub fn send_and_ping(
+        &mut self,
+        message: &(String, Vec<u8>),
+    ) -> Result<Vec<(String, Vec<u8>)>, String> {
         self.send_and_recv(message, false)
     }
 
-    pub fn send_and_recv(&mut self, message: &(String, Vec<u8>), logging: bool) ->  Result<Vec<(String, Vec<u8>)>, String> {
+    pub fn send_and_recv(
+        &mut self,
+        message: &(String, Vec<u8>),
+        logging: bool,
+    ) -> Result<Vec<(String, Vec<u8>)>, String> {
         self.transport.send(message)?;
         // Sending two pings back-to-back, requires that the node calls `ProcessMessage` twice, and
         // thus ensures `SendMessages` must have been called at least once
