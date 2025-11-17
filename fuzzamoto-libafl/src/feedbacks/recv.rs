@@ -1,15 +1,18 @@
 use crate::input::IrInput;
+use bitcoin::consensus::Decodable;
+use bitcoin::hashes::Hash;
 use libafl::{
     HasMetadata,
-    corpus::Testcase,
+    corpus::{Corpus, CorpusId, Testcase},
     executors::ExitKind,
     feedbacks::{Feedback, StateInitializer},
     observers::StdOutObserver,
     state::HasCorpus,
 };
-use libafl_bolts::Error;
-use libafl_bolts::Named;
+use libafl_bolts::{Error, Named, impl_serdeany};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use libafl_bolts::tuples::{Handle, Handled, MatchName, MatchNameRef};
 /// Module to parse the message sent from the other node
@@ -35,6 +38,57 @@ impl Named for RecvFeedback {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BlockTransactionsRequest {
+    hash: [u8; 32],
+    indexes: Vec<u64>,
+}
+
+impl From<bitcoin::bip152::BlockTransactionsRequest> for BlockTransactionsRequest {
+    fn from(value: bitcoin::bip152::BlockTransactionsRequest) -> Self {
+        Self {
+            hash: value.block_hash.as_raw_hash().to_byte_array(),
+            indexes: value.indexes,
+        }
+    }
+}
+
+/// Runtime metadata for fuzzamoto. This data is changed at runtime in response to the harness execution during fuzzing
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RuntimeMetadata {
+    // TODO: Add stuff..
+    block_tx_request: HashMap<CorpusId, BlockTransactionsRequest>,
+}
+
+impl_serdeany!(RuntimeMetadata);
+
+/// Parse the incoming message from the other peer and process it
+pub fn process_command<S>(state: &mut S, command: &str, payload: &[u8]) -> Result<(), Error>
+where
+    S: HasMetadata + HasCorpus<IrInput>,
+{
+    match command {
+        "getblocktxn" => {
+            let req =
+                bitcoin::bip152::BlockTransactionsRequest::consensus_decode_from_finite_reader(
+                    &mut std::io::Cursor::new(payload),
+                )
+                .unwrap();
+            let btr: BlockTransactionsRequest = req.into();
+            let current = *state.corpus().current();
+            if let Some(cur) = current
+                && let Ok(meta) = state.metadata_mut::<RuntimeMetadata>()
+            {
+                meta.block_tx_request.insert(cur, btr);
+            }
+        }
+        _ => {
+            // if we want to add handling for other messages, add it here.
+        }
+    }
+    Ok(())
+}
+
 impl<S> StateInitializer<S> for RecvFeedback {}
 
 impl<EM, OT, S> Feedback<EM, IrInput, OT, S> for RecvFeedback
@@ -45,7 +99,7 @@ where
     #[inline]
     fn is_interesting(
         &mut self,
-        _state: &mut S,
+        state: &mut S,
         _manager: &mut EM,
         _input: &IrInput,
         observers: &OT,
@@ -72,6 +126,7 @@ where
                 if let Ok((conn, command, payload)) =
                     serde_json::from_slice::<(usize, String, Vec<u8>)>(&chunk)
                 {
+                    process_command(state, &command, &payload)?;
                     log::info!(
                         "Command received. From {:?}, command: {:?}, payload: {:?}",
                         conn,

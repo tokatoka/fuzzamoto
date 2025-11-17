@@ -2,6 +2,7 @@ use crate::input::IrInput;
 use fuzzamoto_ir::{Instruction, Operation, ProbeOperation};
 use libafl::{
     HasMetadata,
+    corpus::{Corpus, CorpusId},
     executors::Executor,
     fuzzer::Evaluator,
     stages::{
@@ -10,12 +11,17 @@ use libafl::{
     },
     state::{HasCorpus, HasCurrentTestcase},
 };
+use std::collections::HashSet;
 
-pub struct ProbingStage {}
+pub struct ProbingStage {
+    seen: HashSet<CorpusId>,
+}
 
 impl ProbingStage {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            seen: HashSet::new(),
+        }
     }
 }
 
@@ -36,6 +42,14 @@ where
         let Ok(mut input) = IrInput::try_transform_from(&mut testcase, state) else {
             return Ok(());
         };
+        let cur = state
+            .corpus()
+            .current()
+            .expect("CorpusId should be available during stage execution");
+
+        if self.seen.contains(&cur) {
+            return Ok(());
+        }
 
         // adding probing operation to the beginning and to the end of the instructions
         let mut builder = fuzzamoto_ir::ProgramBuilder::new(input.ir().context.clone());
@@ -62,10 +76,11 @@ where
         *input.ir_mut() = new_program;
         let (untransformed, post) = input.try_transform_into(state)?;
         // this will automatically put metadata into the feedback
-        log::info!("Doing Probing");
+        log::info!("Doing Probing for testcase {:?}", cur);
         let (_, corpus_id) = fuzzer.evaluate_filtered(state, executor, manager, &untransformed)?;
         post.post_exec(state, corpus_id)?;
-
+        log::info!("Done Probing for testcase {:?}", cur);
+        self.seen.insert(cur);
         Ok(())
     }
 }
