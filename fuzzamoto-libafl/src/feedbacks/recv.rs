@@ -51,6 +51,7 @@ where
         observers: &OT,
         _exit_kind: &ExitKind,
     ) -> Result<bool, Error> {
+        /*
         let observer = observers
             .get(&self.o_ref)
             .ok_or(Error::illegal_state("StdOutObserver is missing"))?;
@@ -69,16 +70,17 @@ where
                 if chunk.is_empty() {
                     continue;
                 }
-                if let Ok((command, payload)) = serde_json::from_slice::<(String, Vec<u8>)>(&chunk)
+                if let Ok((conn, command, payload)) = serde_json::from_slice::<(usize, String, Vec<u8>)>(&chunk)
                 {
-                    log::info!("Yay command: {:?}, payload: {:?}", command, payload);
+                    log::info!("From {:?}, command: {:?}, payload: {:?}", conn, command, payload);
                 } else {
                     log::info!("Failed to deserialize {:?}", chunk);
                 }
             }
         }
-
+        */
         Ok(false)
+        
     }
 
     fn append_metadata(

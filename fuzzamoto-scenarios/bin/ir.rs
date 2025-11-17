@@ -26,7 +26,6 @@ use fuzzamoto_ir::{
     compiler::{CompiledAction, CompiledProgram, Compiler},
 };
 
-use std::collections::HashMap;
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
 const LATE_BLOCK_HEIGHT_LIMIT: u32 = 199;
 const COINBASE_VALUE: u64 = 25 * 100_000_000;
@@ -41,7 +40,7 @@ const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
 struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
     logging: bool,
-    received: Vec<(String, Vec<u8>)>,
+    received: Vec<(usize, String, Vec<u8>)>,
     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
 }
@@ -217,13 +216,19 @@ where
                     let dst = from % num_connections;
 
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
-                        if self.logging {
-                            if let Ok(received) = connection.send_and_recv(&(command, message)) {
-                                log::info!("We've received {:?}", received);
-                                self.received.extend(received);
+                        if cfg!(feature = "force_send_and_ping") {
+                            if self.logging {
+                                if let Ok(received) =
+                                    connection.send_and_recv(&(command, message), true)
+                                {
+                                    log::info!("We've received {:?}", received);
+                                    self.received.extend(
+                                        received.into_iter().map(|(s, bytes)| (dst, s, bytes)),
+                                    );
+                                }
+                            } else {
+                                let _ = connection.send_and_ping(&(command, message));
                             }
-                        } else if cfg!(feature = "force_send_and_ping") {
-                            let _ = connection.send_and_ping(&(command, message));
                         } else {
                             let _ = connection.send(&(command, message));
                         }
@@ -247,8 +252,8 @@ where
         }
     }
 
-    #[cfg(feature = "nyx")]
     fn print_received(&mut self) {
+        #[cfg(feature = "nyx")]
         for message in &self.received {
             if let Ok(bytes) = serde_json::to_vec(message) {
                 nyx_print(&bytes);
@@ -337,7 +342,6 @@ where
     fn run(&mut self, testcase: TestCase) -> ScenarioResult {
         self.process_actions(testcase.program.actions);
         self.ping_connections();
-        #[cfg(feature = "nyx")]
         self.print_received();
         self.evaluate_oracles()
     }

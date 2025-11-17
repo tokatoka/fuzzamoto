@@ -144,8 +144,7 @@ impl Instruction {
             | Operation::EndBuildFilterLoad
             | Operation::BeginBuildCmpctBlock
             | Operation::EndBuildCmpctBlock
-            | Operation::EnableProbe
-            | Operation::DisableProbe => false,
+            | Operation::Probe(_) => false,
         }
     }
 

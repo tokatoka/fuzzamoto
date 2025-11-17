@@ -1,10 +1,9 @@
-use std::{any::Any, time::Duration};
-
+use crate::ProbeOperation;
 use bitcoin::{
     Amount, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script, ScriptBuf,
     Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
     absolute::LockTime,
-    bip152::{HeaderAndShortIds, PrefilledTransaction, ShortId},
+    bip152::HeaderAndShortIds,
     consensus::Encodable,
     ecdsa,
     hashes::{Hash, serde_macros::serde_details::SerdeHash, sha256},
@@ -21,6 +20,7 @@ use bitcoin::{
     sighash::SighashCache,
     transaction,
 };
+use std::{any::Any, time::Duration};
 
 use crate::{Instruction, Operation, Program, bloom::filter_insert, generators::block::Header};
 
@@ -252,7 +252,7 @@ impl Compiler {
                     self.handle_message_sending_operations(&instruction)?;
                 }
 
-                Operation::EnableProbe | Operation::DisableProbe => {
+                Operation::Probe(_) => {
                     self.handle_probe_operations(&instruction)?;
                 }
             }
@@ -830,12 +830,14 @@ impl Compiler {
 
     fn handle_probe_operations(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
         match &instruction.operation {
-            Operation::EnableProbe => {
-                self.emit_enable_logging_message();
-            }
-            Operation::DisableProbe => {
-                self.emit_disable_logging_message();
-            }
+            Operation::Probe(op) => match op {
+                ProbeOperation::EnableRecv => {
+                    self.emit_enable_logging_message();
+                }
+                ProbeOperation::DisableRecv => {
+                    self.emit_disable_logging_message();
+                }
+            },
             _ => unreachable!("Non probing operation passed to handle_probe_operations"),
         }
 

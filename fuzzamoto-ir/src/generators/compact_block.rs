@@ -2,7 +2,7 @@ use crate::{
     Instruction, Operation, Variable,
     generators::{Generator, ProgramBuilder},
 };
-use rand::{Rng, RngCore, seq::SliceRandom};
+use rand::{Rng, RngCore};
 
 use super::{GeneratorError, GeneratorResult};
 

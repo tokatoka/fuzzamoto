@@ -284,7 +284,15 @@ where
             (
                 1000.0,
                 IrGenerator::new(BlockGenerator::default(), rng.clone())
-            )
+            ),
+            (
+                1000.0,
+                IrGenerator::new(SingleTxGenerator::default(), rng.clone())
+            ),
+            (
+                1000.0,
+                IrGenerator::new(OneParentOneChildGenerator::default(), rng.clone())
+            ),  
         ];
 
         let mutator = TuneableScheduledMutator::new(&mut state, mutations);

@@ -3,6 +3,22 @@ use crate::{ProgramValidationError, Variable};
 use std::{fmt, time::Duration};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Hash)]
+pub enum ProbeOperation {
+    EnableRecv,
+    DisableRecv,
+}
+
+impl fmt::Display for ProbeOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ProbeOperation::EnableRecv => "EnableRecv",
+            ProbeOperation::DisableRecv => "DisableRecv",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Hash)]
 pub enum Operation {
     /// No operation (used for minimization)
     Nop {
@@ -127,8 +143,7 @@ pub enum Operation {
     AddBlockWithWitnessInv, // Block by hash with witness
     AddFilteredBlockInv,    // SPV proof by block hash for txs matching filter
 
-    EnableProbe,
-    DisableProbe,
+    Probe(ProbeOperation),
 
     /// Message sending
     SendGetData,
@@ -311,8 +326,7 @@ impl fmt::Display for Operation {
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
             Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
 
-            Operation::EnableProbe => write!(f, "EnableProbe"),
-            Operation::DisableProbe => write!(f, "DisableProbe"),
+            Operation::Probe(op) => write!(f, "Probe({})", op),
         }
     }
 }
@@ -428,8 +442,7 @@ impl Operation {
             | Operation::SendFilterClear
             | Operation::SendBlockNoWit
             | Operation::SendCompactBlock
-            | Operation::EnableProbe
-            | Operation::DisableProbe => false,
+            | Operation::Probe(_) => false,
         }
     }
 
@@ -539,8 +552,7 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
-            | Operation::EnableProbe
-            | Operation::DisableProbe => false,
+            | Operation::Probe(_) => false,
         }
     }
 
@@ -675,7 +687,7 @@ impl Operation {
             Operation::SendFilterClear => vec![],
             Operation::SendCompactBlock => vec![],
 
-            Operation::EnableProbe | Operation::DisableProbe => vec![],
+            Operation::Probe(_) => vec![],
         }
     }
 
@@ -785,8 +797,7 @@ impl Operation {
             Operation::SendFilterClear => vec![Variable::Connection],
             Operation::SendCompactBlock => vec![Variable::Connection, Variable::ConstCmpctBlock],
 
-            Operation::EnableProbe => vec![],
-            Operation::DisableProbe => vec![],
+            Operation::Probe(_) => vec![],
             // Operations with no inputs
             Operation::Nop { .. }
             | Operation::LoadBytes(_)
@@ -908,8 +919,7 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
-            | Operation::EnableProbe
-            | Operation::DisableProbe => vec![],
+            | Operation::Probe(_) => vec![],
         }
     }
 }
