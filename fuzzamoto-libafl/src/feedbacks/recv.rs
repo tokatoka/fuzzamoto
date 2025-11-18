@@ -1,6 +1,7 @@
 use crate::input::IrInput;
 use bitcoin::consensus::Decodable;
 use bitcoin::hashes::Hash;
+use fuzzamoto_ir::generators::compact_block::BlockTransactionsRequestRecved;
 use libafl::{
     HasMetadata,
     corpus::{Corpus, CorpusId, Testcase},
@@ -38,32 +39,22 @@ impl Named for RecvFeedback {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BlockTransactionsRequest {
-    hash: [u8; 32],
-    indexes: Vec<u64>,
-}
-
-impl From<bitcoin::bip152::BlockTransactionsRequest> for BlockTransactionsRequest {
-    fn from(value: bitcoin::bip152::BlockTransactionsRequest) -> Self {
-        Self {
-            hash: value.block_hash.as_raw_hash().to_byte_array(),
-            indexes: value.indexes,
-        }
-    }
-}
-
 /// Runtime metadata for fuzzamoto. This data is changed at runtime in response to the harness execution during fuzzing
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RuntimeMetadata {
     // TODO: Add stuff..
-    block_tx_request: HashMap<CorpusId, BlockTransactionsRequest>,
+    block_tx_request: HashMap<CorpusId, Vec<BlockTransactionsRequestRecved>>,
 }
 
 impl_serdeany!(RuntimeMetadata);
 
 /// Parse the incoming message from the other peer and process it
-pub fn process_command<S>(state: &mut S, command: &str, payload: &[u8]) -> Result<(), Error>
+pub fn process_command<S>(
+    state: &mut S,
+    conn: usize,
+    command: &str,
+    payload: &[u8],
+) -> Result<(), Error>
 where
     S: HasMetadata + HasCorpus<IrInput>,
 {
@@ -74,12 +65,12 @@ where
                     &mut std::io::Cursor::new(payload),
                 )
                 .unwrap();
-            let btr: BlockTransactionsRequest = req.into();
+            let btr = BlockTransactionsRequestRecved::new(conn, req);
             let current = *state.corpus().current();
             if let Some(cur) = current
                 && let Ok(meta) = state.metadata_mut::<RuntimeMetadata>()
             {
-                meta.block_tx_request.insert(cur, btr);
+                meta.block_tx_request.entry(cur).or_default().push(btr);
             }
         }
         _ => {
@@ -126,7 +117,7 @@ where
                 if let Ok((conn, command, payload)) =
                     serde_json::from_slice::<(usize, String, Vec<u8>)>(&chunk)
                 {
-                    process_command(state, &command, &payload)?;
+                    process_command(state, conn, &command, &payload)?;
                     log::info!(
                         "Command received. From {:?}, command: {:?}, payload: {:?}",
                         conn,
@@ -136,6 +127,7 @@ where
                 } else {
                     // for some reason, I cannot receive more than 2686 bytes... (limitation from nyx side?)
                     // but the target does send us more bytes than that, in that case just print into the log
+                    // (i can't do anything if nyx doesn't print it)
                     log::info!("Failed to deserialize payload (size: {})", chunk.len());
                 }
             }

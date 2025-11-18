@@ -99,6 +99,8 @@ impl Instruction {
             | Operation::LoadPrefill { .. }
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
+            | Operation::LoadBlockTxnRequestVec { .. }
+            | Operation::BuildBIP152BlockTxReq
             | Operation::AddWitness
             | Operation::SendTx
             | Operation::SendTxNoWit
@@ -125,6 +127,7 @@ impl Instruction {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
+            | Operation::SendBlockTxn
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }

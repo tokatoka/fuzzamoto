@@ -1,4 +1,6 @@
-use crate::{ProgramValidationError, Variable};
+use crate::{
+    ProgramValidationError, Variable, generators::compact_block::BlockTransactionsRequestRecved,
+};
 
 use std::{fmt, time::Duration};
 
@@ -132,6 +134,11 @@ pub enum Operation {
     BuildBlock,
     AddTx,
 
+    LoadBlockTxnRequestVec {
+        vec: Vec<BlockTransactionsRequestRecved>,
+    },
+    BuildBIP152BlockTxReq,
+
     /// Inventory building
     BeginBuildInventory,
     EndBuildInventory,
@@ -159,10 +166,11 @@ pub enum Operation {
     SendFilterLoad,
     SendFilterAdd,
     SendFilterClear,
-    SendCompactBlock, // TODO: SendGetBlockTxn
-                      // TODO: SendBlockTxn
-                      // TODO: SendGetBlocks
-                      // TODO: SendGetHeaders
+    SendCompactBlock,
+    SendBlockTxn, // TODO: SendGetBlockTxn
+                  // TODO: SendBlockTxn
+                  // TODO: SendGetBlocks
+                  // TODO: SendGetHeaders
 }
 
 impl fmt::Display for Operation {
@@ -275,6 +283,11 @@ impl fmt::Display for Operation {
             Operation::LoadPrefill { prefill } => {
                 write!(f, "LoadPrefill({:?})", prefill)
             }
+            Operation::LoadBlockTxnRequestVec { vec } => {
+                write!(f, "LoadBlockTxnRequestVec({:?})", vec)
+            }
+            Operation::BuildBIP152BlockTxReq => write!(f, "BuildBIP152BlockTxReq"),
+
             Operation::BeginBuildFilterLoad => write!(f, "BeginBuildFilterLoad"),
             Operation::EndBuildFilterLoad => write!(f, "EndBuildFilterLoad"),
             Operation::AddTxToFilter => write!(f, "AddTxToFilter"),
@@ -325,7 +338,7 @@ impl fmt::Display for Operation {
             Operation::SendFilterAdd => write!(f, "SendFilterAdd"),
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
             Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
-
+            Operation::SendBlockTxn => write!(f, "SendBlockTxn"),
             Operation::Probe(op) => write!(f, "Probe({})", op),
         }
     }
@@ -408,8 +421,10 @@ impl Operation {
             | Operation::BuildFilterAddFromTxo
             | Operation::LoadNonce(..)
             | Operation::LoadPrefill { .. }
+            | Operation::LoadBlockTxnRequestVec { .. }
             | Operation::EndBuildCmpctBlock
             | Operation::EndBuildTx
+            | Operation::BuildBIP152BlockTxReq
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
             | Operation::EndBuildInventory
@@ -442,6 +457,7 @@ impl Operation {
             | Operation::SendFilterClear
             | Operation::SendBlockNoWit
             | Operation::SendCompactBlock
+            | Operation::SendBlockTxn
             | Operation::Probe(_) => false,
         }
     }
@@ -513,6 +529,8 @@ impl Operation {
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadNonce(..)
             | Operation::LoadPrefill { .. }
+            | Operation::LoadBlockTxnRequestVec { .. }
+            | Operation::BuildBIP152BlockTxReq
             | Operation::BeginBuildTx
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildTxOutputs
@@ -552,6 +570,7 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
+            | Operation::SendBlockTxn
             | Operation::Probe(_) => false,
         }
     }
@@ -633,6 +652,7 @@ impl Operation {
             Operation::LoadSigHashFlags(..) => vec![Variable::SigHashFlags],
             Operation::LoadNonce(..) => vec![Variable::Nonce],
             Operation::LoadPrefill { .. } => vec![Variable::Prefill],
+            Operation::LoadBlockTxnRequestVec { .. } => vec![Variable::BlockTxnRequestVec],
             Operation::BeginBuildTx => vec![],
             Operation::EndBuildTx => vec![Variable::ConstTx],
             Operation::BeginBuildTxInputs => vec![],
@@ -641,6 +661,8 @@ impl Operation {
             Operation::EndBuildTxOutputs => vec![Variable::ConstTxOutputs],
             Operation::AddTxInput => vec![],
             Operation::AddTxOutput => vec![],
+
+            Operation::BuildBIP152BlockTxReq => vec![Variable::BIP152BlockTxReq],
 
             Operation::BeginBuildFilterLoad => vec![Variable::MutFilterLoad],
             Operation::AddTxToFilter => vec![],
@@ -686,7 +708,7 @@ impl Operation {
             Operation::SendFilterAdd => vec![],
             Operation::SendFilterClear => vec![],
             Operation::SendCompactBlock => vec![],
-
+            Operation::SendBlockTxn => vec![],
             Operation::Probe(_) => vec![],
         }
     }
@@ -776,6 +798,19 @@ impl Operation {
                 Variable::CompactFilterType,
                 Variable::Header,
             ],
+            Operation::SendBlockTxn => vec![
+                Variable::Connection,
+                Variable::Block,
+                Variable::BIP152BlockTxReq,
+            ],
+
+            Operation::BuildBIP152BlockTxReq => {
+                vec![
+                    Variable::Connection,
+                    Variable::Block,
+                    Variable::BlockTxnRequestVec,
+                ]
+            }
 
             Operation::BeginBuildFilterLoad => vec![Variable::ConstFilterLoad],
             Operation::AddTxToFilter => vec![Variable::MutFilterLoad, Variable::ConstTx],
@@ -823,6 +858,7 @@ impl Operation {
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadNonce(..)
             | Operation::LoadPrefill { .. }
+            | Operation::LoadBlockTxnRequestVec { .. }
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildInventory
             | Operation::BeginBlockTransactions
@@ -885,6 +921,8 @@ impl Operation {
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadNonce(..)
             | Operation::LoadPrefill { .. }
+            | Operation::LoadBlockTxnRequestVec { .. }
+            | Operation::BuildBIP152BlockTxReq
             | Operation::EndBuildCmpctBlock
             | Operation::EndBuildTx
             | Operation::EndBuildTxInputs
@@ -919,6 +957,7 @@ impl Operation {
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
+            | Operation::SendBlockTxn
             | Operation::Probe(_) => vec![],
         }
     }

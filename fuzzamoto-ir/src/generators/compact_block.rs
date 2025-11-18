@@ -1,17 +1,47 @@
+use super::{GeneratorError, GeneratorResult};
 use crate::{
     Instruction, Operation, Variable,
     generators::{Generator, ProgramBuilder},
 };
+use bitcoin::hashes::Hash;
 use rand::{Rng, RngCore};
 
-use super::{GeneratorError, GeneratorResult};
+// I need to define this because bitcoin crate's one doesn't implement serialize and deserialize
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, Hash)]
+pub struct BlockTransactionsRequestRecved {
+    conn: usize,
+    hash: [u8; 32],
+    indexes: Vec<u64>,
+}
+
+impl BlockTransactionsRequestRecved {
+    pub fn new(conn: usize, value: bitcoin::bip152::BlockTransactionsRequest) -> Self {
+        Self {
+            conn,
+            hash: value.block_hash.as_raw_hash().to_byte_array(),
+            indexes: value.indexes,
+        }
+    }
+
+    pub fn conn(&self) -> usize {
+        self.conn
+    }
+
+    pub fn hash(&self) -> &[u8; 32] {
+        &self.hash
+    }
+
+    pub fn indexes(&self) -> &[u64] {
+        &self.indexes
+    }
+}
 
 /// `CompactFilterQueryGenerator` generates a new `SendGetCFilters`, `SendGetCFHeaders` or
 /// `SendGetCFCheckpt` instruction into a global context.
 #[derive(Debug, Default)]
 pub struct CompactBlockGenerator;
 
-const MAX_TX_SIZE: usize = 32;
+const MAX_TX_SIZE: usize = 2048;
 
 impl<R: RngCore> Generator<R> for CompactBlockGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
@@ -44,7 +74,7 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
 
         let sz = rng.gen_range(0..=MAX_TX_SIZE);
         let mut prefill_vec: Vec<usize> = vec![];
-        for _ in 0..sz {
+        for _ in 0..32 {
             prefill_vec.push(rng.gen_range(0..=MAX_TX_SIZE));
         }
 

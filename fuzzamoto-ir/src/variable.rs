@@ -54,4 +54,7 @@ pub enum Variable {
     MutFilterLoad, // Mutable filter (under construction)
     ConstFilterLoad,
     FilterAdd,
+
+    BlockTxnRequestVec,
+    BIP152BlockTxReq,
 }

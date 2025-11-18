@@ -1,9 +1,9 @@
 use crate::ProbeOperation;
 use bitcoin::{
-    Amount, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script, ScriptBuf,
-    Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
+    Amount, BlockHash, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script,
+    ScriptBuf, Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
     absolute::LockTime,
-    bip152::HeaderAndShortIds,
+    bip152::{BlockTransactions, BlockTransactionsRequest, HeaderAndShortIds},
     consensus::Encodable,
     ecdsa,
     hashes::{Hash, serde_macros::serde_details::SerdeHash, sha256},
@@ -22,7 +22,11 @@ use bitcoin::{
 };
 use std::{any::Any, time::Duration};
 
-use crate::{Instruction, Operation, Program, bloom::filter_insert, generators::block::Header};
+use crate::{
+    Instruction, Operation, Program,
+    bloom::filter_insert,
+    generators::{block::Header, compact_block::BlockTransactionsRequestRecved},
+};
 
 /// `Compiler` is responsible for compiling IR into a sequence of low-level actions to be performed
 /// on a node (i.e. mapping `fuzzamoto_ir::Program` -> `CompiledProgram`).
@@ -165,7 +169,8 @@ impl Compiler {
                 | Operation::LoadFilterLoad { .. }
                 | Operation::LoadFilterAdd { .. }
                 | Operation::LoadNonce(..)
-                | Operation::LoadPrefill { .. } => {
+                | Operation::LoadPrefill { .. }
+                | Operation::LoadBlockTxnRequestVec { .. } => {
                     self.handle_load_operations(&instruction)?;
                 }
 
@@ -209,6 +214,10 @@ impl Compiler {
                     self.handle_script_building_operations(&instruction)?;
                 }
 
+                Operation::BuildBIP152BlockTxReq => {
+                    self.handle_bip152_blocktx_operations(&instruction)?;
+                }
+
                 Operation::BuildFilterAddFromTx
                 | Operation::BuildFilterAddFromTxo
                 | Operation::AddTxToFilter
@@ -248,7 +257,8 @@ impl Compiler {
                 | Operation::SendFilterLoad
                 | Operation::SendFilterAdd
                 | Operation::SendFilterClear
-                | Operation::SendCompactBlock => {
+                | Operation::SendCompactBlock
+                | Operation::SendBlockTxn => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
 
@@ -336,6 +346,38 @@ impl Compiler {
                 inventory_var.push(inv);
             }
             _ => unreachable!("Non-inventory operation passed to handle_inventory_operations"),
+        }
+        Ok(())
+    }
+
+    fn handle_bip152_blocktx_operations(
+        &mut self,
+        instruction: &Instruction,
+    ) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::BuildBIP152BlockTxReq => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?.clone();
+                let reqs = self
+                    .get_input_mut::<Vec<BlockTransactionsRequestRecved>>(&instruction.inputs, 2)?
+                    .clone();
+                let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 1)?;
+
+                let mut blocktxn_req = BlockTransactionsRequest {
+                    block_hash: block.block_hash(),
+                    indexes: vec![],
+                };
+                for req in reqs {
+                    if connection_var == req.conn()
+                        && block.block_hash().as_raw_hash().as_byte_array() == req.hash()
+                    {
+                        // bingo we send this
+                        blocktxn_req.indexes.extend(req.indexes());
+                    }
+                }
+
+                self.append_variable(blocktxn_req);
+            }
+            _ => unreachable!("Non-bip152 blocktx operation passed to handle_witness_operations"),
         }
         Ok(())
     }
@@ -670,6 +712,16 @@ impl Compiler {
         instruction: &Instruction,
     ) -> Result<(), CompilerError> {
         match &instruction.operation {
+            Operation::SendBlockTxn => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 1)?;
+                let req = self
+                    .get_input::<BlockTransactionsRequest>(&instruction.inputs, 2)?
+                    .clone();
+                if let Ok(blocktxn) = BlockTransactions::from_request(&req, block) {
+                    self.emit_send_message(*connection_var, "blocktxn", &blocktxn);
+                }
+            }
             Operation::SendRawMessage => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
                 let message_type_var = self.get_input::<[char; 12]>(&instruction.inputs, 1)?;
@@ -946,6 +998,9 @@ impl Compiler {
             Operation::LoadNonce(nonce) => self.handle_load_operation(*nonce),
             Operation::LoadPrefill { prefill } => {
                 self.handle_load_operation(prefill.clone());
+            }
+            Operation::LoadBlockTxnRequestVec { vec } => {
+                self.handle_load_operation(vec.clone());
             }
             _ => unreachable!("Non-load operation passed to handle_load_operations"),
         }
