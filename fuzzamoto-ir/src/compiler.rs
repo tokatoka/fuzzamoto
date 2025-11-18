@@ -1,7 +1,7 @@
 use crate::ProbeOperation;
 use bitcoin::{
-    Amount, BlockHash, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script,
-    ScriptBuf, Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
+    Amount, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script, ScriptBuf,
+    Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
     absolute::LockTime,
     bip152::{BlockTransactions, BlockTransactionsRequest, HeaderAndShortIds},
     consensus::Encodable,

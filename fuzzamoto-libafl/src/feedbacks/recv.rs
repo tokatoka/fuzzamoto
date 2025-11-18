@@ -1,6 +1,5 @@
 use crate::input::IrInput;
 use bitcoin::consensus::Decodable;
-use bitcoin::hashes::Hash;
 use fuzzamoto_ir::generators::compact_block::BlockTransactionsRequestRecved;
 use libafl::{
     HasMetadata,
@@ -43,7 +42,13 @@ impl Named for RecvFeedback {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RuntimeMetadata {
     // TODO: Add stuff..
-    block_tx_request: HashMap<CorpusId, fuzzamoto_ir::PerTestcaseMetadata>,
+    metadatas: HashMap<CorpusId, fuzzamoto_ir::PerTestcaseMetadata>,
+}
+
+impl RuntimeMetadata {
+    pub fn metadata(&self, id: CorpusId) -> Option<&fuzzamoto_ir::PerTestcaseMetadata> {
+        self.metadatas.get(&id)
+    }
 }
 
 impl_serdeany!(RuntimeMetadata);
@@ -70,7 +75,7 @@ where
             if let Some(cur) = current
                 && let Ok(meta) = state.metadata_mut::<RuntimeMetadata>()
             {
-                let txvec = meta.block_tx_request.entry(cur).or_default();
+                let txvec = meta.metadatas.entry(cur).or_default();
                 txvec.add_block_tx_request(btr);
             }
         }

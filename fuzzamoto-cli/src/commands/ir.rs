@@ -127,12 +127,10 @@ pub fn generate_ir(
             }
 
             let variable_threshold = builder.variable_count();
-            let meta = PerTestcaseMetadata::default();
-            if let Err(_) =
-                generators
-                    .choose(&mut rng)
-                    .unwrap()
-                    .generate(&mut builder, &mut rng, &meta)
+            if let Err(_) = generators
+                .choose(&mut rng)
+                .unwrap()
+                .generate(&mut builder, &mut rng)
             {
                 continue;
             }
