@@ -43,7 +43,7 @@ impl Named for RecvFeedback {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RuntimeMetadata {
     // TODO: Add stuff..
-    block_tx_request: HashMap<CorpusId, Vec<BlockTransactionsRequestRecved>>,
+    block_tx_request: HashMap<CorpusId, fuzzamoto_ir::PerTestcaseMetadata>,
 }
 
 impl_serdeany!(RuntimeMetadata);
@@ -70,7 +70,8 @@ where
             if let Some(cur) = current
                 && let Ok(meta) = state.metadata_mut::<RuntimeMetadata>()
             {
-                meta.block_tx_request.entry(cur).or_default().push(btr);
+                let txvec = meta.block_tx_request.entry(cur).or_default();
+                txvec.add_block_tx_request(btr);
             }
         }
         _ => {

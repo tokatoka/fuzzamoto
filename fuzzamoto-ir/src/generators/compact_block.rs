@@ -72,7 +72,6 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
             .pop()
             .expect("BeginBuildCmpctBlock should always produce a var");
 
-        let sz = rng.gen_range(0..=MAX_TX_SIZE);
         let mut prefill_vec: Vec<usize> = vec![];
         for _ in 0..32 {
             prefill_vec.push(rng.gen_range(0..=MAX_TX_SIZE));

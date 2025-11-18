@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use fuzzamoto_ir::compiler::Compiler;
 use fuzzamoto_ir::{
     AdvanceTimeGenerator, BlockGenerator, CompactBlockGenerator, FullProgramContext, Generator,
-    HeaderGenerator, InstructionContext, Program, ProgramBuilder,
+    HeaderGenerator, InstructionContext, PerTestcaseMetadata, Program, ProgramBuilder,
 };
 
 use rand::Rng;
@@ -127,11 +127,12 @@ pub fn generate_ir(
             }
 
             let variable_threshold = builder.variable_count();
-
-            if let Err(_) = generators
-                .choose(&mut rng)
-                .unwrap()
-                .generate(&mut builder, &mut rng)
+            let meta = PerTestcaseMetadata::default();
+            if let Err(_) =
+                generators
+                    .choose(&mut rng)
+                    .unwrap()
+                    .generate(&mut builder, &mut rng, &meta)
             {
                 continue;
             }
