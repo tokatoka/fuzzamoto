@@ -3,8 +3,7 @@ use std::path::PathBuf;
 
 use fuzzamoto_ir::compiler::Compiler;
 use fuzzamoto_ir::{
-    AdvanceTimeGenerator, BlockGenerator, CompactBlockGenerator, FullProgramContext, Generator,
-    HeaderGenerator, InstructionContext, PerTestcaseMetadata, Program, ProgramBuilder,
+    AdvanceTimeGenerator, BlockGenerator, BlockTxnMutator, CompactBlockGenerator, FullProgramContext, Generator, HeaderGenerator, InstructionContext, Mutator, PerTestcaseMetadata, Program, ProgramBuilder
 };
 
 use rand::Rng;
@@ -115,6 +114,8 @@ pub fn generate_ir(
         Box::new(CompactBlockGenerator::default()),
     ];
 
+    let mut mutator = BlockTxnMutator::new();
+
     for _ in 0..programs {
         let mut program = Program::unchecked_new(context.context.clone(), vec![]);
 
@@ -157,6 +158,8 @@ pub fn generate_ir(
                 .unwrap()
                 .max(1);
         }
+
+        mutator.mutate(&mut program, &mut rng, Some(&PerTestcaseMetadata::default())).unwrap();
 
         let file_name = output.join(format!("{:8x}.ir", rng.r#gen::<u64>()));
         let bytes = postcard::to_allocvec(&program)?;

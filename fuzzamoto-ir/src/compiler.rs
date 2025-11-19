@@ -366,6 +366,7 @@ impl Compiler {
                     block_hash: block.block_hash(),
                     indexes: vec![],
                 };
+                log::info!("reqs.len() {} connection_var {} block_hash {:?}", reqs.len(), connection_var, block.block_hash().as_raw_hash().as_byte_array());
                 for req in reqs {
                     if connection_var == req.conn()
                         && block.block_hash().as_raw_hash().as_byte_array() == req.hash()
