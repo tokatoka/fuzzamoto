@@ -51,13 +51,11 @@ RUN cd AFL_Runner && cargo install --path .
 RUN mkdir -p /root/.config/tmux/ && \
   echo "set -g prefix C-y" > /root/.config/tmux/tmux.conf
 
-# Clone AFLplusplus and build
+# Clone AFLplusplus, build with Nyx support, and install
 ENV LLVM_CONFIG=llvm-config-${LLVM_V}
 RUN git clone https://github.com/AFLplusplus/AFLplusplus
-RUN cd AFLplusplus && make PERFORMANCE=1 install -j$(nproc --ignore 1)
-
-# Build qemu-nyx and libnyx
 RUN cd AFLplusplus/nyx_mode/ && ./build_nyx_support.sh
+RUN cd AFLplusplus && make PERFORMANCE=1 install -j$(nproc --ignore 1)
 
 # ------ Build Bitcoin Core and the nyx agent ------
 
