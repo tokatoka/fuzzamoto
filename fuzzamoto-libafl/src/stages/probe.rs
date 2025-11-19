@@ -76,7 +76,7 @@ where
         *input.ir_mut() = new_program;
         let (untransformed, post) = input.try_transform_into(state)?;
         // this will automatically put metadata into the feedback
-        log::info!("Doing Probing for testcase {:?}", cur);
+        log::info!("Probing for testcase {:?}", cur);
         let (_, corpus_id) = fuzzer.evaluate_filtered(state, executor, manager, &untransformed)?;
         post.post_exec(state, corpus_id)?;
         log::info!("Done Probing for testcase {:?}", cur);

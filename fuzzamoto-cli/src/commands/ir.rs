@@ -3,9 +3,8 @@ use std::path::PathBuf;
 
 use fuzzamoto_ir::compiler::Compiler;
 use fuzzamoto_ir::{
-    AdvanceTimeGenerator, BlockGenerator, BlockTransactionsRequestRecved, BlockTxnMutator,
-    CompactBlockGenerator, FullProgramContext, Generator, HeaderGenerator, InstructionContext,
-    Mutator, PerTestcaseMetadata, Program, ProgramBuilder,
+    AdvanceTimeGenerator, BlockGenerator, FullProgramContext, Generator, HeaderGenerator,
+    InstructionContext, Program, ProgramBuilder,
 };
 
 use rand::Rng;
@@ -113,10 +112,7 @@ pub fn generate_ir(
         //Box::new(SingleTxGenerator),
         Box::new(HeaderGenerator::new(context.headers.clone())),
         Box::new(BlockGenerator::default()),
-        Box::new(CompactBlockGenerator::default()),
     ];
-
-    let mut mutator = BlockTxnMutator::new();
 
     for _ in 0..programs {
         let mut program = Program::unchecked_new(context.context.clone(), vec![]);
@@ -130,6 +126,7 @@ pub fn generate_ir(
             }
 
             let variable_threshold = builder.variable_count();
+
             if let Err(_) = generators
                 .choose(&mut rng)
                 .unwrap()
@@ -160,21 +157,6 @@ pub fn generate_ir(
                 .unwrap()
                 .max(1);
         }
-        let mut reqs = Vec::new();
-        for i in 0..8 {
-            reqs.push(BlockTransactionsRequestRecved {
-                conn: i,
-                hash: [
-                    185, 43, 250, 171, 132, 11, 208, 163, 114, 15, 58, 61, 213, 115, 45, 164, 34,
-                    118, 193, 210, 183, 127, 216, 180, 127, 115, 254, 183, 106, 228, 88, 44,
-                ],
-                indexes: vec![0],
-            })
-        }
-        let meta = PerTestcaseMetadata {
-            block_tx_request: reqs,
-        };
-        mutator.mutate(&mut program, &mut rng, Some(&meta)).unwrap();
 
         let file_name = output.join(format!("{:8x}.ir", rng.r#gen::<u64>()));
         let bytes = postcard::to_allocvec(&program)?;

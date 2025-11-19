@@ -222,7 +222,7 @@ where
                                 if let Ok(received) =
                                     connection.send_and_recv(&(command, message), true)
                                 {
-                                    log::info!("We've received {:?}", received);
+                                    // log::info!("Received {:?}", received);
                                     self.received.extend(
                                         received.into_iter().map(|(s, bytes)| (dst, s, bytes)),
                                     );

@@ -243,7 +243,7 @@ impl PerTestcaseMetadata {
     }
 
     pub fn add_block_tx_request(&mut self, req: compact_block::BlockTransactionsRequestRecved) {
-        log::info!("We push req: {:?} to the metadata", req.clone());
+        // log::info!("We push req: {:?} to the metadata", req.clone());
         self.block_tx_request.push(req);
     }
 }
