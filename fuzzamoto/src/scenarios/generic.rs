@@ -137,7 +137,6 @@ impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
 
         let mut send_compact = false;
         for (connection, relay, wtxidrelay, addrv2, erlay) in connections.iter_mut() {
-            connection.set_timeout(core::time::Duration::from_millis(100))?;
             connection.version_handshake(HandshakeOpts {
                 time: time as i64,
                 relay: *relay,

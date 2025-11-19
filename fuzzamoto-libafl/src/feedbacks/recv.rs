@@ -41,7 +41,7 @@ impl Named for RecvFeedback {
 /// Runtime metadata for fuzzamoto. This data is changed at runtime in response to the harness execution during fuzzing
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RuntimeMetadata {
-    // TODO: Add stuff..
+    // TODO: If you want to add another metadata, then add it to `PerTestcaseMetadata` (not here!)
     metadatas: HashMap<CorpusId, fuzzamoto_ir::PerTestcaseMetadata>,
 }
 

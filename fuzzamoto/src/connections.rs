@@ -11,8 +11,6 @@ pub enum ConnectionType {
 }
 
 pub trait Transport {
-    fn set_timeout(&mut self, timeout: core::time::Duration) -> Result<(), String>;
-
     /// Send a message to the target node
     fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String>;
 
@@ -28,14 +26,6 @@ pub struct V1Transport {
 }
 
 impl Transport for V1Transport {
-    fn set_timeout(&mut self, timeout: core::time::Duration) -> Result<(), String> {
-        // Set read timeout
-        self.socket
-            .set_read_timeout(Some(timeout))
-            .map_err(|_| format!("Failed to set timeout"))?;
-        Ok(())
-    }
-
     fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
         log::debug!(
             "send {:?} message (len={} from={:?})",
@@ -226,10 +216,6 @@ impl<T: Transport> Connection<T> {
         self.ping_counter += 1;
         self.send_ping(self.ping_counter)?;
         self.wait_for_pong(self.ping_counter, logging)
-    }
-
-    pub fn set_timeout(&mut self, timeout: core::time::Duration) -> Result<(), String> {
-        self.transport.set_timeout(timeout)
     }
 
     pub fn version_handshake(&mut self, opts: HandshakeOpts) -> Result<(), String> {

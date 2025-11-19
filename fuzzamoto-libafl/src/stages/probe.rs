@@ -53,6 +53,11 @@ where
 
         // adding probing operation to the beginning and to the end of the instructions
         let mut builder = fuzzamoto_ir::ProgramBuilder::new(input.ir().context.clone());
+
+        // usually "inserting" an instruction is not this straightforward.
+        // since the inserted instruction will create a variable so the variable offset after the inserted instructions needs to be adjusted.
+        // however in this special case of `ProbeOperation`, we don't generate any new variables
+        // thus we can simply append instructions sequentially to get the modified program
         builder
             .append(Instruction {
                 inputs: vec![],

@@ -3,6 +3,7 @@ use crate::{Instruction, Operation, PerTestcaseMetadata, Program, ProgramBuilder
 use rand::RngCore;
 
 /// `BlockTxn` inserts `blocktxn` operation in response to the `getblocktxn` message
+#[derive(Debug, Copy, Clone, Default)]
 pub struct BlockTxnMutator;
 
 impl<R: RngCore> Mutator<R> for BlockTxnMutator {

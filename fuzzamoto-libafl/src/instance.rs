@@ -265,25 +265,79 @@ where
         let rng = SmallRng::seed_from_u64(state.rand_mut().next());
 
         let (mutations, weights) = weighted_mutations![
-            (1000.0, IrMutator::new(BlockTxnMutator::new(), rng.clone())),
+            (2000.0, IrMutator::new(InputMutator::new(), rng.clone())),
             (
                 1000.0,
+                IrMutator::new(OperationMutator::new(LibAflByteMutator::new()), rng.clone())
+            ),
+            (
+                100.0,
+                IrMutator::new(BlockTxnMutator::default(), rng.clone())
+            ),
+            (
+                100.0,
+                IrSpliceMutator::new(CombineMutator::new(), rng.clone())
+            ),
+            (
+                100.0,
                 IrGenerator::new(CompactBlockGenerator::default(), rng.clone())
             ),
             (
-                1000.0,
-                IrGenerator::new(BlockGenerator::default(), rng.clone())
+                10.0,
+                IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone())
             ),
             (
-                1000.0,
+                40.0,
+                IrGenerator::new(SendMessageGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(SingleTxGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(LongChainGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(LargeTxGenerator::default(), rng.clone())
+            ),
+            (
+                50.0,
+                IrGenerator::new(OneParentOneChildGenerator::default(), rng.clone())
+            ),
+            (
+                20.0,
+                IrGenerator::new(
+                    TxoGenerator::new(full_program_context.txos.clone()),
+                    rng.clone()
+                )
+            ),
+            (20.0, IrGenerator::new(WitnessGenerator::new(), rng.clone())),
+            (20.0, IrGenerator::new(InventoryGenerator, rng.clone())),
+            (20.0, IrGenerator::new(GetDataGenerator, rng.clone())),
+            (50.0, IrGenerator::new(BlockGenerator, rng.clone())),
+            (
+                50.0,
                 IrGenerator::new(
                     HeaderGenerator::new(full_program_context.headers.clone()),
                     rng.clone()
                 )
             ),
+            (50.0, IrGenerator::new(SendBlockGenerator, rng.clone())),
+            (50.0, IrGenerator::new(AddTxToBlockGenerator, rng.clone())),
             (
-                1000.0,
-                IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone())
+                10.0,
+                IrGenerator::new(CompactFilterQueryGenerator, rng.clone())
+            ),
+            (
+                20.0,
+                IrGenerator::new(BloomFilterLoadGenerator, rng.clone())
+            ),
+            (20.0, IrGenerator::new(BloomFilterAddGenerator, rng.clone())),
+            (
+                20.0,
+                IrGenerator::new(BloomFilterClearGenerator, rng.clone())
             ),
         ];
 
@@ -315,7 +369,6 @@ where
                 *continue_minimizing.borrow_mut() = 1;
                 Ok(())
             }),
-            /*
             WhileStage::new(
                 |_, _, _, _| Ok((!self.options.static_corpus || minimizing_crash)
                     && *continue_minimizing.borrow() > 0),
@@ -345,7 +398,6 @@ where
                     ),
                 )
             ),
-            */
             IfStage::new(
                 |_, _, _, _| Ok(self.options.minimize_input.is_none()),
                 tuple_list!(TuneableMutationalStage::new(&mut state, mutator))
