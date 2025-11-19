@@ -30,6 +30,7 @@ impl<R: RngCore> Mutator<R> for BlockTxnMutator {
         let (insertion_index, conn, block) = loop {
             // first check if we reached the end
             if i >= insts.len() {
+                log::info!("We found nothing!");
                 return Ok(());
             }
 
@@ -102,6 +103,7 @@ impl<R: RngCore> Mutator<R> for BlockTxnMutator {
             )
             .unwrap();
         *program = builder.finalize().unwrap();
+        log::info!("DONE, we'll send blocktxn yay!");
         Ok(())
     }
 

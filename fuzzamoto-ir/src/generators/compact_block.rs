@@ -9,9 +9,9 @@ use rand::{Rng, RngCore};
 // I need to define this because bitcoin crate's one doesn't implement serialize and deserialize
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, Hash)]
 pub struct BlockTransactionsRequestRecved {
-    conn: usize,
-    hash: [u8; 32],
-    indexes: Vec<u64>,
+    pub conn: usize,
+    pub hash: [u8; 32],
+    pub indexes: Vec<u64>,
 }
 
 impl BlockTransactionsRequestRecved {

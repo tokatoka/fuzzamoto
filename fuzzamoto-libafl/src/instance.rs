@@ -1,13 +1,13 @@
 use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, rc::Rc, time::Duration};
 
 use fuzzamoto_ir::{
-    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BloomFilterAddGenerator,
-    BloomFilterClearGenerator, BloomFilterLoadGenerator, CombineMutator, CompactBlockGenerator,
-    CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator, InputMutator,
-    InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator,
-    OperationMutator, Program, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator,
-    TxoGenerator, WitnessGenerator, cutting::CuttingMinimizer, instr_block::InstrBlockMinimizer,
-    nopping::NoppingMinimizer,
+    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BlockTxnMutator,
+    BloomFilterAddGenerator, BloomFilterClearGenerator, BloomFilterLoadGenerator, CombineMutator,
+    CompactBlockGenerator, CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator,
+    InputMutator, InventoryGenerator, LargeTxGenerator, LongChainGenerator,
+    OneParentOneChildGenerator, OperationMutator, Program, SendBlockGenerator,
+    SendMessageGenerator, SingleTxGenerator, TxoGenerator, WitnessGenerator,
+    cutting::CuttingMinimizer, instr_block::InstrBlockMinimizer, nopping::NoppingMinimizer,
 };
 
 use libafl::{
@@ -265,78 +265,25 @@ where
         let rng = SmallRng::seed_from_u64(state.rand_mut().next());
 
         let (mutations, weights) = weighted_mutations![
-            (2000.0, IrMutator::new(InputMutator::new(), rng.clone())),
+            (1000.0, IrMutator::new(BlockTxnMutator::new(), rng.clone())),
             (
                 1000.0,
-                IrMutator::new(OperationMutator::new(LibAflByteMutator::new()), rng.clone())
+                IrGenerator::new(CompactBlockGenerator::default(), rng.clone())
             ),
             (
-                100.0,
-                IrSpliceMutator::new(CombineMutator::new(), rng.clone())
-            ),
-            (
-                10.0,
-                IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone())
-            ),
-            (
-                40.0,
-                IrGenerator::new(SendMessageGenerator::default(), rng.clone())
-            ),
-            (
-                50.0,
-                IrGenerator::new(SingleTxGenerator::default(), rng.clone())
-            ),
-            (
-                50.0,
-                IrGenerator::new(LongChainGenerator::default(), rng.clone())
-            ),
-            (
-                50.0,
-                IrGenerator::new(LargeTxGenerator::default(), rng.clone())
-            ),
-            (
-                50.0,
-                IrGenerator::new(OneParentOneChildGenerator::default(), rng.clone())
-            ),
-            (
-                20.0,
-                IrGenerator::new(
-                    TxoGenerator::new(full_program_context.txos.clone()),
-                    rng.clone()
-                )
-            ),
-            (20.0, IrGenerator::new(WitnessGenerator::new(), rng.clone())),
-            (20.0, IrGenerator::new(InventoryGenerator, rng.clone())),
-            (20.0, IrGenerator::new(GetDataGenerator, rng.clone())),
-            (
-                50.0,
+                1000.0,
                 IrGenerator::new(BlockGenerator::default(), rng.clone())
             ),
             (
-                50.0,
+                1000.0,
                 IrGenerator::new(
                     HeaderGenerator::new(full_program_context.headers.clone()),
                     rng.clone()
                 )
             ),
-            (50.0, IrGenerator::new(SendBlockGenerator, rng.clone())),
-            (50.0, IrGenerator::new(AddTxToBlockGenerator, rng.clone())),
             (
-                10.0,
-                IrGenerator::new(CompactFilterQueryGenerator, rng.clone())
-            ),
-            (
-                20.0,
-                IrGenerator::new(BloomFilterLoadGenerator, rng.clone())
-            ),
-            (20.0, IrGenerator::new(BloomFilterAddGenerator, rng.clone())),
-            (
-                20.0,
-                IrGenerator::new(BloomFilterClearGenerator, rng.clone())
-            ),
-            (
-                100.0,
-                IrGenerator::new(CompactBlockGenerator::default(), rng.clone())
+                1000.0,
+                IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone())
             ),
         ];
 
@@ -368,6 +315,7 @@ where
                 *continue_minimizing.borrow_mut() = 1;
                 Ok(())
             }),
+            /*
             WhileStage::new(
                 |_, _, _, _| Ok((!self.options.static_corpus || minimizing_crash)
                     && *continue_minimizing.borrow() > 0),
@@ -397,6 +345,7 @@ where
                     ),
                 )
             ),
+            */
             IfStage::new(
                 |_, _, _, _| Ok(self.options.minimize_input.is_none()),
                 tuple_list!(TuneableMutationalStage::new(&mut state, mutator))

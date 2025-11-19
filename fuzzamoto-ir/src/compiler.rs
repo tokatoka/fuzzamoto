@@ -367,15 +367,16 @@ impl Compiler {
                     indexes: vec![],
                 };
                 log::info!(
-                    "reqs.len() {} connection_var {} block_hash {:?}",
-                    reqs.len(),
+                    "connection_var {} block_hash {:?}",
                     connection_var,
                     block.block_hash().as_raw_hash().as_byte_array()
                 );
                 for req in reqs {
+                    log::info!("{} {:?}", req.conn(), req.hash());
                     if connection_var == req.conn()
                         && block.block_hash().as_raw_hash().as_byte_array() == req.hash()
                     {
+                        log::info!("MATCH!");
                         // bingo we send this
                         blocktxn_req.indexes.extend(req.indexes());
                     }
@@ -724,7 +725,9 @@ impl Compiler {
                 let req = self
                     .get_input::<BlockTransactionsRequest>(&instruction.inputs, 2)?
                     .clone();
+                log::info!("{:?}", req);
                 if let Ok(blocktxn) = BlockTransactions::from_request(&req, block) {
+                    log::info!("OK {:?}", blocktxn);
                     self.emit_send_message(*connection_var, "blocktxn", &blocktxn);
                 }
             }

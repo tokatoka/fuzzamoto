@@ -228,7 +228,7 @@ impl fmt::Display for Program {
 /// The runtime data observed during the course of harness execution
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PerTestcaseMetadata {
-    block_tx_request: Vec<compact_block::BlockTransactionsRequestRecved>,
+    pub block_tx_request: Vec<compact_block::BlockTransactionsRequestRecved>,
 }
 
 impl PerTestcaseMetadata {
@@ -243,6 +243,7 @@ impl PerTestcaseMetadata {
     }
 
     pub fn add_block_tx_request(&mut self, req: compact_block::BlockTransactionsRequestRecved) {
+        log::info!("We push req: {:?} to the metadata", req.clone());
         self.block_tx_request.push(req);
     }
 }
