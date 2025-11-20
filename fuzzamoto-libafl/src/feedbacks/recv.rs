@@ -133,8 +133,10 @@ where
                     );
                     */
                 } else {
-                    // for some reason, I cannot receive more than 2686 bytes... (limitation from nyx side?)
-                    // but the target does send us more bytes than that, in that case just print into the log
+                    // for some reason, I cannot receive more than 2686 bytes (limitation from nyx side)
+                    // check https://github.com/nyx-fuzz/QEMU-Nyx/blob/qemu-nyx-4.2.0/nyx/auxiliary_buffer.c#L48 and https://github.com/nyx-fuzz/QEMU-Nyx/blob/qemu-nyx-4.2.0/nyx/state/state.c#L242
+                    // 4096 - (128 + 512 * 2 + 256) - 2 = 2686.
+                    // but the target does send us more bytes than that (of course), in that case just print into the log
                     // (i can't do anything if nyx doesn't print it)
                     log::info!("Failed to deserialize payload (size: {})", chunk.len());
                 }
