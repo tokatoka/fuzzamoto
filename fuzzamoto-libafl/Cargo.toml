@@ -10,7 +10,7 @@ repository.workspace = true
 default = ["std"]
 std = []
 
-fuzz = []
+fuzz = ["compile_in_vm"]
 reproduce =  ["compile_in_vm"]
 
 ## Build with a simple event manager instead of Launcher - don't fork, and crash after the first bug.
