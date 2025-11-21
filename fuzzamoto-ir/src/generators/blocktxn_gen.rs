@@ -31,9 +31,9 @@ impl<R: RngCore> Generator<R> for BlockTxnGenerator {
                     indexes: indexes_vec,
                 },
             })
-            .expect("Inserting BeginBuildCmpctBlock should always succeed")
+            .expect("Inserting LoadTxIndexes should always succeed")
             .pop()
-            .expect("BeginBuildCmpctBlock should always produce a var");
+            .expect("LoadTxIndexes should always produce a var");
 
         let blocktxn = builder
             .append(Instruction {

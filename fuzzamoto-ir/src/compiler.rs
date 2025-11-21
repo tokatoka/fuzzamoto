@@ -542,6 +542,8 @@ impl Compiler {
                     .get_input::<Vec<usize>>(&instruction.inputs, 3)?
                     .clone();
 
+                // OperationMutator could destory our constraint. so we clamp here.
+                let version = version.clamp(&1, &2);
                 prefill.sort();
                 prefill.dedup();
                 let max = block.txdata.len();

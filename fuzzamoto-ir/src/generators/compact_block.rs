@@ -86,7 +86,6 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
             .expect("Inserting BeginBuildCmpctBlock should always succeed")
             .pop()
             .expect("BeginBuildCmpctBlock should always produce a var");
-
         let mut_cmpct_block = builder
             .append(Instruction {
                 inputs: vec![
