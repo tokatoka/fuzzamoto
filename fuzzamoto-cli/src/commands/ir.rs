@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use fuzzamoto_ir::compiler::Compiler;
 use fuzzamoto_ir::{
     AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BloomFilterAddGenerator,
-    BloomFilterClearGenerator, BloomFilterLoadGenerator, CompactBlockGenerator,
-    CompactFilterQueryGenerator, FullProgramContext, Generator, GetDataGenerator, HeaderGenerator,
-    InstructionContext, InventoryGenerator, LargeTxGenerator, LongChainGenerator,
-    OneParentOneChildGenerator, Program, ProgramBuilder, SendBlockGenerator, SendMessageGenerator,
-    SingleTxGenerator, TxoGenerator, WitnessGenerator,
+    BloomFilterClearGenerator, BloomFilterLoadGenerator, CompactFilterQueryGenerator,
+    FullProgramContext, Generator, GetDataGenerator, HeaderGenerator, InstructionContext,
+    InventoryGenerator, LargeTxGenerator, LongChainGenerator, OneParentOneChildGenerator, Program,
+    ProgramBuilder, SendBlockGenerator, SendMessageGenerator, SingleTxGenerator, TxoGenerator,
+    WitnessGenerator,
 };
 
 use rand::Rng;
@@ -197,9 +197,21 @@ fn all_generators(context: &FullProgramContext) -> Vec<Box<dyn Generator<ThreadR
         Box::new(AdvanceTimeGenerator::default()),
         Box::new(HeaderGenerator::new(context.headers.clone())),
         Box::new(BlockGenerator::default()),
+        Box::new(BloomFilterLoadGenerator::default()),
+        Box::new(BloomFilterAddGenerator::default()),
+        Box::new(BloomFilterClearGenerator::default()),
+        Box::new(CompactFilterQueryGenerator::default()),
+        Box::new(GetDataGenerator::default()),
+        Box::new(InventoryGenerator::default()),
+        Box::new(SendBlockGenerator::default()),
+        Box::new(AddTxToBlockGenerator::default()),
+        Box::new(SendMessageGenerator::default()),
+        Box::new(WitnessGenerator::new()),
         Box::new(SingleTxGenerator::default()),
         Box::new(OneParentOneChildGenerator::default()),
-        Box::new(CompactBlockGenerator::default()),
+        Box::new(LongChainGenerator::default()),
+        Box::new(LargeTxGenerator::default()),
+        Box::new(TxoGenerator::new(context.txos.clone())),
     ]
 }
 
