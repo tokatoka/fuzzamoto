@@ -1345,7 +1345,7 @@ impl Compiler {
                 block.header.nonce += 1;
                 block_hash = block.header.block_hash();
             }
-            log::info!("{:?} height={}", block_hash, header_var.height);
+            // log::info!("{:?} height={}", block_hash, header_var.height);
         } else {
             let target = block.header.target();
             while block.header.validate_pow(target).is_err() {
