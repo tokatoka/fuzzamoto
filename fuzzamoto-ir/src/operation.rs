@@ -47,8 +47,8 @@ pub enum Operation {
     LoadPrivateKey([u8; 32]),
     LoadSigHashFlags(u8),
     LoadNonce(u64),
-    LoadPrefill {
-        prefill: Vec<usize>,
+    LoadTxIndexes {
+        indexes: Vec<usize>,
     },
     LoadTxo {
         outpoint: ([u8; 32], u32),
@@ -145,6 +145,9 @@ pub enum Operation {
     LoadBlockTxnRequestVec {
         vec: Vec<BlockTransactionsRequestRecved>,
     },
+    // build the blocktx from metadata
+    BuildBIP152BlockTxReqFromMetadata,
+    // build the blocktx from block using random indexes
     BuildBIP152BlockTxReq,
 
     /// Inventory building
@@ -288,14 +291,16 @@ impl fmt::Display for Operation {
             Operation::LoadNonce(nonce) => {
                 write!(f, "LoadNonce({})", nonce)
             }
-            Operation::LoadPrefill { prefill } => {
-                write!(f, "LoadPrefill({:?})", prefill)
+            Operation::LoadTxIndexes { indexes } => {
+                write!(f, "LoadTxIndexes({:?})", indexes)
             }
             Operation::LoadBlockTxnRequestVec { vec } => {
                 write!(f, "LoadBlockTxnRequestVec({:?})", vec)
             }
+            Operation::BuildBIP152BlockTxReqFromMetadata => {
+                write!(f, "BuildBIP152BlockTxReqFromMetadata")
+            }
             Operation::BuildBIP152BlockTxReq => write!(f, "BuildBIP152BlockTxReq"),
-
             Operation::BeginBuildFilterLoad => write!(f, "BeginBuildFilterLoad"),
             Operation::EndBuildFilterLoad => write!(f, "EndBuildFilterLoad"),
             Operation::AddTxToFilter => write!(f, "AddTxToFilter"),
@@ -438,10 +443,11 @@ impl Operation {
             | Operation::BuildFilterAddFromTx
             | Operation::BuildFilterAddFromTxo
             | Operation::LoadNonce(..)
-            | Operation::LoadPrefill { .. }
+            | Operation::LoadTxIndexes { .. }
             | Operation::LoadBlockTxnRequestVec { .. }
             | Operation::EndBuildCmpctBlock
             | Operation::EndBuildTx
+            | Operation::BuildBIP152BlockTxReqFromMetadata
             | Operation::BuildBIP152BlockTxReq
             | Operation::EndBuildTxInputs
             | Operation::EndBuildTxOutputs
@@ -556,8 +562,9 @@ impl Operation {
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadNonce(..)
-            | Operation::LoadPrefill { .. }
+            | Operation::LoadTxIndexes { .. }
             | Operation::LoadBlockTxnRequestVec { .. }
+            | Operation::BuildBIP152BlockTxReqFromMetadata
             | Operation::BuildBIP152BlockTxReq
             | Operation::BeginBuildTx
             | Operation::BeginBuildTxInputs
@@ -683,7 +690,7 @@ impl Operation {
             Operation::LoadPrivateKey(..) => vec![Variable::PrivateKey],
             Operation::LoadSigHashFlags(..) => vec![Variable::SigHashFlags],
             Operation::LoadNonce(..) => vec![Variable::Nonce],
-            Operation::LoadPrefill { .. } => vec![Variable::Prefill],
+            Operation::LoadTxIndexes { .. } => vec![Variable::Indexes],
             Operation::LoadBlockTxnRequestVec { .. } => vec![Variable::BlockTxnRequestVec],
             Operation::BeginBuildTx => vec![],
             Operation::EndBuildTx => vec![Variable::ConstTx],
@@ -694,6 +701,7 @@ impl Operation {
             Operation::AddTxInput => vec![],
             Operation::AddTxOutput => vec![],
 
+            Operation::BuildBIP152BlockTxReqFromMetadata => vec![Variable::BIP152BlockTxReq],
             Operation::BuildBIP152BlockTxReq => vec![Variable::BIP152BlockTxReq],
 
             Operation::BeginBuildFilterLoad => vec![],
@@ -858,12 +866,15 @@ impl Operation {
                 Variable::BIP152BlockTxReq,
             ],
 
-            Operation::BuildBIP152BlockTxReq => {
+            Operation::BuildBIP152BlockTxReqFromMetadata => {
                 vec![
                     Variable::Connection,
                     Variable::Block,
                     Variable::BlockTxnRequestVec,
                 ]
+            }
+            Operation::BuildBIP152BlockTxReq => {
+                vec![Variable::Block, Variable::Indexes]
             }
 
             Operation::BeginBuildFilterLoad => vec![Variable::ConstFilterLoad],
@@ -877,7 +888,7 @@ impl Operation {
                 Variable::Block,
                 Variable::Nonce,
                 Variable::TxVersion,
-                Variable::Prefill,
+                Variable::Indexes,
             ],
             Operation::EndBuildCmpctBlock => vec![Variable::MutCmpctBlock],
 
@@ -911,7 +922,7 @@ impl Operation {
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadNonce(..)
-            | Operation::LoadPrefill { .. }
+            | Operation::LoadTxIndexes { .. }
             | Operation::LoadBlockTxnRequestVec { .. }
             | Operation::BeginBuildTxInputs
             | Operation::BeginBuildInventory
@@ -976,8 +987,9 @@ impl Operation {
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadNonce(..)
-            | Operation::LoadPrefill { .. }
+            | Operation::LoadTxIndexes { .. }
             | Operation::LoadBlockTxnRequestVec { .. }
+            | Operation::BuildBIP152BlockTxReqFromMetadata
             | Operation::BuildBIP152BlockTxReq
             | Operation::EndBuildCmpctBlock
             | Operation::EndBuildTx

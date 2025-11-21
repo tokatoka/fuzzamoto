@@ -100,10 +100,11 @@ impl Instruction {
             | Operation::LoadSequence(..)
             | Operation::LoadSize(..)
             | Operation::LoadNonce(..)
-            | Operation::LoadPrefill { .. }
+            | Operation::LoadTxIndexes { .. }
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
             | Operation::LoadBlockTxnRequestVec { .. }
+            | Operation::BuildBIP152BlockTxReqFromMetadata
             | Operation::BuildBIP152BlockTxReq
             | Operation::AddWitness
             | Operation::SendTx

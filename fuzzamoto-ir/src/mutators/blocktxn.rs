@@ -77,11 +77,11 @@ impl<R: RngCore> Mutator<R> for BlockTxnMutator {
         let req = builder
             .append(Instruction {
                 inputs: vec![conn, block, reqvec.index],
-                operation: Operation::BuildBIP152BlockTxReq,
+                operation: Operation::BuildBIP152BlockTxReqFromMetadata,
             })
-            .expect("Inserting BuildBIP152BlockTxReq should always succeed")
+            .expect("Inserting BuildBIP152BlockTxReqFromMetadata should always succeed")
             .pop()
-            .expect("BuildBIP152BlockTxReq should always produce a var");
+            .expect("BuildBIP152BlockTxReqFromMetadata should always produce a var");
         builder
             .append(Instruction {
                 inputs: vec![conn, block, req.index],

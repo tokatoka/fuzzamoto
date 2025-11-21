@@ -181,7 +181,7 @@ impl Compiler {
                 | Operation::LoadFilterLoad { .. }
                 | Operation::LoadFilterAdd { .. }
                 | Operation::LoadNonce(..)
-                | Operation::LoadPrefill { .. }
+                | Operation::LoadTxIndexes { .. }
                 | Operation::LoadBlockTxnRequestVec { .. } => {
                     self.handle_load_operations(&instruction)?;
                 }
@@ -226,7 +226,7 @@ impl Compiler {
                     self.handle_script_building_operations(&instruction)?;
                 }
 
-                Operation::BuildBIP152BlockTxReq => {
+                Operation::BuildBIP152BlockTxReqFromMetadata | Operation::BuildBIP152BlockTxReq => {
                     self.handle_bip152_blocktx_operations(&instruction)?;
                 }
 
@@ -376,7 +376,7 @@ impl Compiler {
         instruction: &Instruction,
     ) -> Result<(), CompilerError> {
         match &instruction.operation {
-            Operation::BuildBIP152BlockTxReq => {
+            Operation::BuildBIP152BlockTxReqFromMetadata => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?.clone();
                 let reqs = self
                     .get_input_mut::<Vec<BlockTransactionsRequestRecved>>(&instruction.inputs, 2)?
@@ -403,6 +403,17 @@ impl Compiler {
                         blocktxn_req.indexes.extend(req.indexes());
                     }
                 }
+
+                self.append_variable(blocktxn_req);
+            }
+            Operation::BuildBIP152BlockTxReq => {
+                let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 0)?;
+                let txindexes = self.get_input::<Vec<usize>>(&instruction.inputs, 1)?;
+
+                let blocktxn_req = BlockTransactionsRequest {
+                    block_hash: block.block_hash(),
+                    indexes: txindexes.iter().map(|&x| x as u64).collect(),
+                };
 
                 self.append_variable(blocktxn_req);
             }
@@ -1136,8 +1147,8 @@ impl Compiler {
                 self.handle_load_operation(FilterAdd { data: data.clone() });
             }
             Operation::LoadNonce(nonce) => self.handle_load_operation(*nonce),
-            Operation::LoadPrefill { prefill } => {
-                self.handle_load_operation(prefill.clone());
+            Operation::LoadTxIndexes { indexes } => {
+                self.handle_load_operation(indexes.clone());
             }
             Operation::LoadBlockTxnRequestVec { vec } => {
                 self.handle_load_operation(vec.clone());

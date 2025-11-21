@@ -36,12 +36,11 @@ impl BlockTransactionsRequestRecved {
     }
 }
 
-/// `CompactFilterQueryGenerator` generates a new `SendGetCFilters`, `SendGetCFHeaders` or
-/// `SendGetCFCheckpt` instruction into a global context.
+/// `CompactBlockGenerator` generates a new `cmpctblock` message.
 #[derive(Debug, Default)]
 pub struct CompactBlockGenerator;
 
-const MAX_TX_SIZE: usize = 2048;
+pub const MAX_TX_SIZE: usize = 2048;
 
 impl<R: RngCore> Generator<R> for CompactBlockGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
@@ -85,8 +84,8 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
         let prefill_var = builder
             .append(Instruction {
                 inputs: vec![],
-                operation: Operation::LoadPrefill {
-                    prefill: prefill_vec,
+                operation: Operation::LoadTxIndexes {
+                    indexes: prefill_vec,
                 },
             })
             .expect("Inserting BeginBuildCmpctBlock should always succeed")
