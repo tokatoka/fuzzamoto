@@ -701,8 +701,8 @@ impl Operation {
             Operation::AddTxInput => vec![],
             Operation::AddTxOutput => vec![],
 
-            Operation::BuildBIP152BlockTxReqFromMetadata => vec![Variable::BIP152BlockTxReq],
-            Operation::BuildBIP152BlockTxReq => vec![Variable::BIP152BlockTxReq],
+            Operation::BuildBIP152BlockTxReqFromMetadata => vec![Variable::BIP152BlockTx],
+            Operation::BuildBIP152BlockTxReq => vec![Variable::BIP152BlockTx],
 
             Operation::BeginBuildFilterLoad => vec![],
             Operation::AddTxToFilter => vec![],
@@ -860,11 +860,7 @@ impl Operation {
                 Variable::CompactFilterType,
                 Variable::Header,
             ],
-            Operation::SendBlockTxn => vec![
-                Variable::Connection,
-                Variable::Block,
-                Variable::BIP152BlockTxReq,
-            ],
+            Operation::SendBlockTxn => vec![Variable::Connection, Variable::BIP152BlockTx],
 
             Operation::BuildBIP152BlockTxReqFromMetadata => {
                 vec![

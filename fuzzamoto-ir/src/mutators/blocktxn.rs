@@ -74,7 +74,7 @@ impl<R: RngCore> Mutator<R> for BlockTxnMutator {
             .expect("Inserting LoadBlockTxnRequestVec should always succeed")
             .pop()
             .expect("LoadBlockTxnRequestVec should always produce a var");
-        let req = builder
+        let blocktxn = builder
             .append(Instruction {
                 inputs: vec![conn, block, reqvec.index],
                 operation: Operation::BuildBIP152BlockTxReqFromMetadata,
@@ -84,7 +84,7 @@ impl<R: RngCore> Mutator<R> for BlockTxnMutator {
             .expect("BuildBIP152BlockTxReqFromMetadata should always produce a var");
         builder
             .append(Instruction {
-                inputs: vec![conn, block, req.index],
+                inputs: vec![conn, blocktxn.index],
                 operation: Operation::SendBlockTxn,
             })
             .expect("Inserting SendBlockTxn should always succeed");

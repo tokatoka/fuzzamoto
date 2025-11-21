@@ -57,6 +57,7 @@ pub enum Variable {
 
     BlockTxnRequestVec,
     BIP152BlockTxReq,
+    BIP152BlockTx,
 
     CoinbaseInput,
     CoinbaseTx,

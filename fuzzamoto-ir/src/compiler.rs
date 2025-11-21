@@ -403,19 +403,46 @@ impl Compiler {
                         blocktxn_req.indexes.extend(req.indexes());
                     }
                 }
+                let max = block.txdata.len() as u64;
+                let mut filtered_indexes: Vec<u64> = blocktxn_req
+                    .indexes
+                    .iter()
+                    .copied()
+                    .filter(|&i| i < max)
+                    .collect();
+                filtered_indexes.sort();
+                filtered_indexes.dedup();
+                blocktxn_req.indexes = filtered_indexes;
 
-                self.append_variable(blocktxn_req);
+                let blocktxn = BlockTransactions::from_request(&blocktxn_req, block)
+                    .expect("from_request should never fail");
+
+                self.append_variable(blocktxn);
             }
             Operation::BuildBIP152BlockTxReq => {
                 let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 0)?;
                 let txindexes = self.get_input::<Vec<usize>>(&instruction.inputs, 1)?;
 
-                let blocktxn_req = BlockTransactionsRequest {
+                let mut blocktxn_req = BlockTransactionsRequest {
                     block_hash: block.block_hash(),
                     indexes: txindexes.iter().map(|&x| x as u64).collect(),
                 };
 
-                self.append_variable(blocktxn_req);
+                let max = block.txdata.len() as u64;
+                let mut filtered_indexes: Vec<u64> = blocktxn_req
+                    .indexes
+                    .iter()
+                    .copied()
+                    .filter(|&i| i < max)
+                    .collect();
+                filtered_indexes.sort();
+                filtered_indexes.dedup();
+                blocktxn_req.indexes = filtered_indexes;
+                let blocktxn = BlockTransactions::from_request(&blocktxn_req, block)
+                    .expect("from_request should never fail");
+
+                // log::info!("blocktxn_req {:?}", blocktxn_req);
+                self.append_variable(blocktxn);
             }
             _ => unreachable!("Non-bip152 blocktx operation passed to handle_witness_operations"),
         }
@@ -514,10 +541,18 @@ impl Compiler {
                 let mut prefill = self
                     .get_input::<Vec<usize>>(&instruction.inputs, 3)?
                     .clone();
-                prefill.truncate(block.txdata.len() - 1);
+
+                prefill.sort();
+                prefill.dedup();
+                let max = block.txdata.len();
+                let prefill_filtered = prefill
+                    .iter()
+                    .copied()
+                    .filter(|&i| i < max)
+                    .collect::<Vec<usize>>();
                 let header_and_shortids =
-                    HeaderAndShortIds::from_block(block, *nonce, *version, &prefill)
-                        .expect("HeaderAndShortIDs construction should always succeed");
+                    HeaderAndShortIds::from_block(block, *nonce, *version, &prefill_filtered)
+                        .expect("from_block should never fail");
                 self.append_variable(CmpctBlock {
                     compact_block: header_and_shortids,
                 });
@@ -863,15 +898,11 @@ impl Compiler {
         match &instruction.operation {
             Operation::SendBlockTxn => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
-                let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 1)?;
-                let req = self
-                    .get_input::<BlockTransactionsRequest>(&instruction.inputs, 2)?
+                let blocktxn = self
+                    .get_input::<BlockTransactions>(&instruction.inputs, 1)?
                     .clone();
-                // log::info!("{:?}", req);
-                if let Ok(blocktxn) = BlockTransactions::from_request(&req, block) {
-                    // log::info!("OK {:?}", blocktxn);
-                    self.emit_send_message(*connection_var, "blocktxn", &blocktxn);
-                }
+                // log::info!("OK {:?}", blocktxn);
+                self.emit_send_message(*connection_var, "blocktxn", &blocktxn);
             }
             Operation::SendRawMessage => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;

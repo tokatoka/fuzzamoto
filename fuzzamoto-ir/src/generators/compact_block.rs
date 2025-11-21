@@ -40,7 +40,7 @@ impl BlockTransactionsRequestRecved {
 #[derive(Debug, Default)]
 pub struct CompactBlockGenerator;
 
-pub const MAX_TX_SIZE: usize = 2048;
+pub const MAX_TX_SIZE: usize = 32;
 
 impl<R: RngCore> Generator<R> for CompactBlockGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
@@ -74,11 +74,6 @@ impl<R: RngCore> Generator<R> for CompactBlockGenerator {
         let mut prefill_vec: Vec<usize> = vec![];
         for _ in 0..32 {
             prefill_vec.push(rng.gen_range(0..=MAX_TX_SIZE));
-        }
-
-        // sort it in most cases.
-        if rng.gen_bool(0.95) {
-            prefill_vec.sort();
         }
 
         let prefill_var = builder

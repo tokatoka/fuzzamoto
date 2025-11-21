@@ -7,9 +7,9 @@ use rand::{Rng, RngCore};
 
 /// `Blocktxn` generates a new blocktxn message;
 #[derive(Debug, Default)]
-pub struct BlocktxnGenerator;
+pub struct BlockTxnGenerator;
 
-impl<R: RngCore> Generator<R> for BlocktxnGenerator {
+impl<R: RngCore> Generator<R> for BlockTxnGenerator {
     fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult {
         // choose a block upon which we build the compact block
         let Some(block) = builder.get_random_variable(rng, Variable::Block) else {
@@ -24,11 +24,6 @@ impl<R: RngCore> Generator<R> for BlocktxnGenerator {
             indexes_vec.push(rng.gen_range(0..=MAX_TX_SIZE));
         }
 
-        // sort it in most cases.
-        if rng.gen_bool(0.95) {
-            indexes_vec.sort();
-        }
-
         let indexes_var = builder
             .append(Instruction {
                 inputs: vec![],
@@ -40,17 +35,17 @@ impl<R: RngCore> Generator<R> for BlocktxnGenerator {
             .pop()
             .expect("BeginBuildCmpctBlock should always produce a var");
 
-        let req = builder
+        let blocktxn = builder
             .append(Instruction {
                 inputs: vec![block.index, indexes_var.index],
-                operation: Operation::BuildBIP152BlockTxReqFromMetadata,
+                operation: Operation::BuildBIP152BlockTxReq,
             })
-            .expect("Inserting BuildBIP152BlockTxReqFromMetadata should always succeed")
+            .expect("Inserting BuildBIP152BlockTxReq should always succeed")
             .pop()
-            .expect("BuildBIP152BlockTxReqFromMetadata should always produce a var");
+            .expect("BuildBIP152BlockTxReq should always produce a var");
         builder
             .append(Instruction {
-                inputs: vec![conn.index, block.index, req.index],
+                inputs: vec![conn.index, blocktxn.index],
                 operation: Operation::SendBlockTxn,
             })
             .expect("Inserting SendBlockTxn should always succeed");
@@ -58,6 +53,6 @@ impl<R: RngCore> Generator<R> for BlocktxnGenerator {
     }
 
     fn name(&self) -> &'static str {
-        "BlocktxnGenerator"
+        "BlockTxnGenerator"
     }
 }
