@@ -1,10 +1,10 @@
 use std::{borrow::Cow, cell::RefCell, marker::PhantomData, process, rc::Rc, time::Duration};
 
 use fuzzamoto_ir::{
-    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BlockTxnMutator,
-    BloomFilterAddGenerator, BloomFilterClearGenerator, BloomFilterLoadGenerator, CombineMutator,
-    CompactBlockGenerator, CompactFilterQueryGenerator, GetDataGenerator, HeaderGenerator,
-    InputMutator, InventoryGenerator, LargeTxGenerator, LongChainGenerator,
+    AddTxToBlockGenerator, AdvanceTimeGenerator, BlockGenerator, BlockTxnGenerator,
+    BlockTxnMutator, BloomFilterAddGenerator, BloomFilterClearGenerator, BloomFilterLoadGenerator,
+    CombineMutator, CompactBlockGenerator, CompactFilterQueryGenerator, GetDataGenerator,
+    HeaderGenerator, InputMutator, InventoryGenerator, LargeTxGenerator, LongChainGenerator,
     OneParentOneChildGenerator, OperationMutator, Program, SendBlockGenerator,
     SendMessageGenerator, SingleTxGenerator, TxoGenerator, WitnessGenerator,
     cutting::CuttingMinimizer, instr_block::InstrBlockMinimizer, nopping::NoppingMinimizer,
@@ -281,6 +281,10 @@ where
             (
                 100.0,
                 IrGenerator::new(CompactBlockGenerator::default(), rng.clone())
+            ),
+            (
+                100.0,
+                IrGenerator::new(BlockTxnGenerator::default(), rng.clone())
             ),
             (
                 10.0,
