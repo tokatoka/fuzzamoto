@@ -1,3 +1,4 @@
+use crate::feedbacks::recv::RuntimeMetadata;
 use crate::input::IrInput;
 use fuzzamoto_ir::{Instruction, Operation, ProbeOperation};
 use libafl::{
@@ -12,7 +13,6 @@ use libafl::{
     state::{HasCorpus, HasCurrentTestcase},
 };
 use std::collections::HashSet;
-
 pub struct ProbingStage {
     seen: HashSet<CorpusId>,
 }
@@ -38,6 +38,10 @@ where
         state: &mut S,
         manager: &mut EM,
     ) -> Result<(), libafl::Error> {
+        if !state.has_metadata::<RuntimeMetadata>() {
+            state.add_metadata(RuntimeMetadata::default());
+        }
+
         let mut testcase = state.current_testcase_mut()?.clone();
         let Ok(mut input) = IrInput::try_transform_from(&mut testcase, state) else {
             return Ok(());

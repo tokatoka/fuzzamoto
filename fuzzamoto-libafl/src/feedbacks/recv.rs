@@ -124,14 +124,7 @@ where
                     serde_json::from_slice::<(usize, String, Vec<u8>)>(&chunk)
                 {
                     process_command(state, conn, &command, &payload)?;
-                    /*
-                    log::info!(
-                        "Command received. From {:?}, command: {:?}, payload: {:?}",
-                        conn,
-                        command,
-                        payload
-                    );
-                    */
+                    log::info!("Command received. From {:?}, command: {:?}", conn, command,);
                 } else {
                     // for some reason, I cannot receive more than 2686 bytes (limitation from nyx side)
                     // check https://github.com/nyx-fuzz/QEMU-Nyx/blob/qemu-nyx-4.2.0/nyx/auxiliary_buffer.c#L48 and https://github.com/nyx-fuzz/QEMU-Nyx/blob/qemu-nyx-4.2.0/nyx/state/state.c#L242

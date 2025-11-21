@@ -271,12 +271,10 @@ where
                 100.0,
                 IrMutator::new(OperationMutator::new(LibAflByteMutator::new()), rng.clone())
             ),
-            /*
             (
                 100.0,
                 IrMutator::new(BlockTxnMutator::default(), rng.clone())
             ),
-            */
             /*
             (
                 100.0,
@@ -287,12 +285,10 @@ where
                 100.0,
                 IrGenerator::new(CompactBlockGenerator::default(), rng.clone())
             ),
-            /*
             (
                 100.0,
                 IrGenerator::new(BlockTxnGenerator::default(), rng.clone())
             ),
-            */
             (
                 100.0,
                 IrGenerator::new(AdvanceTimeGenerator::default(), rng.clone())
@@ -343,6 +339,7 @@ where
         let probing: ProbingStage = ProbingStage::new();
 
         let mut stages = tuple_list!(
+            probing,
             ClosureStage::new(|_a: &mut _, _b: &mut _, _c: &mut _, _d: &mut _| {
                 // Always try minimizing at least for one pass
                 *continue_minimizing.borrow_mut() = 1;
@@ -385,7 +382,6 @@ where
             ),
             timeout_verify_stage,
             bench_stats_stage,
-            probing,
         );
         self.fuzz(&mut state, &mut fuzzer, &mut executor, &mut stages)
     }
