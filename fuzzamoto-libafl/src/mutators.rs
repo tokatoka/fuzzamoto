@@ -50,9 +50,6 @@ where
     M: fuzzamoto_ir::Mutator<R>,
 {
     fn mutate(&mut self, state: &mut S, input: &mut IrInput) -> Result<MutationResult, Error> {
-        if !state.has_metadata::<RuntimeMetadata>() {
-            state.add_metadata(RuntimeMetadata::default());
-        }
         let rt_data = state
             .metadata::<RuntimeMetadata>()
             .expect("RuntimeMetadata should always exist at this point");
