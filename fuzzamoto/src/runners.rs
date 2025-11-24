@@ -26,10 +26,11 @@ impl Runner for LocalRunner {
 
     fn get_fuzz_input(&self) -> Vec<u8> {
         use std::io::Read;
-
         if let Ok(path) = std::env::var("FUZZAMOTO_INPUT") {
+            log::info!("Reading input from {:?}", std::env::var("FUZZAMOTO_INPUT"));
             std::fs::read(&path).unwrap_or_else(|_| vec![])
         } else {
+            log::info!("Reading input from /dev/stdin");
             let mut buffer = Vec::new();
             std::io::stdin().read_to_end(&mut buffer).unwrap_or(0);
             buffer
