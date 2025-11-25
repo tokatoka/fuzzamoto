@@ -139,6 +139,7 @@ pub fn generate_ir(
     }
 
     for _ in 0..programs {
+        let mut used_generators = Vec::new();
         let mut program = Program::unchecked_new(context.context.clone(), vec![]);
 
         let mut insertion_index = 0;
@@ -151,13 +152,12 @@ pub fn generate_ir(
 
             let variable_threshold = builder.variable_count();
 
-            if let Err(_) = generators
-                .choose(&mut rng)
-                .unwrap()
-                .generate(&mut builder, &mut rng)
-            {
+            let generator = generators.choose(&mut rng).unwrap();
+            if let Err(_) = generator.generate(&mut builder, &mut rng) {
                 continue;
             }
+
+            used_generators.push(generator.name().to_string());
 
             let second_half = Program::unchecked_new(
                 builder.context().clone(),
@@ -186,7 +186,11 @@ pub fn generate_ir(
         let bytes = postcard::to_allocvec(&program)?;
         std::fs::write(&file_name, &bytes)?;
 
-        log::info!("Generated IR: {}", file_name.display());
+        log::info!(
+            "Generated IR: {} ({:?})",
+            file_name.display(),
+            used_generators.join("-")
+        );
     }
 
     Ok(())
