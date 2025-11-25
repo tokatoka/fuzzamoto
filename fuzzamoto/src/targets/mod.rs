@@ -1,7 +1,10 @@
 pub mod bitcoin_core;
 pub use bitcoin_core::BitcoinCoreTarget;
 
-use crate::connections::{Connection, ConnectionType, Transport};
+use crate::{
+    connections::{Connection, ConnectionType, Transport},
+    targets::bitcoin_core::TxOutSetInfo,
+};
 use std::net::SocketAddrV4;
 
 /// `Target` is the interface that the test harness will use to interact with the target Bitcoin
@@ -47,4 +50,8 @@ pub trait ConnectableTarget {
 
 pub trait HasTipHash {
     fn get_tip_hash(&self) -> Option<[u8; 32]>;
+}
+
+pub trait HasTxOutSetInfo {
+    fn tx_out_set_info(&self) -> Result<TxOutSetInfo, String>;
 }

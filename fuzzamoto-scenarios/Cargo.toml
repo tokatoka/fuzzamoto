@@ -20,6 +20,8 @@ oracle_netsplit = []
 # Compile for consensus bug detection. Note: this relies on fuzzamoto-libafl's
 # hang detection.
 oracle_consensus = []
+# Compile for inflation bug detection
+oracle_inflation = []
 
 [dependencies]
 fuzzamoto = { path = "../fuzzamoto" }
