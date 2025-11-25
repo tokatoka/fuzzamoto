@@ -1,9 +1,9 @@
 use crate::{
     connections::{Connection, ConnectionType, V1Transport},
-    targets::Target,
+    targets::{HasTxOutSetInfo, Target},
 };
 
-use bitcoin::hashes::Hash;
+use bitcoin::{Amount, hashes::Hash};
 use corepc_node::{Conf, Node, P2P};
 use std::{
     net::{SocketAddrV4, TcpListener, TcpStream},
@@ -235,5 +235,64 @@ impl HasTipHash for BitcoinCoreTarget {
                 .map(|h| *h.as_raw_hash().as_byte_array()),
             Err(_) => None,
         }
+    }
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct TxOutSetInfo {
+    height: u64,
+    amount: bitcoin::Amount,
+}
+
+impl TxOutSetInfo {
+    pub fn height(&self) -> u64 {
+        self.height
+    }
+
+    pub fn amount(&self) -> bitcoin::Amount {
+        self.amount
+    }
+}
+
+impl HasTxOutSetInfo for BitcoinCoreTarget {
+    fn tx_out_set_info(&self) -> Result<TxOutSetInfo, String> {
+        let txoutsetinfo = self
+            .node
+            .client
+            .call::<serde_json::Value>("gettxoutsetinfo", &[])
+            .map_err(|e| format!("Failed to request txoutsetinfo: {:?}", e))?;
+
+        let info = match txoutsetinfo {
+            serde_json::Value::Object(obj) => obj,
+            _ => return Err("Failed to request txoutsetinfo".to_string()),
+        };
+
+        let amount = match info.get("total_amount") {
+            Some(serde_json::Value::Number(num)) => num,
+            _ => return Err("Failed to request txoutsetinfo".to_string()),
+        };
+        let amount = match amount.as_f64() {
+            Some(v) => v,
+            None => {
+                return Err("Failed to request txoutsetinfo".to_string());
+            }
+        };
+        let amount = match Amount::from_btc(amount) {
+            Ok(amount) => amount,
+            _ => return Err("txoutsetinfo returns invalid amount".to_string()),
+        };
+
+        let height = match info.get("height") {
+            Some(serde_json::Value::Number(num)) => num,
+            _ => return Err("Failed to request txoutsetinfo".to_string()),
+        };
+        let height = match height.as_u64() {
+            Some(v) => v,
+            None => {
+                return Err("Failed to request txoutsetinfo".to_string());
+            }
+        };
+
+        Ok(TxOutSetInfo { height, amount })
     }
 }

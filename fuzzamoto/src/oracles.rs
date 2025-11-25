@@ -1,6 +1,6 @@
 use crate::{
     connections::Transport,
-    targets::{ConnectableTarget, HasTipHash, Target},
+    targets::{ConnectableTarget, HasTipHash, HasTxOutSetInfo, Target, bitcoin_core::TxOutSetInfo},
 };
 use std::{
     marker::PhantomData,
@@ -126,5 +126,131 @@ where
 
     fn name(&self) -> &str {
         "NetSplitOracle"
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct InflationOracle<TX> {
+    phantom: PhantomData<TX>,
+}
+
+impl<TX> Default for InflationOracle<TX> {
+    fn default() -> Self {
+        Self {
+            phantom: PhantomData,
+        }
+    }
+}
+
+use bitcoin::Amount;
+
+/// compute the (maximum possible) total number of bitcoins that has been produced at the given height
+pub fn total_coins_until(height: u64) -> Result<Amount, String> {
+    let initial: Amount = Amount::from_int_btc(50); // 50 btc in satoshis; can't fail for sure
+    const HALVING_INTERVAL: u64 = 150; // 150 for `-regtest` mode
+    const MAX_HALVINGS: u64 = 64;
+
+    let mut total: Amount = Amount::ZERO;
+    let mut subsidy = initial;
+
+    for halving in 0..MAX_HALVINGS {
+        if subsidy == Amount::ZERO {
+            break;
+        }
+
+        let start = halving * HALVING_INTERVAL;
+        let end = start + HALVING_INTERVAL;
+
+        if height < start {
+            break;
+        }
+
+        // How many blocks in this halving period are included?
+        // we compute them and add to the total subsidy iteratively for each period
+        let blocks_in_period = if height >= end {
+            HALVING_INTERVAL
+        } else {
+            height - start + 1
+        };
+
+        total += subsidy
+            .checked_mul(blocks_in_period)
+            .ok_or_else(|| "Failed to compute the total amount of coins mined".to_string())?;
+
+        subsidy = subsidy
+            .checked_div(2)
+            .ok_or_else(|| "Failed to compute the total amount of coins mined".to_string())?;
+    }
+    Ok(total)
+}
+
+impl<TX> InflationOracle<TX> {
+    pub fn is_amount_valid(&self, info: &TxOutSetInfo) -> Result<bool, String> {
+        Ok(info.amount() <= total_coins_until(info.height())?)
+    }
+}
+
+impl<T, TX> Oracle<T> for InflationOracle<TX>
+where
+    TX: Transport,
+    T: Target<TX> + HasTxOutSetInfo,
+{
+    fn evaluate(&self, target: &T) -> OracleResult {
+        let tx_out_set_info = match target.tx_out_set_info() {
+            Ok(info) => info,
+            Err(_) => return OracleResult::Fail("Failed to retrieve txoutsetinfo".to_string()),
+        };
+
+        if let Ok(boolean) = self.is_amount_valid(&tx_out_set_info) {
+            if boolean {
+                return OracleResult::Pass;
+            } else {
+                return OracleResult::Fail(
+                    "total_amount exceeds the current maximum possible bitcoin supply".to_string(),
+                );
+            }
+        } else {
+            return OracleResult::Fail(
+                "Failed to compute the total amount of coins mined".to_string(),
+            );
+        }
+    }
+
+    fn name(&self) -> &str {
+        "InflationOracle"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn correct_total_coins() {
+        let bitcoin_core_subsidy = |height| {
+            // https://github.com/bitcoin/bitcoin/blob/238c1c8933b1f7479a9bca2b7cb207d26151c39d/src/validation.cpp#L1919
+            let halvings = height / 150;
+            if halvings >= 64 {
+                return Amount::ZERO;
+            }
+            let mut subsidy = Amount::from_int_btc(50);
+            for _ in 0..halvings {
+                subsidy = subsidy.checked_div(2).unwrap();
+            }
+            return subsidy;
+        };
+
+        for i in 0..1000 {
+            let total = total_coins_until(i).unwrap();
+            let mut expected_total = Amount::ZERO;
+            for h in 0..=i {
+                expected_total = expected_total.checked_add(bitcoin_core_subsidy(h)).unwrap();
+            }
+            println!(
+                "Height: {}, Total: {}, Expected: {}",
+                i, total, expected_total
+            );
+            assert_eq!(total, expected_total);
+        }
     }
 }

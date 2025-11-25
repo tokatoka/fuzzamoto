@@ -8,9 +8,9 @@ use bitcoin::hashes::Hash;
 use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
-    oracles::{CrashOracle, Oracle, OracleResult},
+    oracles::{CrashOracle, InflationOracle, Oracle, OracleResult},
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
-    targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, Target},
+    targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, HasTxOutSetInfo, Target},
 };
 
 #[cfg(feature = "oracle_netsplit")]
@@ -61,7 +61,7 @@ impl<'a> ScenarioInput<'a> for TestCase {
 impl<TX, T> IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + HasTipHash + ConnectableTarget,
+    T: Target<TX> + HasTipHash + ConnectableTarget + HasTxOutSetInfo,
 {
     /// Build the IR program context
     fn build_program_context(inner: &GenericScenario<TX, T>) -> ProgramContext {
@@ -233,6 +233,14 @@ where
             return ScenarioResult::Fail(e.to_string());
         }
 
+        #[cfg(feature = "oracle_inflation")]
+        {
+            let inflation_oracle = InflationOracle::<TX>::default();
+            if let OracleResult::Fail(e) = inflation_oracle.evaluate(&self.inner.target) {
+                return ScenarioResult::Fail(e.to_string());
+            }
+        }
+
         #[cfg(feature = "oracle_netsplit")]
         {
             let net_split_oracle = NetSplitOracle::<TX, TX>::default();
@@ -272,7 +280,7 @@ where
 impl<TX, T> Scenario<'_, TestCase> for IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + HasTipHash + ConnectableTarget,
+    T: Target<TX> + HasTipHash + ConnectableTarget + HasTxOutSetInfo,
 {
     fn new(args: &[String]) -> Result<Self, String> {
         let inner: GenericScenario<TX, T> = GenericScenario::new(args)?;
