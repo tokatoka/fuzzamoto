@@ -107,7 +107,8 @@ SOFTWARE.
 #define HYPERCALL_KAFL_NESTED_RELEASE		(3 | HYPERTRASH_HYPERCALL_MASK)
 #define HYPERCALL_KAFL_NESTED_HPRINTF		(4 | HYPERTRASH_HYPERCALL_MASK)
 
-#define HPRINTF_MAX_SIZE					0x1000					/* up to 4KB hprintf strings */
+// Maximum size of nyx's aux_buffer is (2^16)-1 bytes: https://github.com/nyx-fuzz/QEMU-Nyx/blob/qemu-nyx-4.2.0/nyx/auxiliary_buffer.c#L247
+#define HPRINTF_MAX_SIZE					0x10000 - 1
 
 /* specific defines to enable support for NYX hypercalls on unmodified KVM builds */
 /* PIO port number used by VMWare backdoor */
