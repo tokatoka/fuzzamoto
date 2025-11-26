@@ -200,7 +200,7 @@ impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         // Announce the tip on all connections
         for (connection, _, _, _, _) in connections.iter_mut() {
             let inv = NetworkMessage::Inv(vec![Inventory::Block(prev_hash)]);
-            connection.send_and_ping(&("inv".to_string(), encode::serialize(&inv)))?;
+            connection.send_and_recv(&("inv".to_string(), encode::serialize(&inv)), false)?;
         }
 
         Ok(Self {

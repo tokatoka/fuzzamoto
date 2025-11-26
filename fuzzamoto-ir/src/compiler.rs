@@ -39,6 +39,12 @@ pub struct Compiler {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum ProbeAction {
+    EnableMsgRecording,
+    DisableMsgRecording,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum CompiledAction {
     /// Create a new connection
     Connect(usize, String),
@@ -46,6 +52,7 @@ pub enum CompiledAction {
     SendRawMessage(usize, String, Vec<u8>),
     /// Set mock time for all nodes in the test
     SetTime(u64),
+    Probe(ProbeAction),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

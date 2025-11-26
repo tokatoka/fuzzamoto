@@ -162,15 +162,24 @@ impl<T: Transport> Connection<T> {
         Ok(())
     }
 
-    fn wait_for_pong(&mut self, nonce: u64) -> Result<(), String> {
+    fn wait_for_pong(
+        &mut self,
+        nonce: u64,
+        recording: bool,
+    ) -> Result<Vec<(String, Vec<u8>)>, String> {
+        let mut ret = Vec::new();
         loop {
             let received = self.transport.receive()?;
             if received.0 == "pong" && received.1.len() == 8 && received.1 == nonce.to_le_bytes() {
                 break;
             }
+
+            if recording && received.0 != "pong" {
+                ret.push(received);
+            }
         }
 
-        Ok(())
+        Ok(ret)
     }
 
     pub fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
@@ -181,26 +190,25 @@ impl<T: Transport> Connection<T> {
         self.transport.receive()
     }
 
-    pub fn local_addr(&self) -> Result<net::SocketAddr, String> {
-        self.transport.local_addr()
-    }
-
     pub fn ping(&mut self) -> Result<(), String> {
         self.ping_counter += 1;
         self.send_ping(self.ping_counter)?;
-        self.wait_for_pong(self.ping_counter)?;
+        self.wait_for_pong(self.ping_counter, false)?;
         Ok(())
     }
 
-    pub fn send_and_ping(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
+    pub fn send_and_recv(
+        &mut self,
+        message: &(String, Vec<u8>),
+        recording: bool,
+    ) -> Result<Vec<(String, Vec<u8>)>, String> {
         self.transport.send(message)?;
         // Sending two pings back-to-back, requires that the node calls `ProcessMessage` twice, and
         // thus ensures `SendMessages` must have been called at least once
         self.send_ping(0x0)?;
         self.ping_counter += 1;
         self.send_ping(self.ping_counter)?;
-        self.wait_for_pong(self.ping_counter)?;
-        Ok(())
+        self.wait_for_pong(self.ping_counter, recording)
     }
 
     pub fn version_handshake(&mut self, opts: HandshakeOpts) -> Result<(), String> {
