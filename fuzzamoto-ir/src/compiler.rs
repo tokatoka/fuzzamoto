@@ -21,6 +21,7 @@ use bitcoin::{
     sighash::SighashCache,
     transaction,
 };
+use std::collections::HashMap;
 use std::{any::Any, convert::TryInto, time::Duration};
 
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
@@ -59,6 +60,36 @@ pub enum CompiledAction {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CompiledProgram {
     pub actions: Vec<CompiledAction>,
+    pub metadata: CompiledMetadata,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct CompiledMetadata {
+    // Map from blockhash to (block variable index, list of transaction variable indices)
+    block_tx_var_map: HashMap<bitcoin::BlockHash, (usize, Vec<usize>)>,
+    // List of instruction indices that correspond to actions in the compiled program
+    action_indices: Vec<usize>,
+}
+
+impl CompiledMetadata {
+    pub fn new() -> Self {
+        Self {
+            block_tx_var_map: HashMap::new(),
+            action_indices: Vec::new(),
+        }
+    }
+
+    // Get the block variable index and list of transaction variable indices for a given block hash
+    pub fn block_variables(&self, block_hash: &bitcoin::BlockHash) -> Option<(usize, &[usize])> {
+        self.block_tx_var_map
+            .get(block_hash)
+            .map(|(block_var, tx_vars)| (*block_var, tx_vars.as_slice()))
+    }
+
+    // Get the list of instruction indices that correspond to actions in the compiled program
+    pub fn instruction_indices(&self) -> &[usize] {
+        &self.action_indices
+    }
 }
 
 #[derive(Debug)]
@@ -158,6 +189,12 @@ struct CoinbaseTx {
 }
 
 #[derive(Clone, Debug)]
+struct BlockTransactions {
+    txs: Vec<Tx>,
+    var_indices: Vec<usize>,
+}
+
+#[derive(Clone, Debug)]
 struct AddrList {
     entries: Vec<(u32, Address)>,
 }
@@ -171,7 +208,8 @@ struct Nop;
 
 impl Compiler {
     pub fn compile(&mut self, ir: &Program) -> CompilerResult {
-        for instruction in &ir.instructions {
+        for (instruction_index, instruction) in ir.instructions.iter().enumerate() {
+            let actions_before = self.output.actions.len();
             match instruction.operation.clone() {
                 Operation::Nop { .. }
                 | Operation::LoadNode(..)
@@ -304,6 +342,12 @@ impl Compiler {
                     self.handle_message_sending_operations(&instruction)?;
                 }
             }
+
+            // Record the instruction index for each action emitted by this instruction
+            let actions_after = self.output.actions.len();
+            for _ in actions_before..actions_after {
+                self.output.metadata.action_indices.push(instruction_index);
+            }
         }
 
         Ok(self.output.clone()) // TODO: do not clone
@@ -316,6 +360,7 @@ impl Compiler {
             variables: Vec::with_capacity(4096),
             output: CompiledProgram {
                 actions: Vec::with_capacity(4096),
+                metadata: CompiledMetadata::new(),
             },
         }
     }
@@ -1265,16 +1310,22 @@ impl Compiler {
     ) -> Result<(), CompilerError> {
         match &instruction.operation {
             Operation::BeginBlockTransactions => {
-                self.append_variable(Vec::<Tx>::new());
+                self.append_variable(BlockTransactions {
+                    txs: Vec::new(),
+                    var_indices: Vec::new(),
+                });
             }
             Operation::AddTx => {
                 let tx_var = self.get_input::<Tx>(&instruction.inputs, 1)?.clone();
+                let tx_var_index = instruction.inputs[1];
                 let block_transactions_var =
-                    self.get_input_mut::<Vec<Tx>>(&instruction.inputs, 0)?;
-                block_transactions_var.push(tx_var);
+                    self.get_input_mut::<BlockTransactions>(&instruction.inputs, 0)?;
+                block_transactions_var.txs.push(tx_var);
+                block_transactions_var.var_indices.push(tx_var_index);
             }
             Operation::EndBlockTransactions => {
-                let block_transactions_var = self.get_input::<Vec<Tx>>(&instruction.inputs, 0)?;
+                let block_transactions_var =
+                    self.get_input::<BlockTransactions>(&instruction.inputs, 0)?;
                 self.append_variable(block_transactions_var.clone());
             }
             Operation::BuildBlock => {
@@ -1375,7 +1426,9 @@ impl Compiler {
         let header_var = self.get_input::<Header>(&instruction.inputs, 1)?.clone();
         let time_var = self.get_input::<u64>(&instruction.inputs, 2)?.clone();
         let block_version_var = self.get_input::<i32>(&instruction.inputs, 3)?.clone();
-        let block_transactions_var = self.get_input::<Vec<Tx>>(&instruction.inputs, 4)?.clone();
+        let block_transactions_var = self
+            .get_input::<BlockTransactions>(&instruction.inputs, 4)?
+            .clone();
 
         coinbase_tx_var.tx.tx.input[0].script_sig = ScriptBuf::builder()
             .push_int((header_var.height + 1) as i64)
@@ -1384,7 +1437,7 @@ impl Compiler {
             .into();
 
         let mut txdata = vec![coinbase_tx_var.tx.tx.clone()];
-        txdata.extend(block_transactions_var.iter().map(|tx| tx.tx.clone()));
+        txdata.extend(block_transactions_var.txs.iter().map(|tx| tx.tx.clone()));
 
         let mut block = bitcoin::Block {
             header: bitcoin::block::Header {
@@ -1448,7 +1501,14 @@ impl Compiler {
             version: block.header.version.to_consensus(),
         });
 
+        // Record the block variable index and transaction variable indices in metadata
+        let block_hash = block.header.block_hash();
+        let block_var_index = self.variables.len();
         self.append_variable(block);
+        self.output.metadata.block_tx_var_map.insert(
+            block_hash,
+            (block_var_index, block_transactions_var.var_indices.clone()),
+        );
 
         self.append_variable(coinbase_tx_var.tx);
 
