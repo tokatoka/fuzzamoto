@@ -37,6 +37,9 @@ pub enum Variable {
 
     ConstAmount, // bitcoin amount in sats
 
+    CompactBlock,
+    Nonce,
+
     TxVersion,
     LockTime,
     Sequence,

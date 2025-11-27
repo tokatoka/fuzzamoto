@@ -104,6 +104,7 @@ impl Instruction {
             | Operation::LoadLockTime(..)
             | Operation::LoadSequence(..)
             | Operation::LoadSize(..)
+            | Operation::LoadNonce(..)
             | Operation::LoadFilterLoad { .. }
             | Operation::LoadFilterAdd { .. }
             | Operation::AddWitness
@@ -138,6 +139,7 @@ impl Instruction {
             | Operation::SendFilterLoad
             | Operation::SendFilterAdd
             | Operation::SendFilterClear
+            | Operation::SendCompactBlock
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }
@@ -159,6 +161,7 @@ impl Instruction {
             | Operation::BeginBlockTransactions
             | Operation::BeginBuildFilterLoad
             | Operation::EndBuildFilterLoad
+            | Operation::BuildCompactBlock
             | Operation::BeginBuildCoinbaseTx
             | Operation::EndBuildCoinbaseTx
             | Operation::BeginBuildCoinbaseTxOutputs
