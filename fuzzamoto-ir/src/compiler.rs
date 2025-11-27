@@ -1,5 +1,4 @@
-use std::{any::Any, convert::TryInto, time::Duration};
-
+use bitcoin::bip152::HeaderAndShortIds;
 use bitcoin::{
     Amount, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script, ScriptBuf,
     Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
@@ -14,6 +13,7 @@ use bitcoin::{
         address::{AddrV2, AddrV2Message, Address},
         message_blockdata::Inventory,
         message_bloom::{BloomFlags, FilterAdd, FilterLoad},
+        message_compact_blocks::CmpctBlock,
         message_filter::{GetCFCheckpt, GetCFHeaders, GetCFilters},
     },
     script::PushBytesBuf,
@@ -21,6 +21,7 @@ use bitcoin::{
     sighash::SighashCache,
     transaction,
 };
+use std::{any::Any, convert::TryInto, time::Duration};
 
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
@@ -187,8 +188,13 @@ impl Compiler {
                 | Operation::LoadHeader { .. }
                 | Operation::LoadTxo { .. }
                 | Operation::LoadFilterLoad { .. }
-                | Operation::LoadFilterAdd { .. } => {
+                | Operation::LoadFilterAdd { .. }
+                | Operation::LoadNonce(..) => {
                     self.handle_load_operations(&instruction)?;
+                }
+
+                Operation::BuildCompactBlock => {
+                    self.handle_compact_block_building_operations(&instruction)?;
                 }
 
                 Operation::BeginBlockTransactions
@@ -286,7 +292,8 @@ impl Compiler {
                 | Operation::SendGetCFCheckpt
                 | Operation::SendFilterLoad
                 | Operation::SendFilterAdd
-                | Operation::SendFilterClear => {
+                | Operation::SendFilterClear
+                | Operation::SendCompactBlock => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
             }
@@ -610,6 +617,30 @@ impl Compiler {
             }
             _ => unreachable!(
                 "Non-filter-building operation passed to handle_filter_building_operations"
+            ),
+        }
+        Ok(())
+    }
+
+    fn handle_compact_block_building_operations(
+        &mut self,
+        instruction: &Instruction,
+    ) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::BuildCompactBlock => {
+                let block = self.get_input::<bitcoin::Block>(&instruction.inputs, 0)?;
+                let nonce = self.get_input::<u64>(&instruction.inputs, 1)?;
+
+                // TODO: put other txs than coinbase tx
+                let prefill = vec![0]; // the coinbase tx
+                let header_and_shortids = HeaderAndShortIds::from_block(block, *nonce, 2, &prefill)
+                    .expect("from_block should never fail");
+                self.append_variable(CmpctBlock {
+                    compact_block: header_and_shortids,
+                });
+            }
+            _ => unreachable!(
+                "Non-compactblock-building operation passed to handle_compact_block_building_operations"
             ),
         }
         Ok(())
@@ -1097,6 +1128,17 @@ impl Compiler {
                 let empty: Vec<u8> = Vec::new();
                 self.emit_send_message(*connection_var, "filterclear", &empty);
             }
+            Operation::SendCompactBlock => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let compact_block = self.get_input::<CmpctBlock>(&instruction.inputs, 1)?;
+                self.emit_send_message(
+                    *connection_var,
+                    "cmpctblock",
+                    &CmpctBlock {
+                        compact_block: compact_block.compact_block.clone(),
+                    },
+                );
+            }
             _ => unreachable!(
                 "Non-message-sending operation passed to handle_message_sending_operations"
             ),
@@ -1204,6 +1246,7 @@ impl Compiler {
             Operation::LoadFilterAdd { data } => {
                 self.handle_load_operation(FilterAdd { data: data.clone() });
             }
+            Operation::LoadNonce(nonce) => self.handle_load_operation(*nonce),
             _ => unreachable!("Non-load operation passed to handle_load_operations"),
         }
         Ok(())
@@ -1355,7 +1398,7 @@ impl Compiler {
                 block.header.nonce += 1;
                 block_hash = block.header.block_hash();
             }
-            log::info!("{:?} height={}", block_hash, header_var.height);
+            // log::info!("{:?} height={}", block_hash, header_var.height);
         } else {
             let target = block.header.target();
             while block.header.validate_pow(target).is_err() {
