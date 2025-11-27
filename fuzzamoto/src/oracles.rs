@@ -43,15 +43,15 @@ where
     }
 }
 
-pub struct TemplateOracle<TX>(PhantomData<TX>);
+pub struct BlockTemplateOracle<TX>(PhantomData<TX>);
 
-impl<TX> Default for TemplateOracle<TX> {
+impl<TX> Default for BlockTemplateOracle<TX> {
     fn default() -> Self {
         Self(PhantomData)
     }
 }
 
-impl<T, TX> Oracle<T> for TemplateOracle<TX>
+impl<T, TX> Oracle<T> for BlockTemplateOracle<TX>
 where
     TX: Transport,
     T: Target<TX> + HasBlockTemplate,
@@ -64,7 +64,7 @@ where
     }
 
     fn name(&self) -> &str {
-        "TemplateOracle"
+        "BlockTemplateOracle"
     }
 }
 

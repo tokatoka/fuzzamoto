@@ -8,7 +8,7 @@ use bitcoin::hashes::Hash;
 use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
-    oracles::{CrashOracle, Oracle, OracleResult, TemplateOracle},
+    oracles::{CrashOracle, Oracle, OracleResult, BlockTemplateOracle},
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, ConnectableTarget, HasBlockTemplate, HasTipHash, Target},
 };
@@ -233,7 +233,7 @@ where
             return ScenarioResult::Fail(e.to_string());
         }
 
-        let template_oracle = TemplateOracle::<TX>::default();
+        let template_oracle = BlockTemplateOracle::<TX>::default();
         if let OracleResult::Fail(e) = template_oracle.evaluate(&self.inner.target) {
             return ScenarioResult::Fail(e.to_string());
         }
