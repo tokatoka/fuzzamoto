@@ -135,6 +135,35 @@ void nyx_dump_file_to_host(const char *file_name, size_t file_name_len,
   kAFL_hypercall(HYPERCALL_KAFL_DUMP_FILE, (uintptr_t)(&file_obj));
 }
 
+void nyx_println(const char *message, size_t message_len) {
+  // case 1; our testcase is smaller than the nyx limitation
+  if (message_len < HPRINTF_MAX_SIZE) {
+      char message_copy[HPRINTF_MAX_SIZE];
+      memset(message_copy, 0, sizeof(message_copy));
+      memcpy(message_copy, message, message_len);
+      hprintf("%s", message_copy);
+  }
+  else {
+    // case 2; our testcase is very large and we need to call hprintf many times.
+    size_t offset = 0;
+    while (offset < message_len) {
+        size_t chunk_size = message_len - offset;
+        if (chunk_size >= HPRINTF_MAX_SIZE) {
+            chunk_size = HPRINTF_MAX_SIZE - 1; // we need to vacate one null byte at the end of the buffer
+        }
+        // at this point message_copy will always have at least one ending '\x00'
+        // because chunk size is at least one byte smaller than HPRINTF_MAX_SIZE
+        char message_copy[HPRINTF_MAX_SIZE];
+        memset(message_copy, 0, sizeof(message_copy));
+        memcpy(message_copy, message + offset, chunk_size);
+        hprintf("%s", message_copy);
+        offset += chunk_size;
+    }
+  }
+
+  hprintf("\n");
+}
+
 /** Copy the next fuzz input into `data` and return the new size of the input.
  *
  * Note: This will take the snapshot on the first call. */

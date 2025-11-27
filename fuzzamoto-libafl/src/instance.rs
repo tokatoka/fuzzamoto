@@ -73,6 +73,8 @@ pub struct Instance<'a, EM> {
     client_description: ClientDescription,
 }
 
+const AUX_BUFFER_SIZE: usize = 0x20000;
+
 impl<EM> Instance<'_, EM>
 where
     EM: EventFirer<IrInput, ClientState>
@@ -94,6 +96,7 @@ where
             .cpu_id(self.client_description.core_id().0)
             .parent_cpu_id(Some(parent_cpu_id.0))
             .input_buffer_size(self.options.buffer_size)
+            .aux_buffer_size(AUX_BUFFER_SIZE)
             .timeout_secs(timeout.as_secs() as u8)
             .timeout_micro_secs(timeout.subsec_micros())
             .workdir_path(Cow::from(
