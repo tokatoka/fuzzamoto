@@ -48,3 +48,7 @@ pub trait ConnectableTarget {
 pub trait HasTipHash {
     fn get_tip_hash(&self) -> Option<[u8; 32]>;
 }
+
+pub trait HasBlockTemplate {
+    fn block_template(&self) -> Result<(), String>;
+}

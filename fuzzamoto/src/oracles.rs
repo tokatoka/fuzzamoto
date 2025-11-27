@@ -1,6 +1,6 @@
 use crate::{
     connections::Transport,
-    targets::{ConnectableTarget, HasTipHash, Target},
+    targets::{ConnectableTarget, HasBlockTemplate, HasTipHash, Target},
 };
 use std::{
     marker::PhantomData,
@@ -40,6 +40,31 @@ where
 
     fn name(&self) -> &str {
         "CrashOracle"
+    }
+}
+
+pub struct TemplateOracle<TX>(PhantomData<TX>);
+
+impl<TX> Default for TemplateOracle<TX> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T, TX> Oracle<T> for TemplateOracle<TX>
+where
+    TX: Transport,
+    T: Target<TX> + HasBlockTemplate,
+{
+    fn evaluate(&self, target: &T) -> OracleResult {
+        match target.block_template() {
+            Ok(_) => OracleResult::Pass,
+            Err(e) => OracleResult::Fail(e.to_string()),
+        }
+    }
+
+    fn name(&self) -> &str {
+        "TemplateOracle"
     }
 }
 
