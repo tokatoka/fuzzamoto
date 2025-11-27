@@ -1,7 +1,8 @@
 use crate::{
     connections::{Connection, ConnectionType, V1Transport, V2Transport},
     targets::{
-        HasGetBlock, HasGetRawMempoolEntries, HasTipInfo, HasTxOutSetInfo, Target, TargetNode, Txid,
+        HasBlockTemplate, HasGetBlock, HasGetRawMempoolEntries, HasTipInfo, HasTxOutSetInfo,
+        Target, TargetNode, Txid,
     },
 };
 
@@ -476,5 +477,24 @@ impl HasTxOutSetInfo for BitcoinCoreTarget {
         };
 
         Ok(TxOutSetInfo { height, amount })
+    }
+}
+
+impl HasBlockTemplate for BitcoinCoreTarget {
+    fn block_template(&self) -> Result<(), String> {
+        // After calling getblocktemplate, the peer will call BlockAssembler::CreateNewBlock(), and the node in turn calls TestBlockValidity for us
+        // so we just need to check if the returned result
+        let v = serde_json::json!({"mode": "template", "capabilities": ["coinbasetxn", "workid", "coinbase/append"], "rules": ["segwit"]});
+        match self
+            .node
+            .client
+            .call::<serde_json::Value>("getblocktemplate", &[v])
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                Err(format!("Failed to call getblocktemplate; reason: {e}"))
+                // if the validation fails it will return with Rpc error with code = -1
+            }
+        }
     }
 }
