@@ -1,6 +1,6 @@
 use crate::feedbacks::recv::RuntimeMetadata;
 use crate::input::IrInput;
-use fuzzamoto_ir::{Instruction, Operation, compiler::ProbeAction};
+use fuzzamoto_ir::{Instruction, Operation};
 use libafl::{
     HasMetadata,
     corpus::{Corpus, CorpusId},
@@ -65,18 +65,12 @@ where
         builder
             .append(Instruction {
                 inputs: vec![],
-                operation: Operation::Probe(ProbeAction::EnableMsgRecording),
+                operation: Operation::Probe,
             })
             .expect("appending EnableProbe should always succeed");
         builder
             .append_all(input.ir().instructions.iter().cloned())
             .expect("Partial append should always succeed if full append succeeded");
-        builder
-            .append(Instruction {
-                inputs: vec![],
-                operation: Operation::Probe(ProbeAction::DisableMsgRecording),
-            })
-            .expect("appending EnableProbe should always succeed");
         let Ok(new_program) = builder.finalize() else {
             return Ok(());
         };

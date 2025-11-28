@@ -1,4 +1,4 @@
-use crate::{AddrRecord, ProgramValidationError, Variable, compiler::ProbeAction};
+use crate::{AddrRecord, ProgramValidationError, Variable};
 
 use std::{fmt, time::Duration};
 
@@ -139,7 +139,7 @@ pub enum Operation {
     BeginBuildAddrListV2,
     EndBuildAddrListV2,
     AddAddrV2,
-    Probe(ProbeAction),
+    Probe,
 
     /// Message sending
     SendGetData,
@@ -357,7 +357,7 @@ impl fmt::Display for Operation {
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
             Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
 
-            Operation::Probe(action) => write!(f, "Probe({})", action),
+            Operation::Probe => write!(f, "Probe"),
         }
     }
 }
@@ -490,7 +490,7 @@ impl Operation {
             | Operation::EndBuildCoinbaseTxOutputs
             | Operation::BuildCoinbaseTxInput
             | Operation::AddCoinbaseTxOutput
-            | Operation::Probe(_) => false,
+            | Operation::Probe => false,
         }
     }
 
@@ -619,7 +619,7 @@ impl Operation {
             | Operation::BeginBuildCoinbaseTxOutputs
             | Operation::BuildCoinbaseTxInput
             | Operation::AddCoinbaseTxOutput
-            | Operation::Probe(_) => false,
+            | Operation::Probe => false,
         }
     }
 
@@ -769,7 +769,7 @@ impl Operation {
             Operation::SendFilterAdd => vec![],
             Operation::SendFilterClear => vec![],
             Operation::SendCompactBlock => vec![],
-            Operation::Probe(_) => vec![],
+            Operation::Probe => vec![],
         }
     }
 
@@ -926,7 +926,7 @@ impl Operation {
             | Operation::BeginBlockTransactions
             | Operation::BeginWitnessStack
             | Operation::BuildPayToAnchor
-            | Operation::Probe(_) => vec![],
+            | Operation::Probe => vec![],
         }
     }
 
@@ -1032,7 +1032,7 @@ impl Operation {
             | Operation::BuildCoinbaseTxInput
             | Operation::EndBuildCoinbaseTxOutputs
             | Operation::AddCoinbaseTxOutput
-            | Operation::Probe(_) => vec![],
+            | Operation::Probe => vec![],
         }
     }
 }

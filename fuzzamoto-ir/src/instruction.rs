@@ -166,7 +166,7 @@ impl Instruction {
             | Operation::EndBuildCoinbaseTx
             | Operation::BeginBuildCoinbaseTxOutputs
             | Operation::EndBuildCoinbaseTxOutputs
-            | Operation::Probe(_) => false,
+            | Operation::Probe => false,
         }
     }
 

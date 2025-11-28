@@ -39,22 +39,6 @@ pub struct Compiler {
     output: CompiledProgram,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Hash)]
-pub enum ProbeAction {
-    EnableMsgRecording,
-    DisableMsgRecording,
-}
-
-impl core::fmt::Display for ProbeAction {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let s = match self {
-            ProbeAction::EnableMsgRecording => "EnableMsgRecording",
-            ProbeAction::DisableMsgRecording => "DisableMsgRecording",
-        };
-        write!(f, "{}", s)
-    }
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum CompiledAction {
     /// Create a new connection
@@ -63,7 +47,7 @@ pub enum CompiledAction {
     SendRawMessage(usize, String, Vec<u8>),
     /// Set mock time for all nodes in the test
     SetTime(u64),
-    Probe(ProbeAction),
+    Probe,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -314,7 +298,7 @@ impl Compiler {
                     self.handle_message_sending_operations(&instruction)?;
                 }
 
-                Operation::Probe(_) => {
+                Operation::Probe => {
                     self.handle_probe_operations(&instruction)?;
                 }
             }
@@ -1319,14 +1303,9 @@ impl Compiler {
 
     fn handle_probe_operations(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
         match &instruction.operation {
-            Operation::Probe(op) => match op {
-                ProbeAction::EnableMsgRecording => {
-                    self.emit_enable_logging_message();
-                }
-                &ProbeAction::DisableMsgRecording => {
-                    self.emit_disable_logging_message();
-                }
-            },
+            Operation::Probe => {
+                self.emit_enable_logging_message();
+            }
             _ => unreachable!("Non probing operation passed to handle_probe_operations"),
         }
 
@@ -1378,15 +1357,7 @@ impl Compiler {
     }
 
     fn emit_enable_logging_message(&mut self) {
-        self.output
-            .actions
-            .push(CompiledAction::Probe(ProbeAction::EnableMsgRecording));
-    }
-
-    fn emit_disable_logging_message(&mut self) {
-        self.output
-            .actions
-            .push(CompiledAction::Probe(ProbeAction::DisableMsgRecording));
+        self.output.actions.push(CompiledAction::Probe);
     }
 
     fn emit_send_raw_message(&mut self, connection_var: usize, message_type: &str, bytes: Vec<u8>) {

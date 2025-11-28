@@ -23,7 +23,7 @@ use fuzzamoto::oracles::{ConsensusContext, ConsensusOracle};
 
 use fuzzamoto_ir::{
     Program, ProgramContext,
-    compiler::{CompiledAction, CompiledProgram, Compiler, ProbeAction},
+    compiler::{CompiledAction, CompiledProgram, Compiler},
 };
 
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
@@ -230,13 +230,9 @@ where
                         }
                     }
                 }
-                CompiledAction::Probe(ProbeAction::EnableMsgRecording) => {
+                CompiledAction::Probe => {
                     log::info!("Enable recording for connection");
                     self.recording_received_messages = true;
-                }
-                CompiledAction::Probe(ProbeAction::DisableMsgRecording) => {
-                    log::info!("Disable recording for connection");
-                    self.recording_received_messages = false;
                 }
                 CompiledAction::SetTime(time) => {
                     let _ = self.inner.target.set_mocktime(time);
