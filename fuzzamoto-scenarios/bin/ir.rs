@@ -62,9 +62,9 @@ pub struct TestCase {
 fn probe_result_mapper(
     action_index: usize,
     metadata: &CompiledMetadata,
-) -> impl Fn((String, Vec<u8>)) -> ProbeResult {
+) -> impl Fn((usize, String, Vec<u8>)) -> ProbeResult {
     let action_index = action_index;
-    move |(s, mut bytes): (String, Vec<u8>)| match s.as_str() {
+    move |(conn, s, mut bytes): (usize, String, Vec<u8>)| match s.as_str() {
         "getblocktxn" => {
             let Ok(request) = BlockTransactionsRequest::consensus_decode_from_finite_reader(
                 &mut Cursor::new(&mut bytes),
@@ -83,12 +83,14 @@ fn probe_result_mapper(
                 };
             };
 
-            let Some(conn_var) = metadata.send_action_map().get(&action_index) else {
+            let Some(conn_var) = metadata.connection_map().get(&conn) else {
                 return ProbeResult::Failure {
                     command: s.to_string(),
                     reason: format!("getblocktxn: couldn't find matching connection var"),
                 };
             };
+
+            // log::info!("conn {conn} maps to {conn_var}");
 
             let get_block_txn = fuzzamoto_ir::GetBlockTxn {
                 connection_index: *conn_var,
@@ -96,6 +98,8 @@ fn probe_result_mapper(
                 block_variable: block_var,
                 tx_indices_variables: tx_vars.to_vec(),
             };
+
+            // log::info!("{:#?}", get_block_txn);
 
             ProbeResult::GetBlockTxn { get_block_txn }
         }
@@ -265,14 +269,14 @@ where
 
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
                         if cfg!(feature = "force_send_and_ping") {
-                            if let Ok(received) = connection.send_and_recv(
-                                &(command, message),
-                                self.recording_received_messages,
-                            ) {
+                            if let Ok(received) =
+                                connection.send_and_recv(&(command, message), true)
+                            {
                                 self.probe_results.extend(
                                     received
                                         .into_iter()
                                         .filter(message_filter)
+                                        .map(|(s, v)| (dst, s, v))
                                         .map(probe_result_mapper(i, &program.metadata)),
                                 );
                             }
