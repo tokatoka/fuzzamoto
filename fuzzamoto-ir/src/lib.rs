@@ -308,3 +308,18 @@ impl fmt::Display for Program {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum ProbeResult {
+    GetBlockTxn {
+        /// Index of the instruction that triggered the node under test to send a getblocktxn
+        /// message
+        triggering_instruction_index: usize,
+        /// Variable index of the block whose transactions were requested
+        block_variable: usize,
+        /// Indices of the transaction indices variables requested
+        tx_indices_variables: Vec<usize>,
+    },
+}
+
+pub type ProbeResults = Vec<ProbeResult>;
