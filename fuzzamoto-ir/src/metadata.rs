@@ -1,6 +1,8 @@
 use bitcoin::hashes::Hash;
 use serde::{Deserialize, Serialize};
 
+use crate::GetBlockTxn;
+
 // The struct to hold the data returned from getblocktxn message.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, Hash)]
 pub struct BlockTransactionsRequestRecved {
@@ -34,7 +36,7 @@ impl BlockTransactionsRequestRecved {
 /// The runtime data observed during the course of harness execution
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PerTestcaseMetadata {
-    pub block_tx_request: Vec<BlockTransactionsRequestRecved>,
+    pub block_tx_request: Vec<GetBlockTxn>,
 }
 
 impl PerTestcaseMetadata {
@@ -44,11 +46,11 @@ impl PerTestcaseMetadata {
         }
     }
 
-    pub fn block_tx_request(&self) -> &[BlockTransactionsRequestRecved] {
+    pub fn block_tx_request(&self) -> &[GetBlockTxn] {
         &self.block_tx_request
     }
 
-    pub fn add_block_tx_request(&mut self, req: BlockTransactionsRequestRecved) {
+    pub fn add_block_tx_request(&mut self, req: GetBlockTxn) {
         // log::info!("We push req: {:?} to the metadata", req.clone());
         self.block_tx_request.push(req);
     }

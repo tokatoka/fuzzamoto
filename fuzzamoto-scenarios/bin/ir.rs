@@ -66,20 +66,40 @@ fn probe_result_mapper(
     let action_index = action_index;
     move |(s, mut bytes): (String, Vec<u8>)| match s.as_str() {
         "getblocktxn" => {
-            let request = BlockTransactionsRequest::consensus_decode_from_finite_reader(
+            let Ok(request) = BlockTransactionsRequest::consensus_decode_from_finite_reader(
                 &mut Cursor::new(&mut bytes),
-            )
-            .unwrap();
+            ) else {
+                return ProbeResult::Failure {
+                    command: s.to_string(),
+                    reason: "getblocktxn: Fail to call consensus_decode_from_finite_reader"
+                        .to_string(),
+                };
+            };
 
-            let (block_var, tx_vars) = metadata.block_variables(&request.block_hash).unwrap();
+            let Some((block_var, tx_vars)) = metadata.block_variables(&request.block_hash) else {
+                return ProbeResult::Failure {
+                    command: s.to_string(),
+                    reason: format!("getblocktxn: block hash is not registered in the metadata"),
+                };
+            };
 
-            ProbeResult::GetBlockTxn {
+            let Some(conn_var) = metadata.send_action_map().get(&action_index) else {
+                return ProbeResult::Failure {
+                    command: s.to_string(),
+                    reason: format!("getblocktxn: couldn't find matching connection var"),
+                };
+            };
+
+            let get_block_txn = fuzzamoto_ir::GetBlockTxn {
+                connection_index: *conn_var,
                 triggering_instruction_index: metadata.instruction_indices()[action_index],
                 block_variable: block_var,
                 tx_indices_variables: tx_vars.to_vec(),
-            }
+            };
+
+            ProbeResult::GetBlockTxn { get_block_txn }
         }
-        _ => panic!("unexpected message"),
+        _ => ProbeResult::UnHandled { command: s },
     }
 }
 
@@ -371,6 +391,22 @@ where
     fn run(&mut self, testcase: TestCase) -> ScenarioResult {
         self.process_actions(testcase.program);
         self.ping_connections();
+
+        // for debugging
+        let message = ProbeResult::GetBlockTxn {
+            get_block_txn: fuzzamoto_ir::GetBlockTxn {
+                connection_index: 0,
+                triggering_instruction_index: 3,
+                block_variable: 5,
+                tx_indices_variables: vec![4, 9, 1],
+            },
+        };
+        let message2 = ProbeResult::Failure {
+            command: "non existent".to_string(),
+            reason: "cuz it doesn't exist".to_string(),
+        };
+        self.probe_results.push(message);
+        self.probe_results.push(message2);
         self.print_received();
         self.evaluate_oracles()
     }

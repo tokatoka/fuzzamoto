@@ -1,6 +1,5 @@
 use crate::input::IrInput;
-use bitcoin::consensus::Decodable;
-use fuzzamoto_ir::BlockTransactionsRequestRecved;
+use fuzzamoto_ir::{ProbeResult, ProbeResults};
 use libafl::{
     HasMetadata,
     corpus::{Corpus, CorpusId, Testcase},
@@ -10,6 +9,7 @@ use libafl::{
     state::HasCorpus,
 };
 use libafl_bolts::{Error, Named, impl_serdeany};
+use postcard::from_bytes;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -52,13 +52,11 @@ impl RuntimeMetadata {
 }
 
 impl_serdeany!(RuntimeMetadata);
-
+/*
 /// Parse the incoming message from the other peer and process it
 pub fn process_command<S>(
     state: &mut S,
-    conn: usize,
-    command: &str,
-    payload: &[u8],
+    results: ProbeResults
 ) -> Result<(), Error>
 where
     S: HasMetadata + HasCorpus<IrInput>,
@@ -81,6 +79,37 @@ where
         }
         _ => {
             // if we want to add handling for other messages, add it here.
+        }
+    }
+    Ok(())
+}
+*/
+/// Parse the incoming message from the other peer and process it
+pub fn process_command<S>(state: &mut S, results: &ProbeResults) -> Result<(), Error>
+where
+    S: HasMetadata + HasCorpus<IrInput>,
+{
+    for command in results {
+        match command {
+            ProbeResult::UnHandled { command } => {
+                log::info!("Received an unhandled command; command: {:?}", command);
+            }
+            ProbeResult::GetBlockTxn { get_block_txn } => {
+                let current = *state.corpus().current();
+                if let Some(cur) = current
+                    && let Ok(meta) = state.metadata_mut::<RuntimeMetadata>()
+                {
+                    let txvec = meta.metadatas.entry(cur).or_default();
+                    txvec.add_block_tx_request(get_block_txn.clone());
+                }
+            }
+            ProbeResult::Failure { command, reason } => {
+                log::info!(
+                    "Command {:?} couln't be parsed; reason: {:?}",
+                    command,
+                    reason
+                );
+            }
         }
     }
     Ok(())
@@ -120,6 +149,16 @@ where
                 if chunk.is_empty() {
                     continue;
                 }
+
+                use base64::prelude::{BASE64_STANDARD, Engine};
+                if let Ok(decoded) = BASE64_STANDARD.decode(&chunk)
+                    && let Ok(results) = from_bytes::<ProbeResults>(&decoded)
+                {
+                    process_command(state, &results)?;
+                } else {
+                    log::info!("Failed to decode the message from the target!");
+                }
+                /*
                 if let Ok((conn, command, payload)) =
                     serde_json::from_slice::<(usize, String, Vec<u8>)>(&chunk)
                 {
@@ -128,6 +167,7 @@ where
                 } else {
                     log::info!("Failed to deserialize payload (size: {})", chunk.len());
                 }
+                */
             }
         }
         Ok(false)

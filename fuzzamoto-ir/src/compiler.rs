@@ -57,18 +57,27 @@ pub struct CompiledProgram {
     pub metadata: CompiledMetadata,
 }
 
+pub type VariableIndex = usize;
+
+pub type InstructionIndex = usize;
+
+pub type ActionIndex = usize;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CompiledMetadata {
     // Map from blockhash to (block variable index, list of transaction variable indices)
     block_tx_var_map: HashMap<bitcoin::BlockHash, (usize, Vec<usize>)>,
+    // Map mapping from action indices to the connection var id.
+    send_action_map: HashMap<ActionIndex, VariableIndex>,
     // List of instruction indices that correspond to actions in the compiled program
-    action_indices: Vec<usize>,
+    action_indices: Vec<InstructionIndex>,
 }
 
 impl CompiledMetadata {
     pub fn new() -> Self {
         Self {
             block_tx_var_map: HashMap::new(),
+            send_action_map: HashMap::new(),
             action_indices: Vec::new(),
         }
     }
@@ -81,8 +90,12 @@ impl CompiledMetadata {
     }
 
     // Get the list of instruction indices that correspond to actions in the compiled program
-    pub fn instruction_indices(&self) -> &[usize] {
+    pub fn instruction_indices(&self) -> &[InstructionIndex] {
         &self.action_indices
+    }
+
+    pub fn send_action_map(&self) -> &HashMap<ActionIndex, VariableIndex> {
+        &self.send_action_map
     }
 }
 
@@ -361,6 +374,14 @@ impl Compiler {
                 metadata: CompiledMetadata::new(),
             },
         }
+    }
+
+    fn update_send_action_map(&mut self, connection_var_index: VariableIndex) {
+        let current = self.output.actions.len();
+        self.output
+            .metadata
+            .send_action_map
+            .insert(current, connection_var_index);
     }
 
     fn handle_load_operation<T: 'static>(&mut self, value: T) {
@@ -1023,18 +1044,23 @@ impl Compiler {
     ) -> Result<(), CompilerError> {
         match &instruction.operation {
             Operation::SendRawMessage => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
+
                 let message_type_var = self.get_input::<[char; 12]>(&instruction.inputs, 1)?;
                 let bytes_var = self.get_input::<Vec<u8>>(&instruction.inputs, 2)?;
 
                 self.emit_send_raw_message(
-                    *connection_var,
+                    connection_var,
                     &message_type_var.iter().collect::<String>(),
                     bytes_var.clone(),
                 );
             }
             Operation::SendTxNoWit | Operation::SendTx => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let tx_var = self.get_input::<Tx>(&instruction.inputs, 1)?;
 
                 let mut tx_var = tx_var.clone();
@@ -1044,10 +1070,12 @@ impl Compiler {
                     }
                 }
 
-                self.emit_send_message(*connection_var, "tx", &tx_var.tx);
+                self.emit_send_message(connection_var, "tx", &tx_var.tx);
             }
             Operation::SendGetData | Operation::SendInv => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let inv_var = self.get_input::<Vec<Inventory>>(&instruction.inputs, 1)?;
 
                 let msg_type = if matches!(instruction.operation, Operation::SendInv) {
@@ -1057,29 +1085,37 @@ impl Compiler {
                 };
 
                 self.emit_send_raw_message(
-                    *connection_var,
+                    connection_var,
                     msg_type,
                     bitcoin::consensus::encode::serialize(&inv_var),
                 );
             }
             Operation::SendGetAddr => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
-                self.emit_send_raw_message(*connection_var, "getaddr", vec![]);
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
+                self.emit_send_raw_message(connection_var, "getaddr", vec![]);
             }
             Operation::SendAddr => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let addr_var = self.get_input::<Vec<(u32, Address)>>(&instruction.inputs, 1)?;
                 let payload = bitcoin::consensus::encode::serialize(addr_var);
-                self.emit_send_raw_message(*connection_var, "addr", payload);
+                self.emit_send_raw_message(connection_var, "addr", payload);
             }
             Operation::SendAddrV2 => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let addr_var = self.get_input::<Vec<AddrV2Message>>(&instruction.inputs, 1)?;
                 let payload = bitcoin::consensus::encode::serialize(addr_var);
-                self.emit_send_raw_message(*connection_var, "addrv2", payload);
+                self.emit_send_raw_message(connection_var, "addrv2", payload);
             }
             Operation::SendHeader => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let header_var = self.get_input::<Header>(&instruction.inputs, 1)?;
 
                 let mut data = vec![1u8]; // 1 header
@@ -1088,10 +1124,12 @@ impl Compiler {
                 ));
                 data.push(0); // empty txdata
 
-                self.emit_send_raw_message(*connection_var, "headers", data);
+                self.emit_send_raw_message(connection_var, "headers", data);
             }
             Operation::SendBlock | Operation::SendBlockNoWit => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let block_var = self.get_input::<bitcoin::Block>(&instruction.inputs, 1)?;
 
                 let mut block_var = block_var.clone();
@@ -1102,17 +1140,19 @@ impl Compiler {
                         }
                     }
                 }
-                self.emit_send_message(*connection_var, "block", &block_var);
+                self.emit_send_message(connection_var, "block", &block_var);
             }
             Operation::SendGetCFilters | Operation::SendGetCFHeaders => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let compact_filter_type_var = self.get_input::<u8>(&instruction.inputs, 1)?;
                 let block_height_var = self.get_input::<u32>(&instruction.inputs, 2)?;
                 let header_var = self.get_input::<Header>(&instruction.inputs, 3)?;
 
                 if matches!(instruction.operation, Operation::SendGetCFilters) {
                     self.emit_send_message(
-                        *connection_var,
+                        connection_var,
                         "getcfilters",
                         &GetCFilters {
                             filter_type: *compact_filter_type_var,
@@ -1122,7 +1162,7 @@ impl Compiler {
                     );
                 } else {
                     self.emit_send_message(
-                        *connection_var,
+                        connection_var,
                         "getcfheaders",
                         &GetCFHeaders {
                             filter_type: *compact_filter_type_var,
@@ -1133,12 +1173,14 @@ impl Compiler {
                 };
             }
             Operation::SendGetCFCheckpt => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let compact_filter_type_var = self.get_input::<u8>(&instruction.inputs, 1)?;
                 let header_var = self.get_input::<Header>(&instruction.inputs, 2)?;
 
                 self.emit_send_message(
-                    *connection_var,
+                    connection_var,
                     "getcfcheckpt",
                     &GetCFCheckpt {
                         filter_type: *compact_filter_type_var,
@@ -1147,11 +1189,13 @@ impl Compiler {
                 );
             }
             Operation::SendFilterLoad => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let filter_load = self.get_input::<FilterLoad>(&instruction.inputs, 1)?;
 
                 self.emit_send_message(
-                    *connection_var,
+                    connection_var,
                     "filterload",
                     &FilterLoad {
                         filter: filter_load.filter.clone(),
@@ -1162,11 +1206,13 @@ impl Compiler {
                 );
             }
             Operation::SendFilterAdd => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let filteradd = self.get_input::<FilterAdd>(&instruction.inputs, 1)?;
 
                 self.emit_send_message(
-                    *connection_var,
+                    connection_var,
                     "filteradd",
                     &FilterAdd {
                         data: filteradd.data.clone(),
@@ -1174,15 +1220,19 @@ impl Compiler {
                 );
             }
             Operation::SendFilterClear => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let empty: Vec<u8> = Vec::new();
-                self.emit_send_message(*connection_var, "filterclear", &empty);
+                self.emit_send_message(connection_var, "filterclear", &empty);
             }
             Operation::SendCompactBlock => {
-                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                let connection_var_index = *self.get_input::<usize>(&instruction.inputs, 0)?;
+                self.update_send_action_map(connection_var_index);
                 let compact_block = self.get_input::<CmpctBlock>(&instruction.inputs, 1)?;
                 self.emit_send_message(
-                    *connection_var,
+                    connection_var,
                     "cmpctblock",
                     &CmpctBlock {
                         compact_block: compact_block.compact_block.clone(),
@@ -1383,6 +1433,17 @@ impl Compiler {
             .get(index)
             .ok_or(CompilerError::IncorrectNumberOfInputs)?;
         self.get_variable(*var_index)
+    }
+
+    fn get_index<'a, T: 'static>(
+        &'a self,
+        inputs: &[usize],
+        index: usize,
+    ) -> Result<VariableIndex, CompilerError> {
+        let var_index = inputs
+            .get(index)
+            .ok_or(CompilerError::IncorrectNumberOfInputs)?;
+        Ok(*var_index)
     }
 
     fn get_input_mut<'a, T: 'static>(
