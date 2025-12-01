@@ -98,3 +98,7 @@ RUN cmake --build bitcoin/build_fuzz -j$(nproc) --target bitcoind
 ENV CC=clang-${LLVM_V}
 ENV CXX=clang++-${LLVM_V}
 ENV LD=lld-${LLVM_V}
+
+# Needed to avoid "fatal: detected dubious ownership in repository" errors from
+# the Nyx build inside of target/
+RUN git config --global --add safe.directory /fuzzamoto

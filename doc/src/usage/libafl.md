@@ -49,6 +49,7 @@ clang-19 -fPIC -DENABLE_NYX -D_GNU_SOURCE -DNO_PT_NYX \
     --crash-handler /fuzzamoto/libnyx_crash_handler.so \
     --bitcoind /bitcoin/build_fuzz/bin/bitcoind \
     --scenario ./target/release/scenario-ir
+    --nyx-dir ./target/release/
 ```
 
 The fuzzer uses shared memory to communicate between its instances, you'll
