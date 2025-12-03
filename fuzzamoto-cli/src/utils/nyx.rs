@@ -1,51 +1,6 @@
-use crate::error::{CliError, Result};
+use crate::error::Result;
 use crate::utils::process::run_command_with_status;
-use std::path::{Path, PathBuf};
-
-pub fn get_libafl_nyx_path() -> Result<PathBuf> {
-    let output = std::process::Command::new("cargo")
-        .arg("metadata")
-        .arg("--format-version=1")
-        .output()?;
-
-    if !output.status.success() {
-        return Err(CliError::ProcessError(
-            "Failed to get cargo metadata".to_string(),
-        ));
-    }
-
-    let metadata: serde_json::Value = serde_json::from_slice(&output.stdout)?;
-
-    let packages = metadata
-        .as_object()
-        .and_then(|obj| obj.get("packages"))
-        .and_then(|p| p.as_array())
-        .ok_or_else(|| CliError::ProcessError("Invalid cargo metadata format".to_string()))?;
-
-    let libafl_nyx_package = packages
-        .iter()
-        .find(|p| {
-            p.as_object()
-                .and_then(|obj| obj.get("name"))
-                .and_then(|name| name.as_str())
-                == Some("libafl_nyx")
-        })
-        .ok_or_else(|| CliError::ProcessError("libafl_nyx package not found".to_string()))?;
-
-    let manifest_path = libafl_nyx_package
-        .as_object()
-        .and_then(|obj| obj.get("manifest_path"))
-        .and_then(|path| path.as_str())
-        .ok_or_else(|| CliError::ProcessError("Invalid manifest path".to_string()))?;
-
-    let libafl_nyx_path = PathBuf::from(manifest_path)
-        .parent()
-        .ok_or_else(|| CliError::ProcessError("Invalid libafl_nyx path".to_string()))?
-        .to_path_buf();
-
-    log::info!("Found libafl_nyx at: {:?}", libafl_nyx_path);
-    Ok(libafl_nyx_path)
-}
+use std::path::Path;
 
 pub fn compile_packer_binaries(nyx_path: &Path) -> Result<()> {
     log::info!("Compiling packer binaries");

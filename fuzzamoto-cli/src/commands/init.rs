@@ -11,7 +11,7 @@ impl InitCommand {
         bitcoind: PathBuf,
         secondary_bitcoind: Option<PathBuf>,
         scenario: PathBuf,
-        nyx_dir: Option<PathBuf>,
+        nyx_dir: PathBuf,
     ) -> Result<()> {
         file_ops::ensure_sharedir_not_exists(&sharedir)?;
         file_ops::create_dir_all(&sharedir)?;
@@ -90,11 +90,6 @@ impl InitCommand {
 
         log::info!("Created share directory: {}", sharedir.display());
 
-        let nyx_dir = match nyx_dir {
-            Some(nyx_dir) => nyx_dir,
-            // If nyx dir isn't specified, try to locate the libafl_nyx path
-            None => nyx::get_libafl_nyx_path()?,
-        };
         nyx::compile_packer_binaries(&nyx_dir)?;
         nyx::copy_packer_binaries(&nyx_dir, &sharedir)?;
         nyx::generate_nyx_config(&nyx_dir, &sharedir)?;
