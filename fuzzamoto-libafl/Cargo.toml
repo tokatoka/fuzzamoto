@@ -39,9 +39,9 @@ vergen = { version = "8.2.1", features = [
 [dependencies]
 clap = { version = "4.5.18", features = ["derive", "string", "env"] }
 
-libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "c018ddd32c7ce16b6c4d9d091c9162918da70f28", features = ["tui_monitor"] }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "c018ddd32c7ce16b6c4d9d091c9162918da70f28", features = ["errors_backtrace"] }
-libafl_nyx = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "c018ddd32c7ce16b6c4d9d091c9162918da70f28" }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5", features = ["tui_monitor"] }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5", features = ["errors_backtrace"] }
+libafl_nyx = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5" }
 
 log = { version = "0.4.20" }
 nix = { version = "0.30.1", features = ["fs"] }

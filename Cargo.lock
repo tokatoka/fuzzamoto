@@ -335,7 +335,7 @@ checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 [[package]]
 name = "build_id2"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "ahash",
  "rustversion",
@@ -619,7 +619,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "core_affinity2"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "libafl_core",
  "libc",
@@ -940,7 +940,7 @@ dependencies = [
 [[package]]
 name = "exceptional"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "libafl_core",
  "libc",
@@ -955,7 +955,7 @@ dependencies = [
 [[package]]
 name = "fast_rands"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "rand_core 0.9.3",
  "rustversion",
@@ -1632,7 +1632,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 [[package]]
 name = "libafl"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "ahash",
  "arbitrary-int 2.0.0",
@@ -1675,7 +1675,7 @@ dependencies = [
 [[package]]
 name = "libafl_bolts"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "ahash",
  "backtrace",
@@ -1720,7 +1720,7 @@ dependencies = [
 [[package]]
 name = "libafl_core"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "backtrace",
  "nix 0.30.1",
@@ -1733,7 +1733,7 @@ dependencies = [
 [[package]]
 name = "libafl_derive"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1743,7 +1743,7 @@ dependencies = [
 [[package]]
 name = "libafl_nyx"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "libafl",
  "libafl_bolts",
@@ -1758,7 +1758,7 @@ dependencies = [
 [[package]]
 name = "libafl_targets"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "bindgen",
  "cc",
@@ -1874,7 +1874,7 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 [[package]]
 name = "ll_mp"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "exceptional",
  "hostname",
@@ -1964,7 +1964,7 @@ checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 [[package]]
 name = "minibsod"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "exceptional",
  "libc",
@@ -2062,7 +2062,7 @@ dependencies = [
 [[package]]
 name = "no_std_time"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "rustversion",
 ]
@@ -2199,7 +2199,7 @@ dependencies = [
 [[package]]
 name = "ownedref"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "libafl_core",
  "rustversion",
@@ -2639,9 +2639,9 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "safe_arch"
-version = "0.9.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "629516c85c29fe757770fa03f2074cf1eac43d44c02a3de9fc2ef7b0e207dfdd"
+checksum = "1f7caad094bd561859bcd467734a720c3c1f5d1f338995351fefe2190c45efed"
 dependencies = [
  "bytemuck",
 ]
@@ -2757,7 +2757,7 @@ dependencies = [
 [[package]]
 name = "serde_anymap"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "ahash",
  "ctor",
@@ -2872,7 +2872,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 [[package]]
 name = "shmem_providers"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "fast_rands",
  "hashbrown 0.16.1",
@@ -3431,7 +3431,7 @@ checksum = "141fb9f71ee586d956d7d6e4d5a9ef8e946061188520140f7591b668841d502e"
 [[package]]
 name = "tuple_list_ex"
 version = "0.16.0"
-source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=c018ddd32c7ce16b6c4d9d091c9162918da70f28#c018ddd32c7ce16b6c4d9d091c9162918da70f28"
+source = "git+https://github.com/AFLplusplus/LibAFL.git?rev=3b21190452d7289535aee443799ea55d940915c5#3b21190452d7289535aee443799ea55d940915c5"
 dependencies = [
  "libafl_core",
  "ownedref",
@@ -3575,13 +3575,13 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.18.1"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f87b8aa10b915a06587d0dec516c282ff295b475d94abf425d62b57710070a2"
+checksum = "e2e054861b4bd027cd373e18e8d8d8e6548085000e41290d95ce0c373a654b4a"
 dependencies = [
  "getrandom 0.3.4",
  "js-sys",
- "serde",
+ "serde_core",
  "wasm-bindgen",
 ]
 
@@ -3737,9 +3737,9 @@ dependencies = [
 
 [[package]]
 name = "wide"
-version = "0.8.3"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13ca908d26e4786149c48efcf6c0ea09ab0e06d1fe3c17dc1b4b0f1ca4a7e788"
+checksum = "bbace5de6cfc4866f684318ad85761c89380cfb191982ae96aa65c295bf5897e"
 dependencies = [
  "bytemuck",
  "safe_arch",
