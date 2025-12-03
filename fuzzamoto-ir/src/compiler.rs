@@ -1,7 +1,7 @@
 use bitcoin::bip152::HeaderAndShortIds;
 use bitcoin::{
-    Amount, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script, ScriptBuf,
-    Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
+    Amount, Block, CompactTarget, EcdsaSighashType, NetworkKind, OutPoint, PrivateKey, Script,
+    ScriptBuf, Sequence, Transaction, TxIn, TxMerkleNode, TxOut, Txid, WitnessMerkleNode, Wtxid,
     absolute::LockTime,
     consensus::Encodable,
     ecdsa,
@@ -328,6 +328,12 @@ impl Compiler {
                     self.handle_time_operations(&instruction)?;
                 }
 
+                Operation::BeginBuildBlockTxn
+                | Operation::EndBuildBlockTxn
+                | Operation::AddTxToBlockTxn => {
+                    self.handle_bip152_blocktxn_operations(&instruction)?;
+                }
+
                 Operation::SendRawMessage
                 | Operation::SendTxNoWit
                 | Operation::SendTx
@@ -345,7 +351,8 @@ impl Compiler {
                 | Operation::SendFilterLoad
                 | Operation::SendFilterAdd
                 | Operation::SendFilterClear
-                | Operation::SendCompactBlock => {
+                | Operation::SendCompactBlock
+                | Operation::SendBlockTxn => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
 
@@ -1046,6 +1053,13 @@ impl Compiler {
         instruction: &Instruction,
     ) -> Result<(), CompilerError> {
         match &instruction.operation {
+            Operation::SendBlockTxn => {
+                let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+                let blocktxn = self
+                    .get_input::<bitcoin::bip152::BlockTransactions>(&instruction.inputs, 1)?
+                    .clone();
+                self.emit_send_message(*connection_var, "blocktxn", &blocktxn);
+            }
             Operation::SendRawMessage => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
                 let message_type_var = self.get_input::<[char; 12]>(&instruction.inputs, 1)?;
@@ -1213,6 +1227,38 @@ impl Compiler {
                         compact_block: compact_block.compact_block.clone(),
                     },
                 );
+            }
+            _ => unreachable!(
+                "Non-message-sending operation passed to handle_message_sending_operations"
+            ),
+        }
+        Ok(())
+    }
+
+    fn handle_bip152_blocktxn_operations(
+        &mut self,
+        instruction: &Instruction,
+    ) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::BeginBuildBlockTxn => {
+                let block = self.get_input::<Block>(&instruction.inputs, 0)?;
+                let block_txn = bitcoin::bip152::BlockTransactions {
+                    block_hash: block.block_hash(),
+                    transactions: Vec::new(),
+                };
+                self.append_variable(block_txn);
+            }
+            Operation::AddTxToBlockTxn => {
+                let tx = self.get_input::<Tx>(&instruction.inputs, 1)?.clone();
+                let block_txn = self
+                    .get_input_mut::<bitcoin::bip152::BlockTransactions>(&instruction.inputs, 0)?;
+                block_txn.transactions.push(tx.tx.clone());
+            }
+            Operation::EndBuildBlockTxn => {
+                let block_txn = self
+                    .get_input::<bitcoin::bip152::BlockTransactions>(&instruction.inputs, 0)?
+                    .clone();
+                self.append_variable(block_txn);
             }
             _ => unreachable!(
                 "Non-message-sending operation passed to handle_message_sending_operations"

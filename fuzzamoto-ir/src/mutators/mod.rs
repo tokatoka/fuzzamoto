@@ -1,9 +1,11 @@
+pub mod blocktxn;
 pub mod combine;
 pub mod concat;
 pub mod input;
 pub mod operation;
 
 use crate::{PerTestcaseMetadata, Program};
+pub use blocktxn::*;
 pub use combine::*;
 pub use concat::*;
 pub use input::*;
