@@ -1,7 +1,7 @@
 #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
 use std::time::{Duration, Instant};
 
-use bitcoin::hashes::Hash;
+use bitcoin::{bip152::BlockTransactionsRequest, consensus::Decodable, hashes::Hash};
 use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
@@ -12,6 +12,7 @@ use fuzzamoto::{
 
 #[cfg(feature = "nyx")]
 use fuzzamoto_nyx_sys::*;
+use io::Cursor;
 #[cfg(feature = "nyx")]
 use std::ffi::CString;
 
@@ -22,8 +23,8 @@ use fuzzamoto::oracles::{NetSplitContext, NetSplitOracle};
 use fuzzamoto::oracles::{ConsensusContext, ConsensusOracle};
 
 use fuzzamoto_ir::{
-    Program, ProgramContext,
-    compiler::{CompiledAction, CompiledProgram, Compiler, ProbeAction},
+    ProbeResult, ProbeResults, Program, ProgramContext,
+    compiler::{CompiledAction, CompiledMetadata, CompiledProgram, Compiler},
 };
 
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
@@ -35,12 +36,14 @@ const OP_TRUE_SCRIPT_PUBKEY: [u8; 34] = [
     225, 85, 30, 111, 114, 30, 233, 192, 11, 140, 195, 50, 96,
 ];
 
+const PROBE_OPERATION_OFFSET: usize = 1;
+
 /// `IrScenario` is a scenario with the same context as `GenericScenario` but it operates on
 /// `fuzzamoto_ir::CompiledProgram`s as input.
 struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     inner: GenericScenario<TX, T>,
     recording_received_messages: bool,
-    received: Vec<(usize, String, Vec<u8>)>,
+    probe_results: ProbeResults,
     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
 }
@@ -56,6 +59,53 @@ pub fn nyx_print(bytes: &[u8]) {
 
 pub struct TestCase {
     program: CompiledProgram,
+}
+
+fn probe_result_mapper(
+    action_index: usize,
+    metadata: &CompiledMetadata,
+) -> impl Fn((usize, String, Vec<u8>)) -> ProbeResult {
+    let action_index = action_index;
+    move |(conn, s, mut bytes): (usize, String, Vec<u8>)| match s.as_str() {
+        "getblocktxn" => {
+            let Ok(request) = BlockTransactionsRequest::consensus_decode_from_finite_reader(
+                &mut Cursor::new(&mut bytes),
+            ) else {
+                return ProbeResult::Failure {
+                    command: s.to_string(),
+                    reason: "getblocktxn: Fail to call consensus_decode_from_finite_reader"
+                        .to_string(),
+                };
+            };
+
+            let Some((block_var, tx_vars)) = metadata.block_variables(&request.block_hash) else {
+                return ProbeResult::Failure {
+                    command: s.to_string(),
+                    reason: format!("getblocktxn: block hash is not registered in the metadata"),
+                };
+            };
+
+            let Some(conn_var) = metadata.connection_map().get(&conn) else {
+                return ProbeResult::Failure {
+                    command: s.to_string(),
+                    reason: format!("getblocktxn: couldn't find matching connection var"),
+                };
+            };
+
+            let get_block_txn = fuzzamoto_ir::GetBlockTxn {
+                connection_index: *conn_var,
+                triggering_instruction_index: metadata.instruction_indices()[action_index]
+                    - PROBE_OPERATION_OFFSET,
+                block_variable: block_var,
+                tx_indices_variables: tx_vars.to_vec(),
+            };
+
+            ProbeResult::GetBlockTxn { get_block_txn }
+        }
+        _ => unreachable!(
+            "Unexpected command; The filter must ensure only supported commands reach this point"
+        ),
+    }
 }
 
 impl<'a> ScenarioInput<'a> for TestCase {
@@ -206,8 +256,10 @@ where
         Ok(())
     }
 
-    fn process_actions(&mut self, actions: Vec<CompiledAction>) {
-        for action in actions {
+    fn process_actions(&mut self, mut program: CompiledProgram) {
+        let message_filter = |(s, _): &(String, Vec<u8>)| ["getblocktxn"].contains(&s.as_str());
+
+        for (i, action) in program.actions.drain(..).enumerate() {
             match action {
                 CompiledAction::SendRawMessage(from, command, message) => {
                     if self.inner.connections.is_empty() {
@@ -218,25 +270,25 @@ where
 
                     if let Some(connection) = self.inner.connections.get_mut(dst) {
                         if cfg!(feature = "force_send_and_ping") {
-                            if let Ok(received) = connection.send_and_recv(
-                                &(command, message),
-                                self.recording_received_messages,
-                            ) {
-                                self.received
-                                    .extend(received.into_iter().map(|(s, bytes)| (dst, s, bytes)));
+                            if let Ok(received) =
+                                connection.send_and_recv(&(command, message), true)
+                            {
+                                self.probe_results.extend(
+                                    received
+                                        .into_iter()
+                                        .filter(message_filter)
+                                        .map(|(s, v)| (dst, s, v))
+                                        .map(probe_result_mapper(i, &program.metadata)),
+                                );
                             }
                         } else {
                             let _ = connection.send(&(command, message));
                         }
                     }
                 }
-                CompiledAction::Probe(ProbeAction::EnableMsgRecording) => {
+                CompiledAction::Probe => {
                     log::info!("Enable recording for connection");
                     self.recording_received_messages = true;
-                }
-                CompiledAction::Probe(ProbeAction::DisableMsgRecording) => {
-                    log::info!("Disable recording for connection");
-                    self.recording_received_messages = false;
                 }
                 CompiledAction::SetTime(time) => {
                     let _ = self.inner.target.set_mocktime(time);
@@ -250,12 +302,11 @@ where
 
     fn print_received(&mut self) {
         #[cfg(feature = "nyx")]
-        for message in &self.received {
-            if let Ok(bytes) = serde_json::to_vec(message) {
-                nyx_print(&bytes);
-            }
+        if let Ok(bytes) = postcard::to_allocvec(&self.probe_results) {
+            use base64::prelude::{BASE64_STANDARD, Engine};
+            nyx_print(BASE64_STANDARD.encode(&bytes).as_bytes());
         }
-        self.received.clear();
+        self.probe_results.clear();
     }
 
     fn ping_connections(&mut self) {
@@ -333,18 +384,17 @@ where
         #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
         let second = Self::create_and_sync_second_target(args, &inner.target)?;
 
-        let received = vec![];
         Ok(Self {
             inner,
             recording_received_messages: false,
-            received,
+            probe_results: Vec::new(),
             #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
             second,
         })
     }
 
     fn run(&mut self, testcase: TestCase) -> ScenarioResult {
-        self.process_actions(testcase.program.actions);
+        self.process_actions(testcase.program);
         self.ping_connections();
         self.print_received();
         self.evaluate_oracles()

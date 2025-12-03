@@ -41,12 +41,6 @@ pub struct Compiler {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum ProbeAction {
-    EnableMsgRecording,
-    DisableMsgRecording,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum CompiledAction {
     /// Create a new connection
     Connect(usize, String),
@@ -54,7 +48,7 @@ pub enum CompiledAction {
     SendRawMessage(usize, String, Vec<u8>),
     /// Set mock time for all nodes in the test
     SetTime(u64),
-    Probe(ProbeAction),
+    Probe,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -63,18 +57,27 @@ pub struct CompiledProgram {
     pub metadata: CompiledMetadata,
 }
 
+pub type VariableIndex = usize;
+
+pub type InstructionIndex = usize;
+
+pub type ConnectionId = usize;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CompiledMetadata {
     // Map from blockhash to (block variable index, list of transaction variable indices)
     block_tx_var_map: HashMap<bitcoin::BlockHash, (usize, Vec<usize>)>,
+    // Map from connection ids to connection variable indices.
+    connection_map: HashMap<ConnectionId, VariableIndex>,
     // List of instruction indices that correspond to actions in the compiled program
-    action_indices: Vec<usize>,
+    action_indices: Vec<InstructionIndex>,
 }
 
 impl CompiledMetadata {
     pub fn new() -> Self {
         Self {
             block_tx_var_map: HashMap::new(),
+            connection_map: HashMap::new(),
             action_indices: Vec::new(),
         }
     }
@@ -87,8 +90,12 @@ impl CompiledMetadata {
     }
 
     // Get the list of instruction indices that correspond to actions in the compiled program
-    pub fn instruction_indices(&self) -> &[usize] {
+    pub fn instruction_indices(&self) -> &[InstructionIndex] {
         &self.action_indices
+    }
+
+    pub fn connection_map(&self) -> &HashMap<ConnectionId, VariableIndex> {
+        &self.connection_map
     }
 }
 
@@ -341,6 +348,10 @@ impl Compiler {
                 | Operation::SendCompactBlock => {
                     self.handle_message_sending_operations(&instruction)?;
                 }
+
+                Operation::Probe => {
+                    self.handle_probe_operations(&instruction)?;
+                }
             }
 
             // Record the instruction index for each action emitted by this instruction
@@ -363,6 +374,17 @@ impl Compiler {
                 metadata: CompiledMetadata::new(),
             },
         }
+    }
+
+    fn update_connection_map(
+        &mut self,
+        connection_id: ConnectionId,
+        connection_var_index: VariableIndex,
+    ) {
+        self.output
+            .metadata
+            .connection_map
+            .insert(connection_id, connection_var_index);
     }
 
     fn handle_load_operation<T: 'static>(&mut self, value: T) {
@@ -1076,6 +1098,7 @@ impl Compiler {
             }
             Operation::SendAddrV2 => {
                 let connection_var = self.get_input::<usize>(&instruction.inputs, 0)?;
+
                 let addr_var = self.get_input::<Vec<AddrV2Message>>(&instruction.inputs, 1)?;
                 let payload = bitcoin::consensus::encode::serialize(addr_var);
                 self.emit_send_raw_message(*connection_var, "addrv2", payload);
@@ -1212,7 +1235,11 @@ impl Compiler {
                 }
             }
             Operation::LoadNode(index) => self.handle_load_operation(*index),
-            Operation::LoadConnection(index) => self.handle_load_operation(*index),
+            Operation::LoadConnection(id) => {
+                let conn_index = self.variables.len();
+                self.update_connection_map(*id, conn_index);
+                self.handle_load_operation(*id);
+            }
             Operation::LoadConnectionType(connection_type) => {
                 self.handle_load_operation(connection_type.clone())
             }
@@ -1354,6 +1381,17 @@ impl Compiler {
         Ok(())
     }
 
+    fn handle_probe_operations(&mut self, instruction: &Instruction) -> Result<(), CompilerError> {
+        match &instruction.operation {
+            Operation::Probe => {
+                self.emit_enable_logging_message();
+            }
+            _ => unreachable!("Non probing operation passed to handle_probe_operations"),
+        }
+
+        Ok(())
+    }
+
     fn get_variable<'a, T: 'static>(&'a self, index: usize) -> Result<&'a T, CompilerError> {
         let var = self
             .variables
@@ -1396,6 +1434,10 @@ impl Compiler {
 
     fn append_variable<T: 'static>(&mut self, value: T) {
         self.variables.push(Box::new(value));
+    }
+
+    fn emit_enable_logging_message(&mut self) {
+        self.output.actions.push(CompiledAction::Probe);
     }
 
     fn emit_send_raw_message(&mut self, connection_var: usize, message_type: &str, bytes: Vec<u8>) {
