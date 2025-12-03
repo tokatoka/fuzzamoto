@@ -170,10 +170,7 @@ where
     G: fuzzamoto_ir::Generator<R>,
 {
     fn mutate(&mut self, _state: &mut S, input: &mut IrInput) -> Result<MutationResult, Error> {
-        let Some(index) = input
-            .ir()
-            .get_random_instruction_index(&mut self.rng, self.generator.requested_context())
-        else {
+        let Some(index) = self.generator.choose_index(input.ir(), &mut self.rng) else {
             return Ok(MutationResult::Skipped);
         };
 

@@ -24,7 +24,7 @@ pub use tx::*;
 pub use txo::*;
 pub use witness::*;
 
-use crate::{InstructionContext, ProgramBuilder, ProgramContext, ProgramValidationError};
+use crate::{InstructionContext, Program, ProgramBuilder, ProgramContext, ProgramValidationError};
 use rand::RngCore;
 
 #[derive(Debug, Clone)]
@@ -47,6 +47,12 @@ pub trait Generator<R: RngCore> {
         InstructionContext::Global
     }
 
-    // TODO can we expose requested input variables somehow? currently the generators will fail if
-    // inputs variables they expect don't exist
+    /// Choose an index in the program where to insert generated instructions
+    ///
+    /// By default, this selects a random instruction index matching the requested context. Should
+    /// be overridden if a different behavior increases the effectiveness of the generator (e.g. to
+    /// find indices at which required variables are in scope)
+    fn choose_index(&self, program: &Program, rng: &mut R) -> Option<usize> {
+        program.get_random_instruction_index(rng, self.requested_context())
+    }
 }
