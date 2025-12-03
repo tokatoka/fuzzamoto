@@ -42,7 +42,7 @@ enum Commands {
         scenario: PathBuf,
 
         #[arg(long, help = "Path to the nyx installation")]
-        nyx_dir: Option<PathBuf>,
+        nyx_dir: PathBuf,
     },
 
     /// Create a html coverage report for a given corpus
