@@ -1,6 +1,7 @@
 pub mod address;
 pub mod advance_time;
 pub mod block;
+pub mod block_txn;
 pub mod bloom_filter;
 pub mod compact_block;
 pub mod compact_filters;
@@ -14,6 +15,7 @@ pub mod witness;
 pub use address::*;
 pub use advance_time::*;
 pub use block::*;
+pub use block_txn::*;
 pub use bloom_filter::*;
 pub use compact_block::*;
 pub use compact_filters::*;
@@ -60,7 +62,12 @@ pub trait Generator<R: RngCore> {
     /// By default, this selects a random instruction index matching the requested context. Should
     /// be overridden if a different behavior increases the effectiveness of the generator (e.g. to
     /// find indices at which required variables are in scope)
-    fn choose_index(&self, program: &Program, rng: &mut R) -> Option<usize> {
+    fn choose_index(
+        &self,
+        program: &Program,
+        rng: &mut R,
+        _meta: &Option<&mut PerTestcaseMetadata>,
+    ) -> Option<usize> {
         program.get_random_instruction_index(rng, self.requested_context())
     }
 }
