@@ -139,6 +139,7 @@ pub enum Operation {
     BeginBuildAddrListV2,
     EndBuildAddrListV2,
     AddAddrV2,
+    Probe,
 
     /// Message sending
     SendGetData,
@@ -355,6 +356,8 @@ impl fmt::Display for Operation {
             Operation::SendFilterAdd => write!(f, "SendFilterAdd"),
             Operation::SendFilterClear => write!(f, "SendFilterClear"),
             Operation::SendCompactBlock => write!(f, "SendCompactBlock"),
+
+            Operation::Probe => write!(f, "Probe"),
         }
     }
 }
@@ -486,7 +489,8 @@ impl Operation {
             | Operation::EndBuildCoinbaseTx
             | Operation::EndBuildCoinbaseTxOutputs
             | Operation::BuildCoinbaseTxInput
-            | Operation::AddCoinbaseTxOutput => false,
+            | Operation::AddCoinbaseTxOutput
+            | Operation::Probe => false,
         }
     }
 
@@ -614,7 +618,8 @@ impl Operation {
             | Operation::BeginBuildCoinbaseTx
             | Operation::BeginBuildCoinbaseTxOutputs
             | Operation::BuildCoinbaseTxInput
-            | Operation::AddCoinbaseTxOutput => false,
+            | Operation::AddCoinbaseTxOutput
+            | Operation::Probe => false,
         }
     }
 
@@ -764,6 +769,7 @@ impl Operation {
             Operation::SendFilterAdd => vec![],
             Operation::SendFilterClear => vec![],
             Operation::SendCompactBlock => vec![],
+            Operation::Probe => vec![],
         }
     }
 
@@ -919,7 +925,8 @@ impl Operation {
             | Operation::BeginBuildAddrListV2
             | Operation::BeginBlockTransactions
             | Operation::BeginWitnessStack
-            | Operation::BuildPayToAnchor => vec![],
+            | Operation::BuildPayToAnchor
+            | Operation::Probe => vec![],
         }
     }
 
@@ -1024,7 +1031,8 @@ impl Operation {
             | Operation::EndBuildCoinbaseTx
             | Operation::BuildCoinbaseTxInput
             | Operation::EndBuildCoinbaseTxOutputs
-            | Operation::AddCoinbaseTxOutput => vec![],
+            | Operation::AddCoinbaseTxOutput
+            | Operation::Probe => vec![],
         }
     }
 }
