@@ -7,7 +7,7 @@ use fuzzamoto::{
     fuzzamoto_main,
     oracles::{CrashOracle, Oracle, OracleResult},
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
-    targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, HasTxOutSetInfo, Target},
+    targets::{BitcoinCoreTarget, ConnectableTarget, HasGetBestBlockHash, HasGetTxOutSetInfo, HasBlockChainRPC, Target},
 };
 
 #[cfg(feature = "nyx")]
@@ -23,8 +23,7 @@ use fuzzamoto::oracles::{NetSplitContext, NetSplitOracle};
 use fuzzamoto::oracles::{ConsensusContext, ConsensusOracle};
 
 use fuzzamoto_ir::{
-    ProbeResult, ProbeResults, Program, ProgramContext,
-    compiler::{CompiledAction, CompiledMetadata, CompiledProgram, Compiler},
+    ProbeResult, ProbeResults, Program, ProgramContext, RecentHash, compiler::{CompiledAction, CompiledMetadata, CompiledProgram, Compiler}
 };
 
 const COINBASE_MATURITY_HEIGHT_LIMIT: u32 = 100;
@@ -121,7 +120,7 @@ impl<'a> ScenarioInput<'a> for TestCase {
 impl<TX, T> IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + HasTipHash + ConnectableTarget + HasTxOutSetInfo,
+    T: Target<TX> + HasGetBestBlockHash + ConnectableTarget + HasGetTxOutSetInfo,
 {
     /// Build the IR program context
     fn build_program_context(inner: &GenericScenario<TX, T>) -> ProgramContext {
@@ -234,8 +233,8 @@ where
         let mut synced = false;
 
         while start.elapsed() < SYNC_TIMEOUT {
-            let primary_tip = primary.get_tip_hash();
-            let reference_tip = reference.get_tip_hash();
+            let primary_tip = primary.getbestblockhash();
+            let reference_tip = reference.getbestblockhash();
 
             if primary_tip.is_some() && primary_tip == reference_tip {
                 log::info!("Nodes synced successfully!");
@@ -370,10 +369,40 @@ where
     }
 }
 
+const NUM_RECENT_BLOCKS: u64 = 10;
+
+pub fn probe_recent_block_hashes<T: HasBlockChainRPC>(target: &T, meta: &CompiledMetadata) -> Option<Vec<RecentHash>>{
+    // get current height
+    let mut hashes = Vec::new();
+    let height = target.getblockcount().unwrap();
+    for back in 0..NUM_RECENT_BLOCKS {
+        let new_height = height - back;
+        let hash = target.getblockhash(new_height)?;
+        hashes.push((new_height, hash))
+    }
+
+    let mut result = Vec::new();
+    for (height, hash) in &hashes {
+        let block_var = if let Some((var, _)) = meta.block_variables(&hash) {
+            Some(var)
+        }
+        else {
+            None
+        };
+        result.push(RecentHash {
+            hash: *hash.as_raw_hash().as_byte_array(),
+            height: *height,
+            block_variable: block_var,
+        })
+
+    }
+    return Some(result);
+}
+
 impl<TX, T> Scenario<'_, TestCase> for IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + HasTipHash + ConnectableTarget + HasTxOutSetInfo,
+    T: Target<TX> + HasGetBestBlockHash + ConnectableTarget + HasGetTxOutSetInfo + HasBlockChainRPC,
 {
     fn new(args: &[String]) -> Result<Self, String> {
         let inner: GenericScenario<TX, T> = GenericScenario::new(args)?;
@@ -399,9 +428,16 @@ where
     }
 
     fn run(&mut self, testcase: TestCase) -> ScenarioResult {
+        let metadata = testcase.program.metadata.clone();
         self.process_actions(testcase.program);
         self.ping_connections();
         self.print_received();
+
+        if self.recording_received_messages {
+            if let Some(_) = probe_recent_block_hashes(&self.inner.target, &metadata) {
+            }
+        }
+
         self.evaluate_oracles()
     }
 }

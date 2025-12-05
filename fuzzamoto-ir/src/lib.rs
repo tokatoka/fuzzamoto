@@ -325,9 +325,22 @@ pub struct GetBlockTxn {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RecentHash {
+    /// The hash of a recent block
+    pub hash: [u8; 32],
+    /// Variable index of this block if it is defined in the testcase
+    pub block_variable: Option<usize>,
+    /// height of this block
+    pub height: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ProbeResult {
     GetBlockTxn {
         get_block_txn: GetBlockTxn,
+    },
+    RecentHashes {
+        hashes: Vec<RecentHash>,
     },
     Failure {
         /// The command that failed to be decoded
