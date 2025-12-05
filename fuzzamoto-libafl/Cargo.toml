@@ -11,7 +11,7 @@ default = ["std"]
 std = []
 
 fuzz = ["compile_in_vm"]
-reproduce =  ["compile_in_vm"]
+reproduce = ["compile_in_vm"]
 
 ## Build with a simple event manager instead of Launcher - don't fork, and crash after the first bug.
 simplemgr = []
@@ -42,8 +42,12 @@ vergen = { version = "8.2.1", features = [
 [dependencies]
 clap = { version = "4.5.18", features = ["derive", "string", "env"] }
 
-libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5", features = ["tui_monitor"] }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5", features = ["errors_backtrace"] }
+libafl = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5", features = [
+  "tui_monitor",
+] }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5", features = [
+  "errors_backtrace",
+] }
 libafl_nyx = { git = "https://github.com/AFLplusplus/LibAFL.git", rev = "3b21190452d7289535aee443799ea55d940915c5" }
 
 log = { version = "0.4.20" }
@@ -57,9 +61,7 @@ fuzzamoto-ir = { path = "../fuzzamoto-ir" }
 
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.140"
-postcard = { version = "1.1.1", features = [
-  "alloc",
-], default-features = false }
+postcard = { version = "1.1.1", features = ["alloc"], default-features = false }
 
 rand = { version = "0.8.5", features = ["small_rng"] }
 
