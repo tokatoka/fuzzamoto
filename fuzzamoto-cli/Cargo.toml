@@ -13,9 +13,7 @@ workspace = true
 clap = { version = "4.4", features = ["derive", "string"] }
 env_logger = "0.11.6"
 log = "0.4.25"
-postcard = { version = "1.1.1", features = [
-  "alloc",
-], default-features = false }
+postcard = { version = "1.1.1", features = ["alloc"], default-features = false }
 rand = { version = "0.8.5", features = ["small_rng"] }
 
 fuzzamoto = { path = "../fuzzamoto" }

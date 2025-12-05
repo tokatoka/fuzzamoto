@@ -1,10 +1,14 @@
 [workspace]
 resolver = "3"
 members = [
-    "fuzzamoto", "fuzzamoto-cli", "fuzzamoto-ir",
-    "fuzzamoto-nyx-sys", "fuzzamoto-scenarios", "fuzzamoto-libafl"
+  "fuzzamoto",
+  "fuzzamoto-cli",
+  "fuzzamoto-ir",
+  "fuzzamoto-nyx-sys",
+  "fuzzamoto-scenarios",
+  "fuzzamoto-libafl",
 ]
-exclude = [ "vendor/*" ]
+exclude = ["vendor/*"]
 
 [workspace.package]
 version = "0.1.0"
