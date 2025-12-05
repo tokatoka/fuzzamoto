@@ -23,6 +23,9 @@ oracle_consensus = []
 # Compile for inflation bug detection
 oracle_inflation = []
 
+[lints]
+workspace = true
+
 [dependencies]
 fuzzamoto = { path = "../fuzzamoto" }
 fuzzamoto-ir = { path = "../fuzzamoto-ir" }

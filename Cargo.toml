@@ -17,3 +17,6 @@ repository = "https://github.com/dergoegge/fuzzamoto"
 # Deny 
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
+
+[workspace.lints.rust]
+warnings = "deny"

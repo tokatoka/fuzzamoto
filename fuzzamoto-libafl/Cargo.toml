@@ -26,6 +26,9 @@ introspection = ["libafl/introspection"]
 # Collect stats for benchmarking purposes
 bench = []
 
+[lints]
+workspace = true
+
 [build-dependencies]
 vergen = { version = "8.2.1", features = [
   "build",

@@ -8,6 +8,9 @@ repository.workspace = true
 links = "nyx_agent"
 description = "Low-level FFI bindings to the Nyx agent for fuzzamoto"
 
+[lints]
+workspace = true
+
 [dependencies]
 
 [build-dependencies]

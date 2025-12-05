@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 clap = { version = "4.4", features = ["derive", "string"] }
 env_logger = "0.11.6"

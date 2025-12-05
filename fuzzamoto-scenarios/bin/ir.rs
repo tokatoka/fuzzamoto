@@ -5,7 +5,7 @@ use bitcoin::hashes::Hash;
 use fuzzamoto::{
     connections::Transport,
     fuzzamoto_main,
-    oracles::{CrashOracle, InflationOracle, Oracle, OracleResult},
+    oracles::{CrashOracle, Oracle, OracleResult},
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
     targets::{BitcoinCoreTarget, ConnectableTarget, HasTipHash, HasTxOutSetInfo, Target},
 };
