@@ -12,6 +12,9 @@ reproduce = ["reduced_pow"]
 
 reduced_pow = []
 
+[lints]
+workspace = true
+
 [dependencies]
 fuzzamoto = { path = "../fuzzamoto" }
 
