@@ -24,7 +24,10 @@ pub use tx::*;
 pub use txo::*;
 pub use witness::*;
 
-use crate::{InstructionContext, Program, ProgramBuilder, ProgramContext, ProgramValidationError};
+use crate::{
+    InstructionContext, PerTestcaseMetadata, Program, ProgramBuilder, ProgramContext,
+    ProgramValidationError,
+};
 use rand::RngCore;
 
 #[derive(Debug, Clone)]
@@ -37,7 +40,12 @@ pub enum GeneratorError {
 pub type GeneratorResult = Result<(), GeneratorError>;
 pub trait Generator<R: RngCore> {
     /// Generate additional instructions into the program being build by `builder`
-    fn generate(&self, builder: &mut ProgramBuilder, rng: &mut R) -> GeneratorResult;
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        meta: Option<&mut PerTestcaseMetadata>,
+    ) -> GeneratorResult;
 
     /// Name of the generator
     fn name(&self) -> &'static str;
