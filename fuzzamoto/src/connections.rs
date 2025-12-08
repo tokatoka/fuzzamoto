@@ -26,6 +26,7 @@ pub struct V1Transport {
 }
 
 impl Transport for V1Transport {
+    #[expect(clippy::cast_possible_truncation)]
     fn send(&mut self, message: &(String, Vec<u8>)) -> Result<(), String> {
         log::debug!(
             "send {:?} message (len={} from={:?})",
@@ -52,10 +53,10 @@ impl Transport for V1Transport {
 
         self.socket
             .write_all(&header)
-            .map_err(|e| format!("Failed to send message header: {}", e))?;
+            .map_err(|e| format!("Failed to send message header: {e}"))?;
         self.socket
             .write_all(&message.1)
-            .map_err(|e| format!("Failed to send message payload: {}", e))?;
+            .map_err(|e| format!("Failed to send message payload: {e}"))?;
 
         Ok(())
     }
@@ -65,20 +66,20 @@ impl Transport for V1Transport {
         let mut header_bytes = [0u8; 24];
         self.socket
             .read_exact(&mut header_bytes)
-            .map_err(|e| format!("Failed to read message header: {}", e))?;
+            .map_err(|e| format!("Failed to read message header: {e}"))?;
 
         let mut cursor = std::io::Cursor::new(&header_bytes);
 
         // Parse magic bytes (skip validation for now)
         let _magic = cursor
             .read_u32()
-            .map_err(|e| format!("Failed to read magic: {}", e))?;
+            .map_err(|e| format!("Failed to read magic: {e}"))?;
 
         // Read command (12 bytes, null-padded)
         let mut command = [0u8; 12];
         cursor
             .read_exact(&mut command)
-            .map_err(|e| format!("Failed to read command: {}", e))?;
+            .map_err(|e| format!("Failed to read command: {e}"))?;
 
         // Convert command to string, trimming null bytes
         let command = String::from_utf8_lossy(&command)
@@ -88,18 +89,18 @@ impl Transport for V1Transport {
         // Read payload length
         let payload_len = cursor
             .read_u32()
-            .map_err(|e| format!("Failed to read payload length: {}", e))?;
+            .map_err(|e| format!("Failed to read payload length: {e}"))?;
 
         // Skip checksum (we're not validating it)
         let _checksum = cursor
             .read_u32()
-            .map_err(|e| format!("Failed to read checksum: {}", e))?;
+            .map_err(|e| format!("Failed to read checksum: {e}"))?;
 
         // Read the payload
         let mut payload = vec![0u8; payload_len as usize];
         self.socket
             .read_exact(&mut payload)
-            .map_err(|e| format!("Failed to read payload: {}", e))?;
+            .map_err(|e| format!("Failed to read payload: {e}"))?;
 
         log::debug!(
             "received {:?} message (len={} on={:?})",
@@ -114,10 +115,11 @@ impl Transport for V1Transport {
     fn local_addr(&self) -> Result<net::SocketAddr, String> {
         self.socket
             .local_addr()
-            .map_err(|e| format!("Failed to get local address: {}", e))
+            .map_err(|e| format!("Failed to get local address: {e}"))
     }
 }
 
+#[expect(clippy::struct_field_names)]
 pub struct Connection<T: Transport> {
     connection_type: ConnectionType,
     transport: T,
@@ -211,7 +213,7 @@ impl<T: Transport> Connection<T> {
         self.wait_for_pong(self.ping_counter, recording)
     }
 
-    pub fn version_handshake(&mut self, opts: HandshakeOpts) -> Result<(), String> {
+    pub fn version_handshake(&mut self, opts: &HandshakeOpts) -> Result<(), String> {
         let socket_addr = self.transport.local_addr().unwrap();
 
         let mut version_message = VersionMessage::new(
@@ -219,7 +221,7 @@ impl<T: Transport> Connection<T> {
             opts.time,
             Address::new(&socket_addr, ServiceFlags::NONE),
             Address::new(&socket_addr, ServiceFlags::NONE),
-            0xdeadbeef,
+            0xdead_beef,
             String::from("fuzzamoto"),
             opts.starting_height,
         );
@@ -240,7 +242,7 @@ impl<T: Transport> Connection<T> {
         let mut version_bytes = Vec::new();
         version_message
             .consensus_encode(&mut version_bytes)
-            .map_err(|e| format!("Failed to encode version message: {}", e))?;
+            .map_err(|e| format!("Failed to encode version message: {e}"))?;
         self.transport
             .send(&("version".to_string(), version_bytes))?;
 

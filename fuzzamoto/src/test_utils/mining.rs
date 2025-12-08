@@ -13,6 +13,7 @@ use bitcoin_hashes::sha256;
 // Consists of OP_RETURN, OP_PUSHBYTES_36, and four "witness header" bytes.
 const WITNESS_COMMITMENT_MAGIC: [u8; 6] = [0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
 
+#[must_use]
 pub fn create_witness_commitment_output(witness_merkle_root: WitnessMerkleNode) -> TxOut {
     let commitment = Block::compute_witness_commitment(&witness_merkle_root, &[0u8; 32]);
 
@@ -25,6 +26,7 @@ pub fn create_witness_commitment_output(witness_merkle_root: WitnessMerkleNode) 
     }
 }
 
+#[must_use]
 pub fn find_witness_commitment_output(coinbase: &Transaction) -> Option<usize> {
     for (i, output) in coinbase.output.iter().enumerate() {
         if output.script_pubkey.len() >= 38
@@ -79,11 +81,11 @@ pub fn mine_block(prev_hash: BlockHash, height: u32, time: u32) -> Result<Block,
         input: vec![TxIn {
             previous_output: OutPoint::null(),
             script_sig: ScriptBuf::builder()
-                .push_int(height as i64)
-                .push_int(0xFFFFFFFF)
+                .push_int(i64::from(height))
+                .push_int(0xFFFF_FFFF)
                 .as_script()
                 .into(),
-            sequence: Sequence(0xFFFFFFFF),
+            sequence: Sequence(0xFFFF_FFFF),
             witness,
         }],
         output: vec![
@@ -104,7 +106,7 @@ pub fn mine_block(prev_hash: BlockHash, height: u32, time: u32) -> Result<Block,
             prev_blockhash: prev_hash,
             merkle_root: TxMerkleNode::from_raw_hash(*coinbase.compute_txid().as_raw_hash()),
             time,
-            bits: CompactTarget::from_consensus(0x207fffff),
+            bits: CompactTarget::from_consensus(0x207f_ffff),
             nonce: 0,
         },
         txdata: vec![coinbase],

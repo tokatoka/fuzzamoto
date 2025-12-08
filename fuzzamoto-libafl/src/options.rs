@@ -6,7 +6,7 @@ use libafl_bolts::core_affinity::{CoreId, Cores};
 #[readonly::make]
 #[derive(Parser, Debug)]
 #[clap(author, about, long_about = None)]
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[command(
     name = format!("fuzzamoto-libafl"),
     about,

@@ -30,11 +30,11 @@ impl BitcoinCoreTarget {
     fn create_listener() -> Result<(TcpListener, u16), String> {
         // Bind to port 0 to let the OS assign a random available port
         let listener = TcpListener::bind("127.0.0.1:0")
-            .map_err(|e| format!("Failed to create TCP listener: {}", e))?;
+            .map_err(|e| format!("Failed to create TCP listener: {e}"))?;
 
         let port = listener
             .local_addr()
-            .map_err(|e| format!("Failed to get listener address: {}", e))?
+            .map_err(|e| format!("Failed to get listener address: {e}"))?
             .port();
 
         Ok((listener, port))
@@ -75,8 +75,8 @@ impl Target<V1Transport> for BitcoinCoreTarget {
             "-noconnect",
         ]);
 
-        let node = Node::with_conf(exe_path, &config)
-            .map_err(|e| format!("Failed to start node: {:?}", e))?;
+        let node =
+            Node::with_conf(exe_path, &config).map_err(|e| format!("Failed to start node: {e}"))?;
 
         Ok(Self {
             node,
@@ -98,7 +98,7 @@ impl Target<V1Transport> for BitcoinCoreTarget {
                     .p2p_socket
                     .ok_or_else(|| "P2P socket address not available".to_string())?;
                 let socket = TcpStream::connect(p2p_socket)
-                    .map_err(|e| format!("Failed to connect to P2P port: {}", e))?;
+                    .map_err(|e| format!("Failed to connect to P2P port: {e}"))?;
                 // Disable Nagle's algorithm, since most of the time we're sending small messages and
                 // we want to reduce latency when fuzzing.
                 socket
@@ -118,17 +118,17 @@ impl Target<V1Transport> for BitcoinCoreTarget {
                     .call::<serde_json::Value>(
                         "addconnection",
                         &[
-                            format!("127.0.0.1:{}", port).into(),
+                            format!("127.0.0.1:{port}").into(),
                             "outbound-full-relay".into(),
                             false.into(), // no v2
                         ],
                     )
-                    .map_err(|e| format!("Failed to initiate outbound connection: {:?}", e))?;
+                    .map_err(|e| format!("Failed to initiate outbound connection: {e}"))?;
 
                 // Wait for Bitcoin Core to connect
                 let (socket, _addr) = listener
                     .accept()
-                    .map_err(|e| format!("Failed to accept connection: {}", e))?;
+                    .map_err(|e| format!("Failed to accept connection: {e}"))?;
                 socket
                     .set_nodelay(true)
                     .expect("Failed to set nodelay on outbound socket");
@@ -149,7 +149,7 @@ impl Target<V1Transport> for BitcoinCoreTarget {
         self.time = time;
         client
             .call::<()>("setmocktime", &[time.into()])
-            .map_err(|e| format!("Failed to set mocktime: {:?}", e))
+            .map_err(|e| format!("Failed to set mocktime: {e}"))
     }
 
     fn is_alive(&self) -> Result<(), String> {
@@ -158,19 +158,19 @@ impl Target<V1Transport> for BitcoinCoreTarget {
         client
             .call::<serde_json::Value>(
                 "echo",
-                &[r#"Ground Control to Major Tom
+                &[r"Ground Control to Major Tom
 Your circuit's dead, there's something wrong
 Can you hear me, Major Tom?
 Can you hear me, Major Tom?
 Can you hear me, Major Tom?
-Can you-"#
+Can you-"
                     .into()],
             )
-            .map_err(|e| format!("Failed to check if node is alive: {:?}", e))?;
+            .map_err(|e| format!("Failed to check if node is alive: {e}"))?;
 
         client
             .call::<()>("syncwithvalidationinterfacequeue", &[])
-            .map_err(|e| format!("Failed to sync with validation interface queue: {:?}", e))?;
+            .map_err(|e| format!("Failed to sync with validation interface queue: {e}"))?;
 
         Ok(())
     }
@@ -182,12 +182,12 @@ Can you-"#
                 .call::<serde_json::Value>(
                     "addconnection",
                     &[
-                        format!("{:?}", addr).into(),
+                        format!("{addr}").into(),
                         "outbound-full-relay".into(),
                         false.into(), // no v2
                     ],
                 )
-                .map_err(|e| format!("Failed to initiate outbound connection: {:?}", e))?;
+                .map_err(|e| format!("Failed to initiate outbound connection: {e}"))?;
         } else {
             return Err("Other node does not have a valid address".to_string());
         }
@@ -245,10 +245,11 @@ pub struct TxOutSetInfo {
 }
 
 impl TxOutSetInfo {
+    #[must_use]
     pub fn height(&self) -> u64 {
         self.height
     }
-
+    #[must_use]
     pub fn amount(&self) -> bitcoin::Amount {
         self.amount
     }
@@ -260,37 +261,27 @@ impl HasTxOutSetInfo for BitcoinCoreTarget {
             .node
             .client
             .call::<serde_json::Value>("gettxoutsetinfo", &[])
-            .map_err(|e| format!("Failed to request txoutsetinfo: {:?}", e))?;
+            .map_err(|e| format!("Failed to request txoutsetinfo: {e}"))?;
 
-        let info = match txoutsetinfo {
-            serde_json::Value::Object(obj) => obj,
-            _ => return Err("Failed to request txoutsetinfo".to_string()),
-        };
-
-        let amount = match info.get("total_amount") {
-            Some(serde_json::Value::Number(num)) => num,
-            _ => return Err("Failed to request txoutsetinfo".to_string()),
-        };
-        let amount = match amount.as_f64() {
-            Some(v) => v,
-            None => {
-                return Err("Failed to request txoutsetinfo".to_string());
-            }
-        };
-        let amount = match Amount::from_btc(amount) {
-            Ok(amount) => amount,
-            _ => return Err("txoutsetinfo returns invalid amount".to_string()),
+        let serde_json::Value::Object(info) = txoutsetinfo else {
+            return Err("Failed to request txoutsetinfo".to_string());
         };
 
-        let height = match info.get("height") {
-            Some(serde_json::Value::Number(num)) => num,
-            _ => return Err("Failed to request txoutsetinfo".to_string()),
+        let Some(serde_json::Value::Number(amount)) = info.get("total_amount") else {
+            return Err("Failed to request txoutsetinfo".to_string());
         };
-        let height = match height.as_u64() {
-            Some(v) => v,
-            None => {
-                return Err("Failed to request txoutsetinfo".to_string());
-            }
+        let Some(amount) = amount.as_f64() else {
+            return Err("Failed to request txoutsetinfo".to_string());
+        };
+        let Ok(amount) = Amount::from_btc(amount) else {
+            return Err("txoutsetinfo returns invalid amount".to_string());
+        };
+
+        let Some(serde_json::Value::Number(height)) = info.get("height") else {
+            return Err("Failed to request txoutsetinfo".to_string());
+        };
+        let Some(height) = height.as_u64() else {
+            return Err("Failed to request txoutsetinfo".to_string());
         };
 
         Ok(TxOutSetInfo { height, amount })

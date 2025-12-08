@@ -10,7 +10,7 @@ use libafl_bolts::rands::StdRand;
 
 use crate::{input::IrInput, instance::Instance, options::FuzzerOptions};
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub type ClientState =
     StdState<CachedOnDiskCorpus<IrInput>, IrInput, StdRand, OnDiskCorpus<IrInput>>;
 

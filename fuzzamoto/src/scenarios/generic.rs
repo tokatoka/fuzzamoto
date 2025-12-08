@@ -69,7 +69,13 @@ pub struct GenericScenario<TX: Transport, T: Target<TX>> {
     _phantom: std::marker::PhantomData<(TX, T)>,
 }
 
+const INTERVAL: u64 = 1;
 impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
+    #[expect(
+        clippy::cast_possible_wrap,
+        clippy::cast_lossless,
+        clippy::cast_possible_truncation
+    )]
     fn from_target(mut target: T) -> Result<Self, String> {
         let genesis_block = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest);
 
@@ -136,8 +142,8 @@ impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         ];
 
         let mut send_compact = false;
-        for (connection, relay, wtxidrelay, addrv2, erlay) in connections.iter_mut() {
-            connection.version_handshake(HandshakeOpts {
+        for (connection, relay, wtxidrelay, addrv2, erlay) in &mut connections {
+            connection.version_handshake(&HandshakeOpts {
                 time: time as i64,
                 relay: *relay,
                 starting_height: 0,
@@ -154,7 +160,6 @@ impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         }
 
         let mut prev_hash = genesis_block.block_hash();
-        const INTERVAL: u64 = 1;
 
         let mut dictionary = FileDictionary::new();
 
@@ -191,14 +196,14 @@ impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
         dictionary.write(&mut output);
 
         let result = String::from_utf8(output.into_inner()).unwrap();
-        println!("{}", result);
+        println!("{result}");
 
-        for (connection, _, _, _, _) in connections.iter_mut() {
+        for (connection, _, _, _, _) in &mut connections {
             connection.ping()?;
         }
 
         // Announce the tip on all connections
-        for (connection, _, _, _, _) in connections.iter_mut() {
+        for (connection, _, _, _, _) in &mut connections {
             let inv = NetworkMessage::Inv(vec![Inventory::Block(prev_hash)]);
             connection.send_and_recv(&("inv".to_string(), encode::serialize(&inv)), false)?;
         }
@@ -213,7 +218,7 @@ impl<TX: Transport, T: Target<TX>> GenericScenario<TX, T> {
     }
 }
 
-impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase> for GenericScenario<TX, T> {
+impl<TX: Transport, T: Target<TX>> Scenario<'_, TestCase> for GenericScenario<TX, T> {
     fn new(args: &[String]) -> Result<Self, String> {
         let target = T::from_path(&args[1])?;
         Self::from_target(target)
@@ -247,18 +252,18 @@ impl<'a, TX: Transport, T: Target<TX>> Scenario<'a, TestCase> for GenericScenari
                     let _ = self.target.set_mocktime(time);
                 }
                 Action::AdvanceTime { seconds } => {
-                    self.time += seconds as u64;
+                    self.time += u64::from(seconds);
                     let _ = self.target.set_mocktime(self.time);
                 }
             }
         }
 
-        for connection in self.connections.iter_mut() {
+        for connection in &mut self.connections {
             let _ = connection.ping();
         }
 
         if let Err(e) = self.target.is_alive() {
-            return ScenarioResult::Fail(format!("Target is not alive: {}", e));
+            return ScenarioResult::Fail(format!("Target is not alive: {e}"));
         }
 
         ScenarioResult::Ok
@@ -278,7 +283,7 @@ impl Encodable for Action {
                     ConnectionType::Outbound => {
                         true.consensus_encode(s)?;
                     }
-                };
+                }
                 len += 1;
                 Ok(len)
             }
@@ -358,6 +363,7 @@ impl Encodable for TestCase {
 }
 
 impl Decodable for TestCase {
+    #[expect(clippy::cast_possible_truncation)]
     fn consensus_decode<D: Read + ?Sized>(d: &mut D) -> Result<Self, encode::Error> {
         let len = VarInt::consensus_decode(d)?.0;
         if len > 1000 {

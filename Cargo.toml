@@ -21,6 +21,10 @@ repository = "https://github.com/dergoegge/fuzzamoto"
 # Deny 
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+struct_excessive_bools = "allow"
+too_many_lines = "allow"
 
 [workspace.lints.rust]
 warnings = "deny"

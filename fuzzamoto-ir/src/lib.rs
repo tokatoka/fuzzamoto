@@ -102,7 +102,7 @@ impl AddrNetwork {
         }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn from_id(id: u8) -> Self {
         match id {
             0x01 => AddrNetwork::IPv4,
