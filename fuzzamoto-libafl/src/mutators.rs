@@ -207,9 +207,6 @@ where
     G: fuzzamoto_ir::Generator<R>,
 {
     fn mutate(&mut self, state: &mut S, input: &mut IrInput) -> Result<MutationResult, Error> {
-        let Some(index) = self.generator.choose_index(input.ir(), &mut self.rng) else {
-            return Ok(MutationResult::Skipped);
-        };
         let current_id = state.corpus().current().clone();
 
         let rt_data = runtime_metadata_mut(state);
@@ -223,6 +220,13 @@ where
             Some(meta)
         } else {
             None
+        };
+
+        let Some(index) = self
+            .generator
+            .choose_index(input.ir(), &mut self.rng, &tc_data)
+        else {
+            return Ok(MutationResult::Skipped);
         };
 
         let mut builder = fuzzamoto_ir::ProgramBuilder::new(input.ir().context.clone());
