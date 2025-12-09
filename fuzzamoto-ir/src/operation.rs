@@ -393,6 +393,7 @@ impl Operation {
             Operation::AddTxOutput if index == 0 => true,
             Operation::AddCoinbaseTxOutput if index == 0 => true,
             Operation::TakeTxo if index == 0 => true,
+            Operation::TakeCoinbaseTxo if index == 0 => true,
             Operation::AddWitness if index == 0 => true,
             Operation::AddTxidInv if index == 0 => true,
             Operation::AddTxidWithWitnessInv if index == 0 => true,

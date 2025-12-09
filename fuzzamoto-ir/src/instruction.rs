@@ -23,6 +23,7 @@ impl Instruction {
             | Operation::BeginBlockTransactions
             | Operation::EndBlockTransactions
             | Operation::TakeTxo
+            | Operation::TakeCoinbaseTxo
             | Operation::BeginBuildCoinbaseTx
             | Operation::EndBuildCoinbaseTx
             | Operation::BeginBuildCoinbaseTxOutputs
