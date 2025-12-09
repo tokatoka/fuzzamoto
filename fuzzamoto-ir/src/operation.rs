@@ -110,6 +110,7 @@ pub enum Operation {
     AddTxOutput,
     AddTxInput,
     TakeTxo,
+    TakeCoinbaseTxo,
 
     /// Coinbase-specific building operations
     BeginBuildCoinbaseTx,
@@ -314,6 +315,8 @@ impl fmt::Display for Operation {
             Operation::AddTxInput => write!(f, "AddTxInput"),
             Operation::AddTxOutput => write!(f, "AddTxOutput"),
             Operation::TakeTxo => write!(f, "TakeTxo"),
+            Operation::TakeCoinbaseTxo => write!(f, "TakeCoinbaseTxo"),
+
             Operation::BeginWitnessStack => write!(f, "BeginWitnessStack"),
             Operation::EndWitnessStack => write!(f, "EndWitnessStack"),
             Operation::AddWitness => write!(f, "AddWitness"),
@@ -479,6 +482,7 @@ impl Operation {
             | Operation::AddTxInput
             | Operation::AddTxOutput
             | Operation::TakeTxo
+            | Operation::TakeCoinbaseTxo
             | Operation::EndWitnessStack
             | Operation::AddWitness
             | Operation::BuildBlock
@@ -591,6 +595,7 @@ impl Operation {
             | Operation::AddTxInput
             | Operation::AddTxOutput
             | Operation::TakeTxo
+            | Operation::TakeCoinbaseTxo
             | Operation::BeginWitnessStack
             | Operation::AddWitness
             | Operation::BeginBuildInventory
@@ -711,6 +716,7 @@ impl Operation {
             Operation::LoadSequence(..) => vec![Variable::Sequence],
             Operation::LoadSize(..) => vec![Variable::Size],
             Operation::TakeTxo => vec![Variable::Txo],
+            Operation::TakeCoinbaseTxo => vec![Variable::Txo],
             Operation::LoadHeader { .. } => vec![Variable::Header],
             Operation::LoadFilterLoad { .. } => vec![Variable::ConstFilterLoad],
             Operation::LoadFilterAdd { .. } => vec![Variable::FilterAdd],
@@ -768,7 +774,9 @@ impl Operation {
             Operation::EndWitnessStack => vec![Variable::ConstWitnessStack],
             Operation::AddWitness => vec![],
 
-            Operation::BuildBlock => vec![Variable::Header, Variable::Block, Variable::ConstTx],
+            Operation::BuildBlock => {
+                vec![Variable::Header, Variable::Block, Variable::ConstCoinbaseTx]
+            }
             Operation::AddTx => vec![],
             Operation::EndBlockTransactions => vec![Variable::ConstBlockTransactions],
             Operation::BeginBlockTransactions => vec![],
@@ -847,6 +855,7 @@ impl Operation {
                 Variable::ConstAmount,
             ],
             Operation::TakeTxo => vec![Variable::ConstTx],
+            Operation::TakeCoinbaseTxo => vec![Variable::ConstCoinbaseTx],
             Operation::AddWitness => vec![Variable::MutWitnessStack, Variable::Bytes],
             Operation::EndWitnessStack => vec![Variable::MutWitnessStack],
             Operation::SendTx | Operation::SendTxNoWit => {
@@ -1022,6 +1031,7 @@ impl Operation {
             | Operation::AddTxInput
             | Operation::AddTxOutput
             | Operation::TakeTxo
+            | Operation::TakeCoinbaseTxo
             | Operation::EndWitnessStack
             | Operation::AddWitness
             | Operation::EndBuildInventory

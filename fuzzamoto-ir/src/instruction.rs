@@ -142,6 +142,7 @@ impl Instruction {
             | Operation::SendFilterClear
             | Operation::SendCompactBlock
             | Operation::SendBlockTxn
+            | Operation::TakeCoinbaseTxo
             | Operation::TakeTxo => true,
 
             Operation::Nop { .. }

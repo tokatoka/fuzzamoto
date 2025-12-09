@@ -321,7 +321,8 @@ impl Compiler {
                 | Operation::BeginBuildTxOutputs
                 | Operation::EndBuildTxOutputs
                 | Operation::AddTxOutput
-                | Operation::TakeTxo => {
+                | Operation::TakeTxo
+                | Operation::TakeCoinbaseTxo => {
                     self.handle_transaction_building_operations(&instruction)?;
                 }
 
@@ -943,7 +944,7 @@ impl Compiler {
                 mut_tx_outputs_var.outputs.push((scripts, amount));
                 mut_tx_outputs_var.fees -= amount;
             }
-            Operation::TakeTxo => {
+            Operation::TakeTxo | Operation::TakeCoinbaseTxo => {
                 let tx_var = self.get_input_mut::<Tx>(&instruction.inputs, 0)?;
                 let num_txos = tx_var.txos.len();
                 let mut txo = Txo::new();

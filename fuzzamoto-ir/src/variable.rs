@@ -63,4 +63,5 @@ pub enum Variable {
 
     MutBlockTxn,
     ConstBlockTxn,
+    ConstCoinbaseTx,
 }

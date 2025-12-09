@@ -76,7 +76,10 @@ impl<R: RngCore> Generator<R> for BlockGenerator {
             vec![conn_var.index, block_and_header_var[1].index],
             Operation::SendBlock,
         );
-        builder.force_append(vec![block_and_header_var[2].index], Operation::TakeTxo);
+        builder.force_append(
+            vec![block_and_header_var[2].index],
+            Operation::TakeCoinbaseTxo,
+        );
 
         Ok(())
     }
