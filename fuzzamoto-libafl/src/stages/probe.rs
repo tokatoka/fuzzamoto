@@ -2,11 +2,11 @@ use crate::input::IrInput;
 use core::marker::PhantomData;
 use fuzzamoto_ir::{Instruction, Operation};
 use fuzzamoto_ir::{ProbeResult, ProbeResults};
+use libafl::ExecutesInput;
 use libafl::{
     HasMetadata,
     corpus::{Corpus, CorpusId},
     executors::{Executor, HasObservers},
-    fuzzer::Evaluator,
     observers::{ObserversTuple, StdOutObserver},
     stages::{
         Restartable, Stage,
@@ -93,7 +93,7 @@ impl<E, EM, OT, S, T, Z> Stage<E, EM, S, Z> for ProbingStage<T>
 where
     E: Executor<EM, IrInput, S, Z> + HasObservers<Observers = OT>,
     OT: ObserversTuple<IrInput, S>,
-    Z: Evaluator<E, EM, IrInput, S>,
+    Z: ExecutesInput<E, EM, IrInput, S>,
     T: AsRef<StdOutObserver>,
     S: HasMetadata + HasCorpus<IrInput> + HasCurrentTestcase<IrInput>,
 {
@@ -147,7 +147,7 @@ where
             cur,
             testcase.file_path()
         );
-        let (_, corpus_id) = fuzzer.evaluate_filtered(state, executor, manager, &untransformed)?;
+        let _exit_kind = fuzzer.execute_input(state, executor, manager, &untransformed)?;
 
         let observers = executor.observers();
         let stdout_observer = observers[&self.handle].as_ref();
@@ -177,7 +177,7 @@ where
             }
         }
 
-        post.post_exec(state, corpus_id)?;
+        post.post_exec(state, None)?;
         log::info!("Done Probing for testcase {:?}", cur);
         self.seen.insert(cur);
         Ok(())
