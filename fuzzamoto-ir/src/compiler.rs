@@ -71,6 +71,8 @@ pub struct CompiledMetadata {
     connection_map: HashMap<ConnectionId, VariableIndex>,
     // List of instruction indices that correspond to actions in the compiled program (does not include probe operation)
     action_indices: Vec<InstructionIndex>,
+    /// The number of non-probe instructions compiled
+    instructions: usize,
 }
 
 impl CompiledMetadata {
@@ -79,6 +81,7 @@ impl CompiledMetadata {
             block_tx_var_map: HashMap::new(),
             connection_map: HashMap::new(),
             action_indices: Vec::new(),
+            instructions: 0,
         }
     }
 
@@ -215,12 +218,21 @@ struct Nop;
 
 impl Compiler {
     pub fn compile(&mut self, ir: &Program) -> CompilerResult {
-        let is_probing = ir
+        let probing_insts = ir
             .instructions
             .iter()
-            .any(|inst| matches!(inst.operation, Operation::Probe));
+            .filter(|inst| matches!(inst.operation, Operation::Probe))
+            .count();
+        assert!(probing_insts <= 1);
+        let is_probing = probing_insts > 0;
+        if is_probing {
+            assert!(matches!(
+                ir.instructions.first().unwrap().operation,
+                Operation::Probe
+            ));
+        }
 
-        for (instruction_index, instruction) in ir.instructions.iter().enumerate() {
+        for (_, instruction) in ir.instructions.iter().enumerate() {
             let actions_before = self
                 .output
                 .actions
@@ -379,17 +391,18 @@ impl Compiler {
                 .iter()
                 .filter(|action| !matches!(action, CompiledAction::Probe))
                 .count();
+
             for _ in actions_before..actions_after {
-                if is_probing {
-                    self.output
-                        .metadata
-                        .action_indices
-                        .push(instruction_index - 1);
-                } else {
-                    self.output.metadata.action_indices.push(instruction_index);
-                }
+                self.output
+                    .metadata
+                    .action_indices
+                    .push(self.output.metadata.instructions);
+            }
+            if !matches!(instruction.operation, Operation::Probe) {
+                self.output.metadata.instructions += 1;
             }
         }
+
         Ok(self.output.clone()) // TODO: do not clone
     }
 
