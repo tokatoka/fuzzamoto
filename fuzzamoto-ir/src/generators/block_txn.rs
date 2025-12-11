@@ -13,7 +13,7 @@ impl<R: RngCore> Generator<R> for BlockTxnGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        meta: Option<&mut PerTestcaseMetadata>,
+        meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         if let Some(meta) = meta {
             let insertion_point = builder.instructions.len();
@@ -121,7 +121,7 @@ impl<R: RngCore> Generator<R> for BlockTxnGenerator {
         &self,
         program: &crate::Program,
         rng: &mut R,
-        meta: &Option<&mut PerTestcaseMetadata>,
+        meta: Option<&PerTestcaseMetadata>,
     ) -> Option<usize> {
         if let Some(meta) = meta {
             let blocktxn_req = meta.block_txn_request();

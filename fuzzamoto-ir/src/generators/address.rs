@@ -25,7 +25,7 @@ impl<R: RngCore> Generator<R> for AddrRelayGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let v1_context: Vec<_> = self
             .addresses
@@ -73,7 +73,7 @@ impl<R: RngCore> Generator<R> for AddrRelayV2Generator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let v2_context: Vec<_> = self
             .addresses

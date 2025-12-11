@@ -33,7 +33,7 @@ impl<R: RngCore> Generator<R> for AdvanceTimeGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         // Find the most recent time variable or load the timestamp from the context
         let time_var = match builder.get_nearest_variable(Variable::Time) {

@@ -16,7 +16,7 @@ impl<R: RngCore> Generator<R> for GetDataGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let inventory_var = builder
             .get_random_variable(rng, Variable::ConstInventory)
@@ -47,7 +47,7 @@ impl<R: RngCore> Generator<R> for InventoryGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let Some(mut_inventory_var) = builder.get_nearest_variable(Variable::MutInventory) else {
             return Err(GeneratorError::MissingVariables);

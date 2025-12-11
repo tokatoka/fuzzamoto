@@ -76,7 +76,10 @@ where
         };
 
         Ok(
-            match self.mutator.mutate(input.ir_mut(), &mut self.rng, tc_data) {
+            match self
+                .mutator
+                .mutate(input.ir_mut(), &mut self.rng, tc_data.as_deref())
+            {
                 Ok(_) => MutationResult::Mutated,
                 _ => MutationResult::Skipped,
             },
@@ -222,9 +225,9 @@ where
             None
         };
 
-        let Some(index) = self
-            .generator
-            .choose_index(input.ir(), &mut self.rng, &tc_data)
+        let Some(index) =
+            self.generator
+                .choose_index(input.ir(), &mut self.rng, tc_data.as_deref())
         else {
             return Ok(MutationResult::Skipped);
         };
@@ -239,7 +242,7 @@ where
 
         if self
             .generator
-            .generate(&mut builder, &mut self.rng, tc_data)
+            .generate(&mut builder, &mut self.rng, tc_data.as_deref())
             .is_err()
         {
             return Ok(MutationResult::Skipped);
