@@ -16,7 +16,7 @@ impl<R: RngCore> Generator<R> for GetAddrGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         if builder.context().num_connections == 0 {
             return Err(GeneratorError::InvalidContext(builder.context().clone()));

@@ -14,7 +14,7 @@ impl<R: RngCore> Mutator<R> for InputMutator {
         &mut self,
         program: &mut Program,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> MutatorResult {
         let Some(candidate_instruction) = program
             .instructions

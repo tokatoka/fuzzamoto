@@ -182,7 +182,7 @@ impl<R: RngCore> Generator<R> for SingleTxGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
@@ -246,7 +246,7 @@ impl<R: RngCore> Generator<R> for OneParentOneChildGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
@@ -317,7 +317,7 @@ impl<R: RngCore> Generator<R> for LongChainGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let mut funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
@@ -386,7 +386,7 @@ impl<R: RngCore> Generator<R> for LargeTxGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let funding_txos = builder.get_random_utxos(rng);
         if funding_txos.is_empty() {
@@ -446,7 +446,7 @@ impl<R: RngCore> Generator<R> for CoinbaseTxGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let tx_version_var =
             builder.force_append_expect_output(vec![], Operation::LoadTxVersion(1));

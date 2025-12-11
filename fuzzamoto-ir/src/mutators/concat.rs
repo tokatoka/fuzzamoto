@@ -10,7 +10,7 @@ impl<R: RngCore> Mutator<R> for ConcatMutator {
         &mut self,
         _program: &mut Program,
         _rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> MutatorResult {
         Ok(())
     }

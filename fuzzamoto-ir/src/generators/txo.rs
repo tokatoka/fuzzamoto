@@ -35,7 +35,7 @@ impl<R: RngCore> Generator<R> for TxoGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         if self.available_txos.is_empty() {
             return Err(GeneratorError::MissingVariables);

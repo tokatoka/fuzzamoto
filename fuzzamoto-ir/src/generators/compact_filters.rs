@@ -16,7 +16,7 @@ impl<R: RngCore> Generator<R> for CompactFilterQueryGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let Some(header_var) = builder.get_random_variable(rng, Variable::Header) else {
             return Err(GeneratorError::MissingVariables);

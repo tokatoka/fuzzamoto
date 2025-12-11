@@ -11,7 +11,7 @@ impl<R: RngCore> Mutator<R> for CombineMutator {
         &mut self,
         _program: &mut Program,
         _rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> MutatorResult {
         Ok(())
     }

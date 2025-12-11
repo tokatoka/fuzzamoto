@@ -76,7 +76,7 @@ where
         };
 
         Ok(
-            match self.mutator.mutate(input.ir_mut(), &mut self.rng, tc_data) {
+            match self.mutator.mutate(input.ir_mut(), &mut self.rng, &tc_data) {
                 Ok(_) => MutationResult::Mutated,
                 _ => MutationResult::Skipped,
             },
@@ -239,7 +239,7 @@ where
 
         if self
             .generator
-            .generate(&mut builder, &mut self.rng, tc_data)
+            .generate(&mut builder, &mut self.rng, &tc_data)
             .is_err()
         {
             return Ok(MutationResult::Skipped);

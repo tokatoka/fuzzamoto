@@ -18,7 +18,7 @@ impl<R: RngCore> Generator<R> for BlockGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        meta: Option<&mut PerTestcaseMetadata>,
+        meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let header_var = if rng.gen_bool(0.5) {
             builder.get_random_variable(rng, Variable::Header)
@@ -136,7 +136,7 @@ impl<R: RngCore> Generator<R> for HeaderGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let header = self.headers.choose(rng).unwrap().clone();
 
@@ -168,7 +168,7 @@ impl<R: RngCore> Generator<R> for SendBlockGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let block_var = builder
             .get_random_variable(rng, Variable::Block)
@@ -200,7 +200,7 @@ impl<R: RngCore> Generator<R> for AddTxToBlockGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let block_var = builder
             .get_nearest_variable(Variable::MutBlockTransactions)

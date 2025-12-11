@@ -75,7 +75,7 @@ impl<R: RngCore> Generator<R> for SendMessageGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         // Use a connection from the parent program or load from context
         let conn_var_index = match builder.get_random_variable(rng, Variable::Connection) {

@@ -23,7 +23,7 @@ pub trait Mutator<R: RngCore> {
         &mut self,
         program: &mut Program,
         rng: &mut R,
-        meta: Option<&mut PerTestcaseMetadata>,
+        meta: Option<&PerTestcaseMetadata>,
     ) -> MutatorResult;
     fn name(&self) -> &'static str;
 }
