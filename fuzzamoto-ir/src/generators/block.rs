@@ -211,6 +211,81 @@ impl TipBlockGenerator {
     }
 }
 
+pub struct ReorgBlockGenerator {
+    coinbase_generator: CoinbaseTxGenerator,
+    headers: HashMap<BlockHash, Header>,
+}
+
+impl<R: RngCore> Generator<R> for ReorgBlockGenerator {
+    fn generate(
+        &self,
+        builder: &mut ProgramBuilder,
+        rng: &mut R,
+        meta: Option<&PerTestcaseMetadata>,
+    ) -> GeneratorResult {
+        let Some(header_var) = select_header_nth(&self.headers, builder, meta, 1) else {
+            return Ok(());
+        };
+
+        let (first_header, _) =
+            build_block_from_header(&self.coinbase_generator, builder, rng, header_var, meta)?;
+        let (_, _) = build_block_from_header(
+            &self.coinbase_generator,
+            builder,
+            rng,
+            first_header.index,
+            meta,
+        )?;
+
+        Ok(())
+    }
+
+    fn name(&self) -> &'static str {
+        "ReorgBlockGenerator"
+    }
+
+    fn choose_index(
+        &self,
+        program: &crate::Program,
+        rng: &mut R,
+        meta: Option<&PerTestcaseMetadata>,
+    ) -> Option<usize> {
+        if let Some(meta) = meta.as_ref()
+            && let Some(nth) = meta.recent_blocks.iter().rev().nth(1)
+            && let Some((_, inst)) = nth.defining_block
+        {
+            Some(inst + 1)
+        } else {
+            program
+                .get_random_instruction_index(rng, <Self as Generator<R>>::requested_context(self))
+        }
+    }
+}
+
+impl Default for ReorgBlockGenerator {
+    fn default() -> Self {
+        Self {
+            coinbase_generator: CoinbaseTxGenerator::default(),
+            headers: HashMap::new(),
+        }
+    }
+}
+
+impl ReorgBlockGenerator {
+    pub fn new(headers: Vec<Header>) -> Self {
+        let mut mp = HashMap::new();
+        for header in headers {
+            let block_hash = header.block_hash();
+            mp.insert(block_hash, header);
+        }
+
+        Self {
+            coinbase_generator: CoinbaseTxGenerator::default(),
+            headers: mp,
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct Header {
     pub prev: [u8; 32],
