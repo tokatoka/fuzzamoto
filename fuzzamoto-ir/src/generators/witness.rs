@@ -20,7 +20,7 @@ impl<R: RngCore> Generator<R> for WitnessGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let Some(witness_var) = builder.get_nearest_variable(Variable::MutWitnessStack) else {
             return Err(GeneratorError::MissingVariables);

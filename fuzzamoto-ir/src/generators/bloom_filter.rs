@@ -89,7 +89,7 @@ impl<R: RngCore> Generator<R> for BloomFilterLoadGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let connection_var = builder.get_or_create_random_connection(rng);
 
@@ -127,7 +127,7 @@ impl<R: RngCore> Generator<R> for BloomFilterAddGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let connection_var = builder.get_or_create_random_connection(rng);
         let filter_loaded = builder
@@ -229,7 +229,7 @@ impl<R: RngCore> Generator<R> for BloomFilterClearGenerator {
         &self,
         builder: &mut ProgramBuilder,
         rng: &mut R,
-        _meta: Option<&mut PerTestcaseMetadata>,
+        _meta: Option<&PerTestcaseMetadata>,
     ) -> GeneratorResult {
         let connection_var = builder.get_or_create_random_connection(rng);
         builder
