@@ -180,6 +180,9 @@ containing the correctly serialized transactions `v15` and `v30`.
 | `LoadSigHashFlags`| Loads signature hash flags. |
 | `LoadTxo` | Loads a transaction output from the context. |
 | `LoadHeader` | Loads a block header from the context. |
+| `LoadNonce` | Loads a nonce. |
+| `LoadFilterLoad` | Loads a filter for `filterload` message. |
+| `LoadFilterAdd` | Loads data for `filteradd` message. |
 | **Time operations** | **Manipulate the mock time.** |
 | `AdvanceTime` | Advances time by a given duration. |
 | `SetTime` | Sets the mock time to a specific value. |
@@ -196,6 +199,19 @@ containing the correctly serialized transactions `v15` and `v30`.
 | `BeginWitnessStack`| Begins building a witness stack. |
 | `AddWitness` | Adds an item to the witness stack. |
 | `EndWitnessStack`| Finishes building the witness stack. |
+| **Compact Block** | **Construct a compact block.**|
+| `BuildCompactBlock` | Builds a compact block. |
+| **Blocktxn building** | **Construct a BIP152 blocktxn message**|
+| `BeginBuildBlockTxn` | Begins building a blocktxn message after sending a compact block. |
+| `AddTxToBlockTxn` | Adds a transaction to the blocktxn message. |
+| `EndBuildBlockTxn` | Finishes building a blocktxn message. |
+| **Filter building** | **Construct a BIP37 filter.** |
+| `BeginBuildFilterLoad` | Begins building a filter. |
+| `AddTxToFilter` | Adds a transaction to a filter. |
+| `AddTxoToFilter` | Adds an output to a filter. |
+| `EndBuildFilterLoad` | Finishes building a filter. |
+| `BuildFilterAddFromTx` | Builds a `filteradd` message from a transaction. |
+| `BuildFilterAddFromTxo` | Builds a `filteradd` message from an output. |
 | **Transaction building** | **Construct a transaction.** |
 | `BeginBuildTx` | Begins building a transaction. |
 | `BeginBuildTxInputs` | Begins building transaction inputs. |
@@ -232,8 +248,11 @@ containing the correctly serialized transactions `v15` and `v30`.
 | `SendGetCFilters`| Sends a `getcfilters` message. |
 | `SendGetCFHeaders`| Sends a `getcfheaders` message. |
 | `SendGetCFCheckpt`| Sends a `getcfcheckpt` message. |
+| `SendCompactBlock` | Sends a `cmpctblock` message. |
+| `SendBlockTxn` | Sends a `blocktxn` message. |
 | **Other** | |
 | `Nop` | No operation. Used during minimization. |
+| `Probe` | Tells the scenario to probe state for the fuzzer (e.g. received messages, tip hash, ...). |
 
 ### Mutators
 
