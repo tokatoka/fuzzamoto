@@ -71,7 +71,7 @@ impl Target<V1Transport> for BitcoinCoreTarget {
             "-maxmempool=5", // 5MB
             "-dbcache=4",    // 4MiB
             "-datacarriersize=1000000",
-            "-peertimeout=8223372036854775807",
+            "-peertimeout=999999999",
             "-noconnect",
         ]);
 
