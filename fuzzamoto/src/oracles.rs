@@ -1,6 +1,6 @@
 use crate::{
     connections::Transport,
-    targets::{ConnectableTarget, HasTipHash, HasTxOutSetInfo, Target, bitcoin_core::TxOutSetInfo},
+    targets::{ConnectableTarget, HasTipInfo, HasTxOutSetInfo, Target, bitcoin_core::TxOutSetInfo},
 };
 use std::{
     marker::PhantomData,
@@ -64,8 +64,8 @@ impl<'a, T1, T2, TX1, TX2> Oracle<ConsensusContext<'a, T1, T2>> for ConsensusOra
 where
     TX1: Transport,
     TX2: Transport,
-    T1: Target<TX1> + HasTipHash,
-    T2: Target<TX2> + HasTipHash,
+    T1: Target<TX1> + HasTipInfo,
+    T2: Target<TX2> + HasTipInfo,
 {
     fn evaluate(&self, context: &ConsensusContext<'a, T1, T2>) -> OracleResult {
         let start = Instant::now();
@@ -74,10 +74,13 @@ where
         let mut reference_tip = None;
 
         while start.elapsed() < context.consensus_timeout {
-            primary_tip = context.primary.get_tip_hash();
-            reference_tip = context.reference.get_tip_hash();
+            primary_tip = context.primary.get_tip_info();
+            reference_tip = context.reference.get_tip_info();
 
-            if primary_tip.is_some() && primary_tip == reference_tip {
+            if let Some(primary) = primary_tip
+                && let Some(reference) = reference_tip
+                && primary.0 == reference.0
+            {
                 // Consensus is reached if tips match and are not None.
                 return OracleResult::Pass;
             }
@@ -198,7 +201,7 @@ where
     fn evaluate(&self, target: &T) -> OracleResult {
         let tx_out_set_info = match target.tx_out_set_info() {
             Ok(info) => info,
-            Err(_) => return OracleResult::Fail("Failed to retrieve txoutsetinfo".to_string()),
+            Err(_) => return OracleResult::Fail("Failed to retrieve TxOutSetInfo".to_string()),
         };
 
         if let Ok(boolean) = self.is_amount_valid(&tx_out_set_info) {
