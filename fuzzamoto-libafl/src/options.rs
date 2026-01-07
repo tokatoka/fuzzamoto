@@ -1,3 +1,4 @@
+use rand::{Rng, RngCore};
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -116,6 +117,21 @@ pub struct FuzzerOptions {
         help = "Comma-separated list of mutators/generators to enable (if not specified, all are enabled)"
     )]
     pub mutators: Option<Vec<String>>,
+
+    #[arg(
+        long,
+        help = "Probability of enabling a generator/mutator in swarm testing mode",
+        default_value_t = 1.0,
+        value_parser = |v: &str| {
+            let p: f64 = v.parse().map_err(|_| "Swarm must be a number between 0.0 and 1.0")?;
+            if (0.0..=1.0).contains(&p) {
+                Ok(p)
+            } else {
+                Err("Swarm must be a number between 0.0 and 1.0")
+            }
+        }
+    )]
+    pub swarm: f64,
 }
 
 impl FuzzerOptions {
@@ -159,16 +175,27 @@ impl FuzzerOptions {
     }
 
     /// Returns the weight for a mutator/generator, or 0.0 if it's disabled
-    pub fn mutator_weight(&self, name: &str, weight: f32) -> f32 {
-        match &self.mutators {
-            None => weight, // Default: all enabled with original weight
-            Some(list) => {
-                if list.iter().any(|m| m == name) {
-                    weight
-                } else {
-                    0.0
+    pub fn mutator_weight<R: RngCore>(&self, name: &str, weight: f32, rng: &mut R) -> f32 {
+        let weight = if self.swarm < 1.0 {
+            if rng.gen_bool(self.swarm) {
+                weight
+            } else {
+                0.0
+            }
+        } else {
+            match &self.mutators {
+                None => weight, // Default: all enabled with original weight
+                Some(list) => {
+                    if list.iter().any(|m| m == name) {
+                        weight
+                    } else {
+                        0.0
+                    }
                 }
             }
-        }
+        };
+        let disabled = if weight == 0.0 { "(disabled!)" } else { "" };
+        log::info!("⚙️ mutator: {} weight: {} {}", name, weight, disabled);
+        weight
     }
 }

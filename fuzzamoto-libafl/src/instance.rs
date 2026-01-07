@@ -55,10 +55,10 @@ use crate::stages::BenchStatsStage;
 use libafl::stages::nop::NopStage;
 
 macro_rules! weighted_mutations {
-    ($options:expr, $(($weight:expr, $mutation:expr)),+ $(,)?) => {{
+    ($options:expr, $rng:expr, $(($weight:expr, $mutation:expr)),+ $(,)?) => {{
         (
             tuple_list!($($mutation),+),
-            [$($options.mutator_weight($mutation.name(), $weight)),+],
+            [$($options.mutator_weight($mutation.name(), $weight, $rng)),+],
         )
     }};
 }
@@ -265,11 +265,12 @@ where
             std::fs::write(&file_path, bytes).unwrap();
         }
 
-        let rng = SmallRng::seed_from_u64(state.rand_mut().next());
+        let mut rng = SmallRng::seed_from_u64(state.rand_mut().next());
 
         //IrSpliceMutator::new(ConcatMutator::new(), rng.clone()),
         let (mutations, weights) = weighted_mutations![
             self.options,
+            &mut rng,
             (2000.0, IrMutator::new(InputMutator::new(), rng.clone())),
             (
                 1000.0,
