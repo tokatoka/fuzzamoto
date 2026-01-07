@@ -35,7 +35,9 @@ static size_t trace_buffer_size = 0;
  * Sets the __AFL_SHM_ID env variable to the shmid of the trace buffer. */
 size_t nyx_init() {
   static int done = 0;
-  (void)__builtin_expect(done, 0);
+  if (done) {
+    habort("Error: nyx_init called twice");
+  }
   done = 1;
 
   host_config_t host_config;
