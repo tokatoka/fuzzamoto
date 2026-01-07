@@ -64,7 +64,19 @@ RUN cd AFLplusplus && make PERFORMANCE=1 install -j$(nproc --ignore 1)
 ARG OWNER=bitcoin
 ARG REPO=bitcoin
 ARG BRANCH=master
-RUN git clone --depth 1 --branch $BRANCH https://github.com/$OWNER/$REPO.git
+ARG PR_NUMBER=
+ARG BITCOIN_COMMIT=""
+
+RUN git clone --depth 1 --branch "${BRANCH}" "https://github.com/${OWNER}/${REPO}.git" "${REPO}" && \
+    cd "${REPO}" && \
+    if [ -n "${PR_NUMBER}" ]; then \
+        git fetch --depth 1 origin "pull/${PR_NUMBER}/head:pr-${PR_NUMBER}" && \
+        git checkout "pr-${PR_NUMBER}"; \
+    elif [ -n "${BITCOIN_COMMIT}" ]; then \
+        git fetch --depth 1 origin "${BITCOIN_COMMIT}" && \
+        git checkout "${BITCOIN_COMMIT}"; \
+    fi
+
 
 ENV CC=$PWD/AFLplusplus/afl-clang-fast
 ENV CXX=$PWD/AFLplusplus/afl-clang-fast++
