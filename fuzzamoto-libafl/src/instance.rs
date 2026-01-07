@@ -265,12 +265,13 @@ where
             std::fs::write(&file_path, bytes).unwrap();
         }
 
-        let mut rng = SmallRng::seed_from_u64(state.rand_mut().next());
+        let rng = SmallRng::seed_from_u64(state.rand_mut().next());
+        let mut swarm_rng = SmallRng::seed_from_u64(self.options.swarm_seed);
 
         //IrSpliceMutator::new(ConcatMutator::new(), rng.clone()),
         let (mutations, weights) = weighted_mutations![
             self.options,
-            &mut rng,
+            &mut swarm_rng,
             (2000.0, IrMutator::new(InputMutator::new(), rng.clone())),
             (
                 1000.0,
