@@ -67,8 +67,9 @@ impl Runner for NyxRunner {
     }
 
     fn fail(&self, message: &str) {
+        let c_message = std::ffi::CString::new(message).unwrap_or_default();
         unsafe {
-            nyx_fail(message.as_ptr() as *const i8);
+            nyx_fail(c_message.as_ptr());
         }
     }
 
