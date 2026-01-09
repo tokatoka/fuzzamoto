@@ -38,4 +38,4 @@ jobs:
           platforms: linux/amd64
       - name: Run checks
         run: |
-          docker run --privileged fuzzamoto id
+          docker run --privileged fuzzamoto:ci id
