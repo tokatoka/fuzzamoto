@@ -32,10 +32,15 @@ use libafl::{
     state::{HasCorpus, HasMaxSize, HasRand, StdState},
 };
 use libafl_bolts::{
-    HasLen, Named, current_nanos,
+    HasLen, Named,
+    core_affinity::CoreId,
+    current_nanos,
     rands::{Rand, StdRand},
-    tuples::{Handled, tuple_list},
+    tuples::{Handled, NamedTuple, tuple_list},
 };
+
+use std::collections::BTreeMap;
+
 use libafl_nyx::{executor::NyxExecutor, helper::NyxHelper, settings::NyxSettings};
 use rand::{SeedableRng, rngs::SmallRng};
 use typed_builder::TypedBuilder;
@@ -75,6 +80,29 @@ pub struct Instance<'a, EM> {
 }
 
 const AUX_BUFFER_SIZE: usize = 0x20000;
+
+fn log_weights<MT>(
+    options: &FuzzerOptions,
+    id: CoreId,
+    mutations: &MT,
+    weights: &[f32],
+) -> Result<(), Error>
+where
+    MT: NamedTuple,
+{
+    let names = mutations.names();
+    let map: BTreeMap<Cow<'_, str>, f32> = names
+        .into_iter()
+        .zip(weights.into_iter().copied())
+        .collect();
+
+    let config_path = options.output_dir(id).join("config.json");
+    let file = std::fs::File::create(config_path)?;
+    let writer = std::io::BufWriter::new(file);
+    serde_json::to_writer_pretty(writer, &map)
+        .map_err(|_| Error::serialize("Failed to serialize weights".to_string()))?;
+    Ok(())
+}
 
 impl<EM> Instance<'_, EM>
 where
@@ -266,12 +294,13 @@ where
             std::fs::write(&file_path, bytes).unwrap();
         }
 
-        let mut rng = SmallRng::seed_from_u64(state.rand_mut().next());
+        let rng = SmallRng::seed_from_u64(state.rand_mut().next());
+        let mut swarm_rng = SmallRng::seed_from_u64(self.options.swarm_seed);
 
         //IrSpliceMutator::new(ConcatMutator::new(), rng.clone()),
         let (mutations, weights) = weighted_mutations![
             self.options,
-            &mut rng,
+            &mut swarm_rng,
             (2000.0, IrMutator::new(InputMutator::new(), rng.clone())),
             (
                 1000.0,
@@ -373,9 +402,14 @@ where
                 IrGenerator::new(BlockTxnGenerator::default(), rng.clone())
             ),
         ];
+        log_weights(
+            &self.options,
+            self.client_description.core_id(),
+            &mutations,
+            &weights,
+        )?;
 
         let mutator = TuneableScheduledMutator::new(&mut state, mutations);
-
         let sum = weights.iter().sum::<f32>();
         debug_assert_eq!(mutator.mutations().len(), weights.len());
 

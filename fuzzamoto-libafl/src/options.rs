@@ -132,6 +132,22 @@ pub struct FuzzerOptions {
         }
     )]
     pub swarm: f64,
+
+    #[arg(
+        long,
+        help = "Seed for swarm testing (defaults to current Unix time)",
+        default_value_t = unix_time()
+    )]
+    pub swarm_seed: u64,
+}
+
+fn unix_time() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }
 
 impl FuzzerOptions {
@@ -194,8 +210,6 @@ impl FuzzerOptions {
                 }
             }
         };
-        let disabled = if weight == 0.0 { "(disabled!)" } else { "" };
-        log::info!("⚙️ mutator: {} weight: {} {}", name, weight, disabled);
         weight
     }
 }
