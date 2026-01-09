@@ -64,17 +64,22 @@ pub trait HasTxOutSetInfo {
     fn tx_out_set_info(&self) -> Result<TxOutSetInfo, String>;
 }
 
+pub trait HasBlockTemplate {
+    fn block_template(&self) -> Result<(), String>;
+}
+
 pub trait HasGetRawMempoolEntries {
     fn get_mempool_entries(&self) -> Result<Vec<MempoolEntry>, String>;
 }
 
 pub trait HasBlockChainInterface:
-    HasTipInfo + HasGetBlock + HasTxOutSetInfo + HasGetRawMempoolEntries
+    HasTipInfo + HasGetBlock + HasTxOutSetInfo + HasGetRawMempoolEntries + HasBlockTemplate
 {
 }
 
 // blanket impl
-impl<Target: HasTipInfo + HasGetBlock + HasTxOutSetInfo + HasGetRawMempoolEntries>
-    HasBlockChainInterface for Target
+impl<
+    Target: HasTipInfo + HasGetBlock + HasTxOutSetInfo + HasGetRawMempoolEntries + HasBlockTemplate,
+> HasBlockChainInterface for Target
 {
 }

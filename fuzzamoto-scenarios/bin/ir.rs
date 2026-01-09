@@ -16,6 +16,12 @@ use io::Cursor;
 #[cfg(feature = "nyx")]
 use std::ffi::CString;
 
+#[cfg(feature = "oracle_inflation")]
+use fuzzamoto::oracles::InflationOracle;
+
+#[cfg(feature = "oracle_blocktemplate")]
+use fuzzamoto::oracles::BlockTemplateOracle;
+
 #[cfg(feature = "oracle_netsplit")]
 use fuzzamoto::oracles::{NetSplitContext, NetSplitOracle};
 
@@ -331,6 +337,14 @@ where
         let crash_oracle = CrashOracle::<TX>::default();
         if let OracleResult::Fail(e) = crash_oracle.evaluate(&self.inner.target) {
             return ScenarioResult::Fail(e.to_string());
+        }
+
+        #[cfg(feature = "oracle_blocktemplate")]
+        {
+            let template_oracle = BlockTemplateOracle::<TX>::default();
+            if let OracleResult::Fail(e) = template_oracle.evaluate(&self.inner.target) {
+                return ScenarioResult::Fail(e.to_string());
+            }
         }
 
         #[cfg(feature = "oracle_inflation")]
