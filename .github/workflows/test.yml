@@ -34,6 +34,7 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           push: false # build only - don't push to registry
+          load: true
           tags: ${{ matrix.tag }}
           platforms: linux/amd64
       - name: Run checks
