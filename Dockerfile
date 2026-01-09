@@ -78,8 +78,8 @@ RUN git clone --depth 1 --branch "${BRANCH}" "https://github.com/${OWNER}/${REPO
     fi
 
 
-ENV CC=$PWD/AFLplusplus/afl-clang-fast
-ENV CXX=$PWD/AFLplusplus/afl-clang-fast++
+ENV CC=/AFLplusplus/afl-clang-fast
+ENV CXX=/AFLplusplus/afl-clang-fast++
 
 ENV SOURCES_PATH=/tmp/bitcoin-depends
 RUN make -C bitcoin/depends NO_QT=1 NO_ZMQ=1 NO_USDT=1 download-linux SOURCES_PATH=$SOURCES_PATH
