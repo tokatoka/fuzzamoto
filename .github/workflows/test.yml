@@ -36,8 +36,6 @@ jobs:
           push: false # build only - don't push to registry
           tags: ${{ matrix.tag }}
           platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Run checks
         run: |
-          docker run --privileged -it fuzzamoto id
+          docker run --privileged fuzzamoto id
