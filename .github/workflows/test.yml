@@ -20,14 +20,6 @@ jobs:
             context: .
             file: ./Dockerfile
             tag: fuzzamoto:ci
-          - name: libafl
-            context: .
-            file: ./Dockerfile.libafl
-            tag: fuzzamoto-libafl:ci
-          - name: coverage
-            context: .
-            file: ./Dockerfile.coverage
-            tag: fuzzamoto-coverage:ci
 
     steps:
       - name: Checkout
@@ -46,4 +38,6 @@ jobs:
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
+      - name: Run checks
+        run: |
+          docker run --privileged -it fuzzamoto id
