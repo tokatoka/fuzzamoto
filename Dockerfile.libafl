@@ -46,6 +46,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup install nightly && rustup default nightly
 RUN cargo install cargo-afl
+RUN cargo install just
 
 WORKDIR /
 # Clone AFLplusplus and build
@@ -107,3 +108,5 @@ ENV LD=lld-${LLVM_V}
 # Needed to avoid "fatal: detected dubious ownership in repository" errors from
 # the Nyx build inside of target/
 RUN git config --global --add safe.directory /fuzzamoto
+
+COPY ./tests /tests

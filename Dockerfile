@@ -46,6 +46,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup install nightly && rustup default nightly
 RUN cargo install cargo-afl
+RUN cargo install just
 
 RUN git clone --depth 1 --branch "v0.6.0" https://github.com/0xricksanchez/AFL_Runner.git
 RUN cd AFL_Runner && cargo install --path .
@@ -135,6 +136,8 @@ COPY ./fuzzamoto-scenarios/rpcs.txt .
 WORKDIR /fuzzamoto
 COPY ./Cargo.toml .
 RUN mkdir .cargo && cargo vendor > .cargo/config
+
+COPY ./tests /tests
 
 ENV BITCOIND_PATH=/bitcoin/build_fuzz/bin/bitcoind
 RUN cargo build --package fuzzamoto-scenarios --package fuzzamoto-cli \
