@@ -46,6 +46,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup install nightly && rustup default nightly
 RUN cargo install cargo-afl
+RUN cargo install just
 
 RUN git clone --depth 1 --branch "v0.6.0" https://github.com/0xricksanchez/AFL_Runner.git
 RUN cd AFL_Runner && cargo install --path .
@@ -106,6 +107,9 @@ RUN cmake --build bitcoin/build_fuzz -j$(nproc) --target bitcoind
 ENV CC=clang-${LLVM_V}
 ENV CXX=clang++-${LLVM_V}
 
+# For CI jobs
+COPY ./tests /tests
+
 WORKDIR /fuzzamoto/fuzzamoto-nyx-sys
 COPY ./fuzzamoto-nyx-sys/Cargo.toml .
 COPY ./fuzzamoto-nyx-sys/src/ src/
@@ -164,3 +168,5 @@ RUN for scenario in /fuzzamoto/target/release/scenario-*; do \
         --rpc-path ./fuzzamoto/fuzzamoto-scenarios/rpcs.txt; \
       fi \
     done
+
+COPY ./tests /tests
