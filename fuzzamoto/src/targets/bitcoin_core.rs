@@ -342,7 +342,7 @@ impl HasGetBlock for BitcoinCoreTarget {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MempoolEntry {
     txid: Txid,
     depends: Vec<Txid>,

@@ -1,8 +1,8 @@
 use crate::{
     connections::Transport,
     targets::{
-        ConnectableTarget, HasBlockTemplate, HasTipInfo, HasTxOutSetInfo, Target,
-        bitcoin_core::TxOutSetInfo,
+        ConnectableTarget, HasBlockTemplate, HasGetRawMempoolEntries, HasTipInfo, HasTxOutSetInfo,
+        Target, bitcoin_core::TxOutSetInfo,
     },
 };
 use std::{
@@ -67,8 +67,8 @@ impl<'a, T1, T2, TX1, TX2> Oracle<ConsensusContext<'a, T1, T2>> for ConsensusOra
 where
     TX1: Transport,
     TX2: Transport,
-    T1: Target<TX1> + HasTipInfo,
-    T2: Target<TX2> + HasTipInfo,
+    T1: Target<TX1> + HasTipInfo + HasGetRawMempoolEntries,
+    T2: Target<TX2> + HasTipInfo + HasGetRawMempoolEntries,
 {
     fn evaluate(&self, context: &ConsensusContext<'a, T1, T2>) -> OracleResult {
         let start = Instant::now();
@@ -76,15 +76,41 @@ where
         let mut primary_tip = None;
         let mut reference_tip = None;
 
+        let mut tip_ok = false;
+        let mut mempool_ok = false;
+
         while start.elapsed() < context.consensus_timeout {
             primary_tip = context.primary.get_tip_info();
             reference_tip = context.reference.get_tip_info();
 
             if let Some(primary) = primary_tip
                 && let Some(reference) = reference_tip
-                && primary.0 == reference.0
             {
-                // Consensus is reached if tips match and are not None.
+                if primary.0 == reference.0 {
+                    tip_ok = true;
+                } else {
+                    return OracleResult::Fail(
+                        "Tips don't match between the two nodes".to_string(),
+                    );
+                }
+            }
+
+            let primary_mempool = context.primary.get_mempool_entries();
+            let reference_mempool = context.reference.get_mempool_entries();
+
+            if let Ok(primary) = primary_mempool
+                && let Ok(reference) = reference_mempool
+            {
+                if primary == reference {
+                    mempool_ok = true;
+                } else {
+                    return OracleResult::Fail(
+                        "Mempools don't match between the two nodes".to_string(),
+                    );
+                }
+            }
+
+            if tip_ok && mempool_ok {
                 return OracleResult::Pass;
             }
 
