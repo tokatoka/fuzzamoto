@@ -107,6 +107,11 @@ enum Commands {
         cpu: Option<usize>,
     },
 
+    BugRepro {
+        #[arg(long, help = "Path to the yaml file defining thge bug")]
+        bug: PathBuf,
+    },
+
     /// Fuzzamoto intermediate representation (IR) commands
     IR {
         #[command(subcommand)]
@@ -167,5 +172,6 @@ fn main() -> Result<()> {
             cpu.clone(),
         ),
         Commands::IR { command } => IrCommand::execute(command),
+        Commands::BugRepro { bug } => BugReproCommand::execute(bug),
     }
 }
