@@ -247,8 +247,8 @@ where
         let mut synced = false;
 
         while start.elapsed() < SYNC_TIMEOUT {
-            let primary_tip = primary.get_tip_hash();
-            let reference_tip = reference.get_tip_hash();
+            let primary_tip = primary.get_tip_info();
+            let reference_tip = reference.get_tip_info();
 
             if primary_tip.is_some() && primary_tip == reference_tip {
                 log::info!("Nodes synced successfully!");
