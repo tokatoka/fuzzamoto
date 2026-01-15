@@ -112,7 +112,7 @@ pub fn create_nyx_script(
 
     // Run the scenario
     script.push(format!(
-        "RUST_LOG=debug LD_LIBRARY_PATH=/tmp LD_BIND_NOW=1 ./{} ./bitcoind_proxy {} {} > log.txt 2>&1",
+        "RUST_LOG=debug LD_LIBRARY_PATH=/tmp LD_BIND_NOW=1 ./{} ./bitcoind_proxy {} ./{} > log.txt 2>&1",
         scenario_name,
         rpc_path.unwrap_or(""),
         secondary_bitcoind.unwrap_or("")
