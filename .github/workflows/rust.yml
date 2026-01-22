@@ -30,13 +30,7 @@ jobs:
       run: taplo format --check
     - name: Check formatting for all crates
       run: cargo fmt --all --check
-    - name: Build
-      run: cargo build --verbose
-    - name: Build for fuzzing
-      run: cargo build --verbose --features fuzz
-    - name: Build for fuzzing with benchmarking
-      run: cargo build --verbose --features fuzz,bench
-    - name: Build for reproducing
-      run: cargo build --verbose --features reproduce
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Install cargo hack
+      run: cargo install cargo-hack
+    - name: Run test for all features
+      run: cargo hack test --workspace --each-feature

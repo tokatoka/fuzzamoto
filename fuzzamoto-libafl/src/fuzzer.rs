@@ -3,15 +3,17 @@ use std::{cell::RefCell, fs::OpenOptions, io::Write, rc::Rc};
 use clap::Parser;
 use libafl::{
     Error,
-    events::{ClientDescription, EventConfig, Launcher, SimpleEventManager},
+    events::{ClientDescription, SimpleEventManager},
     monitors::{Monitor, tui::TuiMonitor},
 };
 
-use libafl_bolts::{
-    core_affinity::CoreId,
-    current_time,
-    shmem::{ShMemProvider, StdShMemProvider},
-};
+#[cfg(not(feature = "simplemgr"))]
+use libafl::events::{EventConfig, Launcher};
+
+use libafl_bolts::{core_affinity::CoreId, current_time};
+
+#[cfg(not(feature = "simplemgr"))]
+use libafl_bolts::shmem::{ShMemProvider, StdShMemProvider};
 
 use crate::{
     client::Client,
@@ -79,10 +81,12 @@ impl Fuzzer {
         M: Monitor + Clone,
     {
         // The shared memory allocator
+        #[cfg(not(feature = "simplemgr"))]
         let shmem_provider = StdShMemProvider::new()?;
 
         // If we are running in verbose, don't provide a replacement stdout, otherwise, use
         // /dev/null
+        #[cfg(not(feature = "simplemgr"))]
         let stdout = if self.options.verbose {
             None
         } else {
