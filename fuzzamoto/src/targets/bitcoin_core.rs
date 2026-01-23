@@ -1,8 +1,8 @@
 use crate::{
     connections::{Connection, ConnectionType, V1Transport, V2Transport},
     targets::{
-        HasBlockTemplate, HasGetBlock, HasGetRawMempoolEntries, HasTipInfo, HasTxOutSetInfo,
-        Target, TargetNode, Txid,
+        GenerateToAddress, HasBlockTemplate, HasGetBlock, HasGetRawMempoolEntries, HasTipInfo,
+        HasTxOutSetInfo, Target, TargetNode, Txid,
     },
 };
 
@@ -496,5 +496,22 @@ impl HasBlockTemplate for BitcoinCoreTarget {
                 // if the validation fails it will return with Rpc error with code = -1
             }
         }
+    }
+}
+
+impl GenerateToAddress for BitcoinCoreTarget {
+    fn generate_to_address(&self, address: &str) -> Result<(), String> {
+        let checked_addr = if let Ok(addr) = bitcoin::Address::from_str(address) {
+            addr.require_network(bitcoin::Network::Regtest)
+                .map_err(|e| format!("Network mismatch: {}", e))?
+        } else {
+            return Err("Failed generate address".to_string());
+        };
+
+        self.node
+            .client
+            .generate_to_address(1, &checked_addr)
+            .map_err(|e| format!("Failed to call generatetoaddress {}", e))?;
+        Ok(())
     }
 }
