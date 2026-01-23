@@ -208,8 +208,8 @@ impl<R: RngCore, M: OperationByteMutator> Mutator<R> for OperationMutator<M> {
                 .choose(rng)
                 .unwrap(),
             ),
-            // 2009-2500
-            Operation::LoadTime(_) => Operation::LoadTime(rng.gen_range(1241791814..16736249414)),
+            // 2009-2030
+            Operation::LoadTime(_) => Operation::LoadTime(rng.gen_range(1241791814..1893452400)),
             Operation::LoadAmount(amount) => Operation::LoadAmount(
                 *[
                     0,
