@@ -263,6 +263,7 @@ where
             )?;
         }
 
+        self.seen.insert(cur);
         Ok(())
     }
 }
