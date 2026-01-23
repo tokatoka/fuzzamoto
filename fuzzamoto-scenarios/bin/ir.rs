@@ -7,7 +7,9 @@ use fuzzamoto::{
     fuzzamoto_main,
     oracles::{CrashOracle, Oracle, OracleResult},
     scenarios::{Scenario, ScenarioInput, ScenarioResult, generic::GenericScenario},
-    targets::{BitcoinCoreTarget, ConnectableTarget, HasBlockChainInterface, Target},
+    targets::{
+        BitcoinCoreTarget, ConnectableTarget, GenerateToAddress, HasBlockChainInterface, Target,
+    },
 };
 
 #[cfg(feature = "nyx")]
@@ -56,6 +58,7 @@ struct IrScenario<TX: Transport, T: Target<TX> + ConnectableTarget> {
     probe_results: ProbeResults,
     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
     second: T,
+    futurest: u64,
 }
 
 #[cfg(feature = "nyx")]
@@ -134,7 +137,7 @@ impl<'a> ScenarioInput<'a> for TestCase {
 impl<TX, T> IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + ConnectableTarget + HasBlockChainInterface,
+    T: Target<TX> + ConnectableTarget + HasBlockChainInterface + GenerateToAddress,
 {
     /// Build the IR program context
     fn build_program_context(inner: &GenericScenario<TX, T>) -> ProgramContext {
@@ -275,6 +278,7 @@ where
                     if self.inner.connections.is_empty() {
                         return;
                     }
+
                     let num_connections = self.inner.connections.len();
                     let dst = from % num_connections;
 
@@ -310,6 +314,8 @@ where
                     #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
                     let _ = self.second.set_mocktime(time);
                     non_probe_action_count += 1;
+
+                    self.futurest = std::cmp::max(self.futurest, time);
                 }
                 _ => {}
             }
@@ -335,14 +341,14 @@ where
 
     fn evaluate_oracles(&mut self) -> ScenarioResult {
         let crash_oracle = CrashOracle::<TX>::default();
-        if let OracleResult::Fail(e) = crash_oracle.evaluate(&self.inner.target) {
+        if let OracleResult::Fail(e) = crash_oracle.evaluate(&mut self.inner.target) {
             return ScenarioResult::Fail(e.to_string());
         }
 
         #[cfg(feature = "oracle_blocktemplate")]
         {
             let template_oracle = BlockTemplateOracle::<TX>::default();
-            if let OracleResult::Fail(e) = template_oracle.evaluate(&self.inner.target) {
+            if let OracleResult::Fail(e) = template_oracle.evaluate(&mut self.inner.target) {
                 return ScenarioResult::Fail(e.to_string());
             }
         }
@@ -350,7 +356,7 @@ where
         #[cfg(feature = "oracle_inflation")]
         {
             let inflation_oracle = InflationOracle::<TX>::default();
-            if let OracleResult::Fail(e) = inflation_oracle.evaluate(&self.inner.target) {
+            if let OracleResult::Fail(e) = inflation_oracle.evaluate(&mut self.inner.target) {
                 return ScenarioResult::Fail(e.to_string());
             }
         }
@@ -358,7 +364,7 @@ where
         #[cfg(feature = "oracle_netsplit")]
         {
             let net_split_oracle = NetSplitOracle::<TX, TX>::default();
-            if let OracleResult::Fail(e) = net_split_oracle.evaluate(&NetSplitContext {
+            if let OracleResult::Fail(e) = net_split_oracle.evaluate(&mut NetSplitContext {
                 primary: &self.inner.target,
                 reference: &self.second,
             }) {
@@ -375,13 +381,14 @@ where
             }
 
             let consensus_oracle = ConsensusOracle::<TX, TX>::default();
-            if let OracleResult::Fail(e) = consensus_oracle.evaluate(&ConsensusContext {
-                primary: &self.inner.target,
-                reference: &self.second,
+            if let OracleResult::Fail(e) = consensus_oracle.evaluate(&mut ConsensusContext {
+                primary: &mut self.inner.target,
+                reference: &mut self.second,
                 // Poll every 10 milliseconds and timeout after 60 seconds. This way hang detection
                 // will fĺag consensus bugs as hangs.
                 consensus_timeout: Duration::from_secs(60),
                 poll_interval: Duration::from_millis(10),
+                futurest: self.futurest,
             }) {
                 return ScenarioResult::Fail(format!("{}", e));
             }
@@ -424,7 +431,7 @@ pub fn probe_recent_block_hashes<T: HasBlockChainInterface>(
 impl<TX, T> Scenario<'_, TestCase> for IrScenario<TX, T>
 where
     TX: Transport,
-    T: Target<TX> + ConnectableTarget + HasBlockChainInterface,
+    T: Target<TX> + ConnectableTarget + HasBlockChainInterface + GenerateToAddress,
 {
     fn new(args: &[String]) -> Result<Self, String> {
         let inner: GenericScenario<TX, T> = GenericScenario::new(args)?;
@@ -439,12 +446,17 @@ where
         #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
         let second = Self::create_and_sync_second_target(args, &inner.target)?;
 
+        let genesis_time = bitcoin::blockdata::constants::genesis_block(bitcoin::Network::Regtest)
+            .header
+            .time;
+
         Ok(Self {
             inner,
             recording_received_messages: false,
             probe_results: Vec::new(),
             #[cfg(any(feature = "oracle_netsplit", feature = "oracle_consensus"))]
             second,
+            futurest: genesis_time as u64,
         })
     }
 
@@ -458,6 +470,7 @@ where
                 self.probe_results.push(ret);
             }
         }
+
         self.print_received();
         self.evaluate_oracles()
     }

@@ -1,8 +1,8 @@
 use crate::{
     connections::Transport,
     targets::{
-        ConnectableTarget, HasBlockTemplate, HasTipInfo, HasTxOutSetInfo, Target,
-        bitcoin_core::TxOutSetInfo,
+        ConnectableTarget, GenerateToAddress, HasBlockTemplate, HasTipInfo, HasTxOutSetInfo,
+        Target, bitcoin_core::TxOutSetInfo,
     },
 };
 use std::{
@@ -16,7 +16,7 @@ pub enum OracleResult {
 }
 
 pub trait Oracle<C> {
-    fn evaluate(&self, context: &C) -> OracleResult;
+    fn evaluate(&self, context: &mut C) -> OracleResult;
     fn name(&self) -> &str;
 }
 
@@ -34,7 +34,7 @@ where
     TX: Transport,
     T: Target<TX>,
 {
-    fn evaluate(&self, target: &T) -> OracleResult {
+    fn evaluate(&self, target: &mut T) -> OracleResult {
         match target.is_alive() {
             Ok(_) => OracleResult::Pass,
             Err(err) => OracleResult::Fail(format!("Target is not alive: {}", err)),
@@ -48,11 +48,15 @@ where
 
 /// `ConsensusContext` is the context for the `ConsensusOracle`
 pub struct ConsensusContext<'a, T1, T2> {
-    pub primary: &'a T1,
-    pub reference: &'a T2,
+    pub primary: &'a mut T1,
+    pub reference: &'a mut T2,
     pub consensus_timeout: Duration,
     pub poll_interval: Duration,
+    pub futurest: u64,
 }
+
+const ADDRESS_BCRT1_P2WSH_OP_TRUE: &str =
+    "bcrt1qft5p2uhsdcdc3l2ua4ap5qqfg4pjaqlp250x7us7a8qqhrxrxfsqseac85";
 
 /// `ConsensusOracle` checks if two full node targets reach consensus on the chain tip hash
 pub struct ConsensusOracle<TX1, TX2>(PhantomData<TX1>, PhantomData<TX2>);
@@ -67,10 +71,18 @@ impl<'a, T1, T2, TX1, TX2> Oracle<ConsensusContext<'a, T1, T2>> for ConsensusOra
 where
     TX1: Transport,
     TX2: Transport,
-    T1: Target<TX1> + HasTipInfo,
+    T1: Target<TX1> + HasTipInfo + GenerateToAddress,
     T2: Target<TX2> + HasTipInfo,
 {
-    fn evaluate(&self, context: &ConsensusContext<'a, T1, T2>) -> OracleResult {
+    fn evaluate(&self, context: &mut ConsensusContext<'a, T1, T2>) -> OracleResult {
+        // reset mocktime to the most future value
+        let _ = context.primary.set_mocktime(context.futurest);
+        let _ = context.reference.set_mocktime(context.futurest);
+        // mine a dummy block
+        let _ = context
+            .primary
+            .generate_to_address(ADDRESS_BCRT1_P2WSH_OP_TRUE);
+
         let start = Instant::now();
 
         let mut primary_tip = None;
@@ -123,7 +135,7 @@ where
     T1: Target<TX1> + ConnectableTarget,
     T2: Target<TX2> + ConnectableTarget,
 {
-    fn evaluate(&self, context: &NetSplitContext<'a, T1, T2>) -> OracleResult {
+    fn evaluate(&self, context: &mut NetSplitContext<'a, T1, T2>) -> OracleResult {
         match context.reference.is_connected_to(context.primary) {
             false => OracleResult::Fail("Nodes are no longer connected!".to_string()),
             true => OracleResult::Pass,
@@ -201,7 +213,7 @@ where
     TX: Transport,
     T: Target<TX> + HasTxOutSetInfo,
 {
-    fn evaluate(&self, target: &T) -> OracleResult {
+    fn evaluate(&self, target: &mut T) -> OracleResult {
         let tx_out_set_info = match target.tx_out_set_info() {
             Ok(info) => info,
             Err(_) => return OracleResult::Fail("Failed to retrieve TxOutSetInfo".to_string()),
@@ -274,7 +286,7 @@ where
     TX: Transport,
     T: Target<TX> + HasBlockTemplate,
 {
-    fn evaluate(&self, target: &T) -> OracleResult {
+    fn evaluate(&self, target: &mut T) -> OracleResult {
         match target.block_template() {
             Ok(_) => OracleResult::Pass,
             Err(e) => OracleResult::Fail(e.to_string()),

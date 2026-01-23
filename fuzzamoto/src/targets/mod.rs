@@ -56,6 +56,10 @@ pub trait HasTipInfo {
     fn get_tip_info(&self) -> Option<(BlockHash, u64)>;
 }
 
+pub trait GenerateToAddress {
+    fn generate_to_address(&self, address: &str) -> Result<(), String>;
+}
+
 pub trait HasGetBlock {
     fn get_block(&self, hash: BlockHash) -> Option<Block>;
 }
