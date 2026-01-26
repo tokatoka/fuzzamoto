@@ -35,6 +35,7 @@ impl CoverageBatchCommand {
         corpus: PathBuf,
         docker_image: String,
         cpu: Option<usize>,
+        scenario: String,
     ) -> Result<()> {
         let found = Self::check_local_docker_image(&docker_image)?;
         if !found {
@@ -112,6 +113,7 @@ impl CoverageBatchCommand {
                 &docker_image,
                 &workdir.join("corpus"),
                 &workdir.join("output"),
+                &scenario,
             )?;
             log::info!("Started batch {} as container {}", i, cid);
             cleaner.add(cid.clone());
@@ -211,7 +213,12 @@ impl CoverageBatchCommand {
         Ok((stdout, stderr))
     }
 
-    fn run_split(image: &str, corpus_host: &Path, output_host: &Path) -> Result<String> {
+    fn run_split(
+        image: &str,
+        corpus_host: &Path,
+        output_host: &Path,
+        scenario: &str,
+    ) -> Result<String> {
         let corpus_abs = fs::canonicalize(corpus_host).map_err(|e| {
             CliError::InvalidInput(format!(
                 "Failed to canonicalize {}: {e}",
@@ -243,7 +250,7 @@ impl CoverageBatchCommand {
             "--bitcoind".into(),
             "/bitcoin/build_fuzz_cov/bin/bitcoind".into(),
             "--scenario".into(),
-            "/fuzzamoto/target/release/scenario-ir".into(),
+            format!("/fuzzamoto/target/release/scenario-{}", scenario),
             "--run-only".into(),
         ];
 

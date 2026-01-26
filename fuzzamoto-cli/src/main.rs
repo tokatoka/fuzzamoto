@@ -66,7 +66,7 @@ enum Commands {
         bitcoind: PathBuf,
         #[arg(
             long,
-            help = "Path to the fuzzamoto scenario binary that should be copied into the share directory"
+            help = "Path to the fuzzamoto scenario binary that should be run with coverage measurer"
         )]
         scenario: PathBuf,
         #[arg(
@@ -105,6 +105,8 @@ enum Commands {
             help = "Number of CPUs to use (defaults to available parallelism)"
         )]
         cpu: Option<usize>,
+        #[arg(long, help = "Name of the fuzzamoto scenario")]
+        scenario: String,
     },
 
     /// Fuzzamoto intermediate representation (IR) commands
@@ -160,11 +162,13 @@ fn main() -> Result<()> {
             corpus,
             docker_image,
             cpu,
+            scenario,
         } => CoverageBatchCommand::execute(
             output.clone(),
             corpus.clone(),
             docker_image.clone(),
             cpu.clone(),
+            scenario.clone(),
         ),
         Commands::IR { command } => IrCommand::execute(command),
     }
