@@ -6,7 +6,7 @@ run: corpus
 
 test: corpus
         #!/bin/bash
-        timeout 30s sh -c 'AFL_NO_UI=1 /AFLplusplus/afl-fuzz -X -i /tmp/in -o /tmp/out -- /tmp/fuzzamoto_scenario-http-server > /dev/null'
+        timeout 16s sh -c 'AFL_NO_UI=1 /AFLplusplus/afl-fuzz -X -i /tmp/in -o /tmp/out -- /tmp/fuzzamoto_scenario-http-server > /dev/null'
         # sleep until stat file is updated
         sleep 5
         count=$(cat /tmp/out/default/fuzzer_stats | grep "corpus_count"| grep -o '[0-9]\+')

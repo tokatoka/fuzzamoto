@@ -22,7 +22,7 @@ clean:
 [working-directory: '/fuzzamoto']
 test: compile compile_nyx corpus
 	#!/bin/bash
-	timeout 31s sh -c './target/release/fuzzamoto-libafl --input /tmp/in/ --output /tmp/out/ --share /tmp/fuzzamoto_scenario-ir/ --cores 0 --verbose > stdout.log'
+	timeout 16s sh -c './target/release/fuzzamoto-libafl --input /tmp/in/ --output /tmp/out/ --share /tmp/fuzzamoto_scenario-ir/ --cores 0 --verbose > stdout.log'
 	if grep -qa "corpus: 30" stdout.log; then
 		echo "Fuzzer is working"
 	else 
